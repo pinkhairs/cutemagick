@@ -4,23 +4,37 @@ body {
   font-family: 'SUSE', sans-serif !important;
 }
 
+html, body, #app {
+  height: 100%
+}
+
+#app {
+  @apply grid;
+}
+
 @layer theme {
   :root {
-    --color-slate-50:  #f7f8fa;
-    --color-slate-100: #edf0f4;
-    --color-slate-200: #d9e0ea;
-    --color-slate-300: #b8c4d6;
-    --color-slate-400: #92a2b9;
-    --color-slate-500: #516792; /* base */
-    --color-slate-600: #475c84;
-    --color-slate-700: #3b4d6e;
-    --color-slate-800: #2f3e57;
-    --color-slate-900: #232f41;
-    --color-slate-950: #161d28;
+    --color-slate-50:  #f8f9fb;
+    --color-slate-100: #f1f3f7;
+    --color-slate-200: #e3e7ef;
+    --color-slate-300: #cbd2e0;
+    --color-slate-400: #9da9c0;
+    --color-slate-500: #64748b; /* anchor - true slate */
+    --color-slate-600: #546483;
+    --color-slate-700: #455270;
+    --color-slate-800: #364058;
+    --color-slate-900: #283041;
+    --color-slate-950: #1a1f2e;
   }
 }
+
+
 /* Your theme tokens live here in v4 */
 @theme {
+  /* shadows */
+  --shadow-blue-gray: 0px 6px 8px -4px rgb(81 103 146 / 0.1);
+  --shadow-white-inset: 0px 6px 6px rgb(81 103 146 / 0.1), inset 0 0 64px 24px rgba(255, 255, 255, 0.9);
+  
   /* colors */
   --color-blue-gray: #516792;
   --color-pink: #FFA3D8;
@@ -36,7 +50,7 @@ body {
   --color-cream: #FFF1E7;
   
   /* background images (gradients) */
-  --bg-dark-rainbow: linear-gradient(
+  --bg-light-strong-rainbow: linear-gradient(
   270deg,
   #FFA3D8 0%,
   #D5A8FF 15.38%,
@@ -46,7 +60,7 @@ body {
   #F0EBB5 80.77%,
   #FFA3D8 100%
   );
-  --bg-light-rainbow: 
+  --bg-light-subtle-rainbow: 
   linear-gradient(
   296.6deg,
   #C4FDED 0.33%,
@@ -54,19 +68,52 @@ body {
   #FFD8FA 60.13%,
   #FEEADE 100%
   );
-  
-  /* shadows */
-  --shadow-blue-gray: 0px 6px 8px -4px rgb(81 103 146 / 0.1);
-  --shadow-white-inset: 0px 6px 6px rgb(81 103 146 / 0.1), inset 0 0 64px 24px rgba(255, 255, 255, 0.9);
+--bg-dark-strong-rainbow: linear-gradient(
+  270deg,
+  #E93B9F 0%,
+  #973EE9 15.38%,
+  #3F77E9 32.69%,
+  #18D3D9 51.44%,
+  #30E87F 65.87%,
+  #E9DA3D 80.77%,
+  #E93B9F 100%
+);
+  --bg-dark-subtle-rainbow: 
+  linear-gradient(
+  296.6deg,
+  #C4FDED 0.33%,
+  #C6D7FE 30.23%,
+  #FFD8FA 60.13%,
+  #FEEADE 100%
+  );
+
+  --bg-strong-rainbow: linear-gradient(
+  270deg,
+  #F46FBC 0%,
+  #B673F4 15.38%,
+  #759FF4 32.69%,
+  #3FE2E7 51.44%,
+  #62F2A0 65.87%,
+  #EDE379 80.77%,
+  #F46FBC 100%
+);
 }
 
+
 /* map class → background-image */
-@utility bg-light-rainbow {
-  background-image: var(--bg-light-rainbow);
+@utility bg-subtle-rainbow {
+  @media (prefers-color-scheme: light) {
+    background-image: var(--bg-light-subtle-rainbow);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    background-image: var(--bg-dark-subtle-rainbow);
+  }
 }
-@utility bg-dark-rainbow {
-  background-image: var(--bg-dark-rainbow);
+@utility bg-strong-rainbow {
+  background-image: var(--bg-strong-rainbow);
 }
+
 
 @keyframes bg-pan-x { to { background-position: 300% 0; } }
 
@@ -74,7 +121,7 @@ body {
 .rainbow-tiler {
   position: relative;
   isolation: isolate; /* keep overlay above only this element */
-  background-image: var(--bg-dark-rainbow);
+  background-image: var(--bg-strong-rainbow);
   background-repeat: no-repeat;
   background-size: 100% 100%;
   background-position: 0 0;
@@ -84,7 +131,7 @@ body {
   position: absolute; inset: 0;
   border-radius: inherit;
   z-index: -1; /* under content but above the base bg */
-  background-image: var(--bg-dark-rainbow);
+  background-image: var(--bg-strong-rainbow);
   background-repeat: repeat-x;
   background-size: 300% 100%;
   background-position: 0 0;
@@ -107,11 +154,11 @@ body {
 }
 .text-field {
   @apply w-full rounded-3xl border border-slate-300/80 dark:border-slate-700
-                 bg-white dark:bg-slate-950
-                 px-3.5 py-2.5 
-                 text-slate-800 dark:text-slate-100
-                 placeholder:text-slate-400 dark:placeholder:text-slate-500
-                 focus:outline-none focus:ring-2 focus:ring-periwinkle;
+  bg-white dark:bg-slate-950
+  px-3.5 py-2.5 
+  text-slate-800 dark:text-slate-100
+  placeholder:text-slate-400 dark:placeholder:text-slate-500
+  focus:outline-none focus:ring-2 focus:ring-periwinkle;
 }
 
 
