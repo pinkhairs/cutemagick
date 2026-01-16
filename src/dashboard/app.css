@@ -34,6 +34,7 @@ html, body, #app {
   /* shadows */
   --shadow-blue-gray: 0px 6px 8px -4px rgb(81 103 146 / 0.1);
   --shadow-white-inset: 0px 6px 6px rgb(81 103 146 / 0.1), inset 0 0 64px 24px rgba(255, 255, 255, 0.9);
+  --shadow-dark-inset: 0px 6px 6px rgb(0 0 0 / 0.25), inset 0 0 64px 48px rgba(81 103 146 / 0.15);
   
   /* colors */
   --color-blue-gray: #516792;
@@ -49,17 +50,6 @@ html, body, #app {
   --color-pink-light: #FFE4FC;
   --color-cream: #FFF1E7;
   
-  /* background images (gradients) */
-  --bg-light-strong-rainbow: linear-gradient(
-  270deg,
-  #FFA3D8 0%,
-  #D5A8FF 15.38%,
-  #AAC6FF 32.69%,
-  #65F0F5 51.44%,
-  #94FCC1 65.87%,
-  #F0EBB5 80.77%,
-  #FFA3D8 100%
-  );
   --bg-light-subtle-rainbow: 
   linear-gradient(
   296.6deg,
@@ -68,24 +58,14 @@ html, body, #app {
   #FFD8FA 60.13%,
   #FEEADE 100%
   );
---bg-dark-strong-rainbow: linear-gradient(
-  270deg,
-  #E93B9F 0%,
-  #973EE9 15.38%,
-  #3F77E9 32.69%,
-  #18D3D9 51.44%,
-  #30E87F 65.87%,
-  #E9DA3D 80.77%,
-  #E93B9F 100%
-);
-  --bg-dark-subtle-rainbow: 
-  linear-gradient(
+--bg-dark-subtle-rainbow: linear-gradient(
   296.6deg,
-  #C4FDED 0.33%,
-  #C6D7FE 30.23%,
-  #FFD8FA 60.13%,
-  #FEEADE 100%
-  );
+  #143237 0.33%,   /* deep slate + saturated mint */
+  #1a2744 30.23%,  /* deep slate + periwinkle */
+  #2a1f3d 60.13%,  /* deep slate + pink-violet */
+  #2a231b 100%     /* deep slate + peach */
+);
+
 
   --bg-strong-rainbow: linear-gradient(
   270deg,
@@ -105,7 +85,6 @@ html, body, #app {
   @media (prefers-color-scheme: light) {
     background-image: var(--bg-light-subtle-rainbow);
   }
-
   @media (prefers-color-scheme: dark) {
     background-image: var(--bg-dark-subtle-rainbow);
   }
@@ -147,7 +126,7 @@ html, body, #app {
 
 /* tiny utilities so we don't repeat Tailwind classes */
 .link{ @apply text-transparent bg-clip-text bg-gradient-to-r from-[#AAC6FF] via-[#65F0F5] to-[#FFA3D8] hover:opacity-80; }
-.btn{ @apply cursor-pointer inline-flex items-center justify-center gap-2 rounded-full border border-slate-700 bg-slate-800 dark:bg-slate-600 p-2.5 text-white hover:bg-slate-700 text-center; }
+.btn{ @apply cursor-pointer inline-flex items-center justify-center gap-2 rounded-full border border-slate-700 bg-slate-800 dark:bg-sky-700 p-2.5 text-white hover:bg-slate-700 dark:hover:bg-sky-800 text-center; }
 .field{ @apply w-full rounded-xl border border-slate-700 bg-slate-900/50 px-3.5 py-2.5 text-[15px] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[#b793ff] focus:border-slate-600; }
 .cta{
   @apply relative inline-flex w-full items-center justify-center overflow-hidden rounded-xl px-4 py-2.5 text-[15px] font-semibold text-white;
@@ -159,6 +138,9 @@ html, body, #app {
   text-slate-800 dark:text-slate-100
   placeholder:text-slate-400 dark:placeholder:text-slate-500
   focus:outline-none focus:ring-2 focus:ring-periwinkle;
+}
+.card {
+  @apply px-6 py-4 lg:py-8 lg:px-9 shadow-white-inset dark:shadow-dark-inset rounded-3xl;
 }
 
 
