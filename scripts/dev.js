@@ -2,33 +2,47 @@ import { spawn } from 'child_process';
 
 console.log('🌙 Starting Cute Magick development servers...\n');
 
-// Start Vite with explicit config
-const vite = spawn('vite', ['--config', 'vite.config.js'], {
+// Start Tailwind CSS watcher
+const tailwind = spawn(
+  'npm',
+  [
+    'exec',
+    '@tailwindcss/cli',
+    '--',
+    '-i', 'src/dashboard/input.css',
+    '-o', 'src/dashboard/public/css/style.css',
+    '--watch'
+  ],
+  {
+    stdio: 'inherit',
+    shell: true
+  }
+);
+
+// Start Express with nodemon
+const express = spawn('nodemon', [
+  '--watch', 'src',
+  '--ext', 'js,html,css',
+  'src/index.js'
+], {
   stdio: 'inherit',
-  shell: true
+  shell: true,
+  env: { ...process.env, NODE_ENV: 'development' }
 });
 
-setTimeout(() => {
-  const express = spawn('nodemon', ['--watch', 'src', '--ignore', 'src/dashboard', 'src/index.js'], {
-    stdio: 'inherit',
-    shell: true,
-    env: { ...process.env, NODE_ENV: 'development' }
-  });
+process.on('SIGINT', () => {
+  console.log('\n\n🌙 Shutting down...');
+  tailwind.kill();
+  express.kill();
+  process.exit();
+});
 
-  process.on('SIGINT', () => {
-    console.log('\n\n🌙 Shutting down...');
-    vite.kill();
-    express.kill();
-    process.exit();
-  });
+express.on('exit', () => {
+  tailwind.kill();
+  process.exit();
+});
 
-  express.on('exit', () => {
-    vite.kill();
-    process.exit();
-  });
-
-  vite.on('exit', () => {
-    express.kill();
-    process.exit();
-  });
-}, 1000);
+tailwind.on('exit', () => {
+  express.kill();
+  process.exit();
+});

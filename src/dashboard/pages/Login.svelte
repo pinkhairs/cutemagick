@@ -14,9 +14,7 @@
 <section class="relative z-10 w-full m-auto max-w-md px-4">
   <!-- Header -->
   <header class="flex items-center justify-center pb-6">
-    <a href="/" aria-label="Home" class="origin-top scale-80 inline-flex items-center bg-strong-rainbow" style="clip-path: url(#logo-clip);">
-      <Logo />
-    </a>
+    <Logo />
   </header>
   
   <!-- Card -->

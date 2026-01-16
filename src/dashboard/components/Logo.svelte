@@ -1,3 +1,4 @@
+<a href="/" aria-label="Home" class="origin-top scale-80 inline-flex items-center bg-strong-rainbow" style="clip-path: url(#logo-clip);">
 <svg aria-hidden="true" width="168" height="114" viewBox="0 0 168 114" fill="none" xmlns="http://www.w3.org/2000/svg">
  <defs>
  <clipPath id="logo-clip" clipPathUnits="userSpaceOnUse">
@@ -5,3 +6,4 @@
   </clipPath>
   </defs>
 </svg>
+</a>
