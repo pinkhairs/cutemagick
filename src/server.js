@@ -1,42 +1,32 @@
 import express from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
-// import accountAPI from './api/account.js';      // TODO: create this
-// import sitesAPI from './api/sites.js';          // TODO: create this
-// import filesAPI from './api/files.js';          // TODO: create this
-// import versionsAPI from './api/versions.js';    // TODO: create this
-// import publicRoutes from './routes/public.js';  // TODO: create this
-// import previewRoutes from './routes/preview.js';// TODO: create this
-// import authMiddleware from './middleware/auth.js'; // TODO: create this
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
-const isDev = process.env.NODE_ENV === 'development';
 
+// ESM __dirname fix
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Body parsing (HTMX forms need this)
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Temporary: just API placeholder
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'API working!' });
+// Optional but very useful
+app.use((req, _res, next) => {
+  req.isHtmx = req.get('HX-Request') === 'true';
+  next();
 });
 
-// Dashboard
-if (isDev) {
-  app.use('/admin', createProxyMiddleware({
-    target: 'http://localhost:5173',
-    changeOrigin: true,
-    ws: true
-  }));
-  app.use('/settings', createProxyMiddleware({
-    target: 'http://localhost:5173',
-    changeOrigin: true,
-    ws: true
-  }));
-} else {
-  app.use('/admin', express.static('public'));
-  app.use('/settings', express.static('public'));
-}
+// ---- STATIC ASSETS ----
+app.use(
+  '/public',
+  express.static(path.join(__dirname, 'dashboard/public'))
+);
 
-app.get('/', (req, res) => {
-  res.redirect('/admin');
+// ---- FULL PAGES ----
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard/index.html'));
 });
 
 export default app;
