@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build
+public/
+dist/
+
+# User data
+projects/*
+!projects/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+data/*
+!data/.gitkeep
+!data/schema.sql
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

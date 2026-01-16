@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+body {
+  font-family: 'SUSE', sans-serif !important;
+}
+
+@layer theme {
+  :root {
+    --color-slate-50:  #f7f8fa;
+    --color-slate-100: #edf0f4;
+    --color-slate-200: #d9e0ea;
+    --color-slate-300: #b8c4d6;
+    --color-slate-400: #92a2b9;
+    --color-slate-500: #516792; /* base */
+    --color-slate-600: #475c84;
+    --color-slate-700: #3b4d6e;
+    --color-slate-800: #2f3e57;
+    --color-slate-900: #232f41;
+    --color-slate-950: #161d28;
+  }
+}
+/* Your theme tokens live here in v4 */
+@theme {
+  /* colors */
+  --color-blue-gray: #516792;
+  --color-pink: #FFA3D8;
+  --color-purple: #D5A8FF;
+  --color-periwinkle: #AAC6FF;
+  --color-cyan: #65F0F5;
+  --color-mint: #94FCC1;
+  --color-yellow: #F0EBB5;
+  --color-sky: #99BDFF;
+  --color-aqua-light: #D6FFF3;
+  --color-periwinkle-light: #D6E4FF;
+  --color-pink-light: #FFE4FC;
+  --color-cream: #FFF1E7;
+  
+  /* background images (gradients) */
+  --bg-dark-rainbow: linear-gradient(
+  270deg,
+  #FFA3D8 0%,
+  #D5A8FF 15.38%,
+  #AAC6FF 32.69%,
+  #65F0F5 51.44%,
+  #94FCC1 65.87%,
+  #F0EBB5 80.77%,
+  #FFA3D8 100%
+  );
+  --bg-light-rainbow: 
+  linear-gradient(
+  296.6deg,
+  #C4FDED 0.33%,
+  #C6D7FE 30.23%,
+  #FFD8FA 60.13%,
+  #FEEADE 100%
+  );
+  
+  /* shadows */
+  --shadow-blue-gray: 0px 6px 8px -4px rgb(81 103 146 / 0.1);
+  --shadow-white-inset: 0px 6px 6px rgb(81 103 146 / 0.1), inset 0 0 64px 24px rgba(255, 255, 255, 0.9);
+}
+
+/* map class → background-image */
+@utility bg-light-rainbow {
+  background-image: var(--bg-light-rainbow);
+}
+@utility bg-dark-rainbow {
+  background-image: var(--bg-dark-rainbow);
+}
+
+@keyframes bg-pan-x { to { background-position: 300% 0; } }
+
+/* attach a tiled, animated overlay on ::after */
+.rainbow-tiler {
+  position: relative;
+  isolation: isolate; /* keep overlay above only this element */
+  background-image: var(--bg-dark-rainbow);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-position: 0 0;
+}
+.rainbow-tiler::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  z-index: -1; /* under content but above the base bg */
+  background-image: var(--bg-dark-rainbow);
+  background-repeat: repeat-x;
+  background-size: 300% 100%;
+  background-position: 0 0;
+  opacity: 0; transition: opacity .25s linear;
+}
+.rainbow-tiler:hover::after {
+  opacity: 1;
+  animation: bg-pan-x 2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rainbow-tiler:hover::after { animation: none; }
+}
+
+/* tiny utilities so we don't repeat Tailwind classes */
+.link{ @apply text-transparent bg-clip-text bg-gradient-to-r from-[#AAC6FF] via-[#65F0F5] to-[#FFA3D8] hover:opacity-80; }
+.btn{ @apply cursor-pointer inline-flex items-center justify-center gap-2 rounded-full border border-slate-700 bg-slate-800 dark:bg-slate-600 p-2.5 text-white hover:bg-slate-700 text-center; }
+.field{ @apply w-full rounded-xl border border-slate-700 bg-slate-900/50 px-3.5 py-2.5 text-[15px] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[#b793ff] focus:border-slate-600; }
+.cta{
+  @apply relative inline-flex w-full items-center justify-center overflow-hidden rounded-xl px-4 py-2.5 text-[15px] font-semibold text-white;
+}
+.text-field {
+  @apply w-full rounded-3xl border border-slate-300/80 dark:border-slate-700
+                 bg-white dark:bg-slate-950
+                 px-3.5 py-2.5 
+                 text-slate-800 dark:text-slate-100
+                 placeholder:text-slate-400 dark:placeholder:text-slate-500
+                 focus:outline-none focus:ring-2 focus:ring-periwinkle;
+}
+
+
+pre, code, .font-monospace {
+  font-family: 'Space Mono', monospace;
+}

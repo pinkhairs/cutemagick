@@ -1,0 +1,34 @@
+{
+  "name": "cutemagick",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "build": "node scripts/build.js",
+    "start": "NODE_ENV=production node src/index.js",
+    "init-db": "node scripts/init-db.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@mateothegreat/svelte5-router": "^2.16.19",
+    "@tailwindcss/vite": "^4.1.18",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.6.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "simple-git": "^3.30.0",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "concurrently": "^9.2.1",
+    "http-proxy-middleware": "^3.0.5",
+    "nodemon": "^3.1.11",
+    "svelte": "^5.46.4",
+    "vite": "^7.3.1"
+  }
+}
