@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev.js",
+    "dev": "concurrently \"nodemon src/index.js\" \"tailwindcss -i ./src/dashboard/app.css -o ./dashboard/public/tailwind.css --watch\"",
     "build": "node scripts/build.js",
-    "start": "NODE_ENV=production node src/index.js",
+    "start": "node src/index.js",
     "init-db": "node scripts/init-db.js"
   },
   "author": "",
@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.18",
+    "concurrently": "^9.2.1",
     "nodemon": "^3.1.11",
     "vite": "^7.3.1"
   }

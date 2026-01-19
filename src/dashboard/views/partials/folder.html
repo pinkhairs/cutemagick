@@ -13,7 +13,7 @@
         data-tab="files"
           hx-trigger="click"
           hx-on:htmx:beforeRequest="this.dataset.active=true"
-          hx-get="/api/sites/{{id}}/files"
+          hx-get="/sites/{{id}}/files"
           hx-target="#site-{{id}}-content"
           hx-swap="innerHTML"
         >
@@ -23,7 +23,7 @@
         <button
         data-tab="history"
           hx-on:htmx:beforeRequest="this.dataset.active=true"
-          hx-get="/api/sites/{{id}}/history"
+          hx-get="/sites/{{id}}/history"
           hx-target="#site-{{id}}-content"
           hx-swap="innerHTML" class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center">
           <img class="size-6" src="/img/history-icon.png">
@@ -32,7 +32,7 @@
         <button
         data-tab="secrets"
           hx-on:htmx:beforeRequest="this.dataset.active=true"
-          hx-get="/api/sites/{{id}}/secrets"
+          hx-get="/sites/{{id}}/secrets"
           hx-target="#site-{{id}}-content"
           hx-swap="innerHTML" class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center">
           <img class="size-6" src="/img/secrets-icon.png">
@@ -41,7 +41,7 @@
         <button
         data-tab="settings"
           hx-on:htmx:beforeRequest="this.dataset.active=true"
-          hx-get="/api/sites/{{id}}/settings"
+          hx-get="/sites/{{id}}/settings"
           hx-target="#site-{{id}}-content"
           hx-swap="innerHTML" class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center">
           <img class="size-6" src="/img/settings-icon.png">

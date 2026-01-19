@@ -18,7 +18,7 @@
         hx-on:click="
           const name = prompt('Enter site name:');
           if (!name) return;
-          htmx.ajax('POST', '/api/sites', {
+          htmx.ajax('POST', '/sites', {
             values: { name },
             swap: 'none'
           });
@@ -26,9 +26,37 @@
         class="btn py-1! rainbow-tiler border-0! lg:px-4! text-black!">New Site</button>
       </nav>
       <nav class="inline-flex text-sm lg:text-base gap-4 lg:gap-6">
-        <button onclick="confirm('This will copy your public SSH key to your clipboard. Continue?')">🔌 Connect</button>
+        <div
+          class="cursor-pointer select-none"
+          data-tippy-content='
+            <div class="inline-block
+            rounded-2xl
+            text-white
+            shadow-lg">
+
+  <button
+    class="w-full text-left px-3 py-2"
+    data-action="copy-key">
+    📋 Copy public SSH key
+  </button>
+
+  <button
+    class="w-full text-left px-3 py-2"
+    data-action="rotate-key">
+    🔄 Rotate SSH key
+  </button>
+
+</div>
+
+          '
+          data-tippy-placement="bottom-start"
+          data-tippy-interactive="true"
+          data-tippy-trigger="click"
+        >
+          🔌 Connect
+        </div>
         <button onclick="if (confirm('Ready to log out?')) {
-          htmx.ajax('POST', '/api/account/logout');
+          htmx.ajax('POST', '/account/logout');
           setTimeout(() => {}, 0);
         }">🚪 Log Out</button>
       </nav>
@@ -65,8 +93,8 @@
           localStorage.getItem(`win-path-${uuid}`) || '';
 
         const url = path
-          ? `/api/sites/${uuid}/${path}`
-          : `/api/sites/${uuid}`;
+          ? `/sites/${uuid}/${path}`
+          : `/sites/${uuid}`;
 
         htmx.ajax('GET', url, {
           target: '#windows',
@@ -134,6 +162,78 @@
   document.body.addEventListener('htmx:afterSwap', restoreAllWindows);
   document.addEventListener('DOMContentLoaded', restoreAllWindows);
 })();
+</script>
+<script>
+  function forceCopy(text) {
+    const input = document.createElement('input');
+    input.value = text;
+
+    // Make it focusable & invisible
+    input.style.position = 'fixed';
+    input.style.top = '-1000px';
+    input.style.left = '-1000px';
+
+    document.body.appendChild(input);
+
+    input.focus();
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+
+    const success = document.execCommand('copy');
+    document.body.removeChild(input);
+
+    return success;
+  }
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const action = btn.dataset.action;
+
+    try {
+      if (action === 'copy-key') {
+        const res = await fetch('/connect/public-key', {
+          method: 'POST',
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch key');
+
+        const key = await res.text();
+
+        // 🔑 THE IMPORTANT PART
+        const copied = forceCopy(key);
+
+        if (!copied) {
+          alert('Copy failed. Please copy manually:\n\n' + key);
+          return;
+        }
+
+        alert('Your public SSH key has been copied to your clipboard!');
+      }
+
+      if (action === 'rotate-key') {
+        const ok = confirm(
+          'Are you sure? This will disable your existing key.'
+        );
+        if (!ok) return;
+
+        const res = await fetch('/connect/rotate-key', {
+          method: 'POST',
+        });
+
+        if (!res.ok) throw new Error('Failed to rotate key');
+
+        alert('Your SSH key has been rotated.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Something went wrong. Please try again.');
+    }
+  });
 </script>
 
 </body>

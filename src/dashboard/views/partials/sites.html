@@ -16,8 +16,8 @@
     const currentPath = localStorage.getItem(key) || '';
 
     const url = currentPath
-      ? `/api/sites/{{uuid}}/${currentPath}`
-      : `/api/sites/{{uuid}}`;
+      ? `/sites/{{uuid}}/${currentPath}`
+      : `/sites/{{uuid}}`;
 
     window.htmx.ajax('GET', url, {
       target: '#windows',
