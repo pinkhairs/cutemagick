@@ -1,7 +1,10 @@
 import jwt from 'jsonwebtoken';
 
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET is not set');
+}
 const JWT_SECRET =
-  process.env.JWT_SECRET || 'cute-magick-dev-secret-change-in-production';
+  process.env.JWT_SECRET;
 
 export default function pageAuth(req, res, next) {
   // Allow login page

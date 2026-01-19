@@ -1,9 +1,13 @@
+import 'dotenv/config';
 import express from 'express';
 import { engine } from 'express-handlebars';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
-import pageAuth from './middleware/auth.js';
+import auth from './middleware/auth.js';
+import accountRoutes from './api/account.js';
+import siteRoutes from './api/sites.js';
+import db from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,7 +29,6 @@ app.engine(
     extname: '.html',
     layoutsExtname: '.html',
     layoutsDir: path.join(__dirname, 'dashboard/views/layouts'),
-    defaultLayout: 'page',
     partialsDir: path.join(__dirname, 'dashboard/views/partials'),
   })
 );
@@ -41,7 +44,12 @@ app.use(express.static(path.join(__dirname, 'dashboard/public')));
 /* ----------------------------
    Page auth (AFTER static)
 ----------------------------- */
-app.use(pageAuth);
+
+app.use('/api/account', accountRoutes);
+app.use(auth);
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+app.use('/api/sites', siteRoutes);
 
 /* ----------------------------
    Routes
@@ -55,8 +63,7 @@ app.get('/login', (req, res) => {
 
 app.get('/', (req, res) => {
   res.render('index', {
-    title: 'Cute Magick',
-    user: req.user,
+    title: 'Cute Magick'
   });
 });
 

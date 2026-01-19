@@ -1,0 +1,103 @@
+<div class="p-4">
+  <div class="history-notices space-y-3 mb-6">
+    <h2 class="font-bold text-xl">
+      Settings
+    </h2>
+    
+    <!-- Notice 2: Read-only -->
+    <div class="flex gap-3 rounded-md border border-gray-200 dark:border-gray-700
+                bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
+
+      <div class="text-lg">🎲</div>
+
+      <p>Try <span class="font-mono text-sm bg-yellow-50 dark:bg-yellow-300/20">http://<strong class="italic highlight">anything</strong>.magick.host</span> for your domain.</p>
+    </div>
+    
+  </div>
+  <form class="grid gap-2">
+    
+    <div class="flex gap-2 items-center
+    rounded-md
+    bg-white/50 dark:bg-gray-900/50 pb-3">
+    <label
+    class="bg-transparent
+    pr-2
+    focus:outline-none focus:border-indigo-400">Domain</label>
+    
+    <input
+    type="url"
+    name="value"
+    placeholder="http://your-domain.com"
+    class="flex-1 bg-transparent
+    border-b border-gray-300 dark:border-gray-500
+    focus:outline-none focus:border-indigo-400"
+    />
+  </div>
+    
+    <div class="
+    rounded-md
+    bg-white/50 dark:bg-gray-900/50">
+    <div
+    class="bg-transparent
+    pr-2
+    focus:outline-none focus:border-indigo-400">Password Access</div>
+    <small>Leave blank for public access. Don't rely on this for secure protection. <a href="#" class="highlight font-bold">Learn More</a></small>
+</div>
+    <div class="flex gap-2 items-center
+    rounded-md
+    bg-white/50 dark:bg-gray-900/50 pb-3">
+    <input
+    type="text"
+    name="value"
+    placeholder="Username"
+    class="flex-1 bg-transparent
+    border-b border-gray-300 dark:border-gray-500
+    focus:outline-none focus:border-indigo-400"
+    />
+    <input
+    type="text"
+    name="value"
+    placeholder="Password"
+    class="flex-1 bg-transparent
+    border-b border-gray-300 dark:border-gray-500
+    focus:outline-none focus:border-indigo-400"
+    />
+  </div>
+  
+    
+    <div class="flex gap-2 items-center
+    rounded-md
+    bg-white/50 dark:bg-gray-900/50 pb-3">
+    <label
+    class="bg-transparent
+    pr-2
+    focus:outline-none focus:border-indigo-400">Repository URL</label>
+    
+    <input
+    type="text"
+    name="value"
+    placeholder="optional"
+    class="flex-1 bg-transparent
+    border-b border-gray-300 dark:border-gray-500
+    focus:outline-none focus:border-indigo-400"
+    />
+  </div>  <div class="flex gap-2 items-center
+    rounded-md
+    bg-white/50 dark:bg-gray-900/50 pb-3">
+    <label
+    class="bg-transparent
+    pr-2
+    focus:outline-none focus:border-indigo-400">Icon URL</label>
+    
+    <input
+    type="url"
+    name="value"
+    placeholder="optional"
+    class="flex-1 bg-transparent
+    border-b border-gray-300 dark:border-gray-500
+    focus:outline-none focus:border-indigo-400"
+    />
+  </div>
+<button type="submit" class="btn px-3! py-2!">Save Settings</button>
+</form>
+</div>
