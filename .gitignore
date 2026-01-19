@@ -6,14 +6,15 @@ public/
 dist/
 
 # User data
-projects/*
-!projects/.gitkeep
+sites/*
+!sites/.gitkeep
 *.db
 *.sqlite
 *.sqlite3
 data/*
 !data/.gitkeep
 !data/schema.sql
+.ssh/
 
 # Environment
 .env

@@ -20,8 +20,10 @@
     "express": "^5.2.1",
     "express-handlebars": "^8.0.1",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
     "simple-git": "^3.30.0",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "unique-names-generator": "^4.7.1"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.18",

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=SUSE:wght@100..800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/file-explorer.css" />
+  <title>Cute Magick</title>
+</head>
+<body class="flex-col justify-between flex text-gray-900 dark:text-white">
+  <header class="w-full bottom-0">
+    <div class="font-semibold p-4 w-full inline-flex large:text-lg gap-4 lg:gap-6 justify-between items-center">
+      <nav class="inline-flex text-sm lg:text-base items-center gap-4 lg:gap-6">
+        <button
+        hx-on:click="
+          const name = prompt('Enter site name:');
+          if (!name) return;
+          htmx.ajax('POST', '/api/sites', {
+            values: { name },
+            swap: 'none'
+          });
+        "
+        class="btn py-1! rainbow-tiler border-0! lg:px-4! text-black!">New Site</button>
+      </nav>
+      <nav class="inline-flex text-sm lg:text-base gap-4 lg:gap-6">
+        <button onclick="confirm('This will copy your public SSH key to your clipboard. Continue?')">🔌 Connect</button>
+        <button onclick="if (confirm('Ready to log out?')) {
+          htmx.ajax('POST', '/api/account/logout');
+          setTimeout(() => {}, 0);
+        }">🚪 Log Out</button>
+      </nav>
+    </div>
+  </header>
+  {{{body}}}
+  <aside id="windows"></aside>
+  <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
+  <script src="https://unpkg.com/popper.js@1"></script>
+  <script src="https://unpkg.com/tippy.js@5"></script>
+  <script src="/js/htmx.min.js" defer></script>
+  <script src="/js/DraggableWindows.js" defer></script>
+  <script src="/js/file-explorer.js" defer></script>
+  <script src="/js/mount-file-explorer.js" defer></script>
+  <script>
+  (function restoreWindowsOnce() {
+    let restored = false;
+
+    document.body.addEventListener('htmx:afterOnLoad', (e) => {
+      // Only run once, and only when the body is the target
+      if (restored) return;
+      if (e.target !== document.body) return;
+
+      restored = true;
+
+      const open = JSON.parse(
+        localStorage.getItem('open-site-windows') || '[]'
+      );
+
+      open.forEach(uuid => {
+        if (document.getElementById(uuid)) return;
+
+        const path =
+          localStorage.getItem(`win-path-${uuid}`) || '';
+
+        const url = path
+          ? `/api/sites/${uuid}/${path}`
+          : `/api/sites/${uuid}`;
+
+        htmx.ajax('GET', url, {
+          target: '#windows',
+          swap: 'afterbegin'
+        });
+      });
+    });
+  })();
+  </script>
+  <script>
+    function initTippy(root = document) {
+      if (!window.tippy) return;
+
+      root.querySelectorAll('[data-tippy-content]').forEach(el => {
+        if (!el._tippy) {
+          tippy(el);
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initTippy();
+    });
+
+    document.body.addEventListener('htmx:afterSwap', (e) => {
+      initTippy(e.target);
+    });
+  </script>
+  <script>
+(function () {
+  function restoreAllWindows() {
+    document.querySelectorAll('.window').forEach(winEl => {
+      const key = `win-tab-${winEl.id}`;
+      const savedTab = localStorage.getItem(key);
+      if (!savedTab) return;
+
+      const btn = winEl.querySelector(
+        `button[data-tab="${CSS.escape(savedTab)}"]`
+      );
+
+      if (!btn || btn.dataset._restored) return;
+
+      btn.dataset._restored = '1';
+
+      // 🔑 wait until HTMX finishes the load-triggered request
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          btn.click();
+        });
+      });
+    });
+  }
+
+  // Save on click
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-tab]');
+    if (!btn) return;
+
+    const winEl = btn.closest('.window');
+    if (!winEl) return;
+
+    localStorage.setItem(`win-tab-${winEl.id}`, btn.dataset.tab);
+  });
+
+  document.body.addEventListener('htmx:afterSwap', restoreAllWindows);
+  document.addEventListener('DOMContentLoaded', restoreAllWindows);
+})();
+</script>
+
+</body>
+</html>
