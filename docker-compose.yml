@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./sites:/app/sites
+      - ssh-data:/app/.ssh
+
+volumes:
+  ssh-data:
