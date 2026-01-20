@@ -324,4 +324,45 @@ router.get('/:siteId/download', async (req, res) => {
   }
 });
 
+// Open file via public URL (binary / direct access)
+router.get('/:siteId/open', (req, res) => {
+  try {
+    const { siteId } = req.params;
+    const { path: filePath = '' } = req.query;
+    console.log({path})
+
+    const site = db
+      .prepare('SELECT directory, domain FROM sites WHERE uuid = ?')
+      .get(siteId);
+
+    if (!site || !site.directory) {
+      return res.status(404).json({ error: 'Site not found' });
+    }
+
+    // Normalize path (no leading slashes)
+    const cleanPath = String(filePath).replace(/^\/+/, '');
+
+    let baseUrl;
+
+    if (!site.domain) {
+      // hosted under Cute Magick
+      baseUrl = `/site/${site.directory}`;
+    } else {
+      // custom domain
+      baseUrl = site.domain.startsWith('http')
+        ? site.domain
+        : `https://${site.domain}`;
+    }
+
+    const url = cleanPath
+      ? `${baseUrl}/${cleanPath}`
+      : baseUrl;
+
+    res.json({ url });
+  } catch (err) {
+    console.error('Error resolving open URL:', err);
+    res.status(500).json({ error: 'Failed to resolve URL' });
+  }
+});
+
 export default router;

@@ -19,6 +19,53 @@ function isTextLikeFile(name) {
   return TEXT_EXTS.includes(ext);
 }
 
+function isBinaryLikeFile(name) {
+  if (!name.includes('.')) return false;
+
+  const ext = name.split('.').pop().toLowerCase();
+
+  const BINARY_EXTS = [
+    // images
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif',
+
+    // audio
+    'mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac',
+
+    // video
+    'mp4', 'webm', 'mov', 'avi', 'mkv',
+
+    // fonts
+    'woff', 'woff2', 'ttf', 'otf',
+
+    // archives
+    'zip', 'tar', 'gz', 'tgz', 'rar', '7z',
+
+    // binaries / misc
+    'pdf', 'exe', 'bin', 'dmg', 'iso'
+  ];
+
+  return BINARY_EXTS.includes(ext);
+}
+function openBinaryFile(siteId, path) {
+  const params = new URLSearchParams({
+    path
+  });
+
+  fetch(`/files/${siteId}/open?${params.toString()}`)
+    .then(async res => {
+      if (!res.ok) throw new Error('Failed to resolve file URL');
+      return res.json();
+    })
+    .then(({ url }) => {
+      if (!url) return;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    })
+    .catch(err => {
+      console.error('[openBinaryFile] failed:', err);
+    });
+}
+
+
 function openCodeWindow(siteUUID, path) {
   // Create human-readable ID to match server
   const treatedPath = path
@@ -83,13 +130,16 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
       
       // Add the file name from entry to construct the full file path
       const filename = entry.name || entry.id;
-      
-      // Construct full path: folder path + filename
+        // Construct full path: folder path + filename
       const fullPath = relPathIDs.length > 0 
         ? `${relPathIDs.join('/')}/${filename}`
         : filename;
-      
-      openCodeWindow(uuid, fullPath);
+
+      if (isTextLikeFile(filename)) {
+        openCodeWindow(uuid, fullPath);
+      } else {
+        openBinaryFile(uuid, fullPath);
+      }
       
       return false;
     },

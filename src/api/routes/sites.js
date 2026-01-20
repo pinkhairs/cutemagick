@@ -23,7 +23,7 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
   const randomPart = generateRandomSubdomain();
   const slug = slugify(name);
 
-  const domain = `${slug}-${randomPart}.magick.host`;
+  const domain = ``;
   const directory = `${slug}-${randomPart}`;
   const now = new Date().toISOString();
 
