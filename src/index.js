@@ -21,8 +21,7 @@ const app = express();
   Middleware
 ----------------------------- */
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
-app.set('trust proxy', 1);
+app.use(express.json());
 
 /* ----------------------------
   Handlebars (.html templates)
@@ -52,7 +51,6 @@ app.use(auth);
 validateEnv();
 ensureSSHKeypair();
 
-app.use(express.json());
 app.use(express.static(path.join(__dirname, 'dashboard/assets')));
 app.use('/sites', sitesRoutes);
 app.use('/files', filesRoutes);

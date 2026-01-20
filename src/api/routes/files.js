@@ -1,27 +1,59 @@
 import express from 'express';
+const router = express.Router();
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs/promises';
-import fsSync from 'fs';
+import db from '../../database.js';
 
-const router = express.Router();
 const SITES_ROOT = '/app/sites';
+import fs from 'fs';
 
-// Configure multer for file uploads
-const upload = multer({ 
-  dest: '/tmp/uploads',
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+const storage = multer.diskStorage({
+  destination(req, file, cb) {
+    try {
+      const siteId = req.params.siteId;
+
+      // ✅ CORRECT: sites.directory
+      const row = db
+        .prepare('SELECT directory FROM sites WHERE uuid = ?')
+        .get(siteId);
+
+      if (!row || !row.directory) {
+        throw new Error('Site directory not found');
+      }
+
+      const folderPath = JSON.parse(req.body.path || '[]');
+
+      const safeParts = folderPath.filter(
+        p => typeof p === 'string' &&
+             !p.includes('..') &&
+             !p.includes('/')
+      );
+
+      const dest = path.join(
+        '/app/sites',
+        row.directory,
+        ...safeParts
+      );
+
+      fs.mkdirSync(dest, { recursive: true });
+
+      cb(null, dest);
+    } catch (err) {
+      cb(err);
+    }
+  },
+
+  filename(req, file, cb) {
+    cb(null, file.originalname);
+  }
 });
 
+
+
+const upload = multer({ storage });
 /* ----------------------------
    Helpers (same pattern as sites.js)
 ----------------------------- */
-function resolveSite(siteId) {
-  const dir = path.join(SITES_ROOT, siteId);
-  if (!fsSync.existsSync(dir)) return null;
-  return dir;
-}
-
 function assertRealPathInside(root, target) {
   const real = fsSync.realpathSync(target);
   const rel = path.relative(root, real);
@@ -30,21 +62,35 @@ function assertRealPathInside(root, target) {
   }
 }
 
-function validateAndResolvePath(siteId, relativePath) {
-  const siteDir = resolveSite(siteId);
-  if (!siteDir) {
+function validateAndResolvePath(siteUUID, relativePath = '') {
+  const site = db
+    .prepare('SELECT directory FROM sites WHERE uuid = ?')
+    .get(siteUUID);
+
+
+  if (!site) {
     throw new Error('Site not found');
+  }
+
+  const siteDir = path.resolve(SITES_ROOT, site.directory);
+
+  if (!siteDir) {
+    throw new Error('Site directory missing');
   }
 
   const fullPath = path.resolve(siteDir, relativePath);
 
-  // 🔒 traversal guard
-  if (!fullPath.startsWith(siteDir + path.sep)) {
+  // 🚨 SECURITY CHECK: prevent traversal
+  if (!fullPath.startsWith(path.resolve(siteDir))) {
     throw new Error('Forbidden');
   }
 
-  return { siteDir, fullPath };
+  return {
+    siteDir,
+    fullPath
+  };
 }
+
 
 // Create new folder
 router.post('/:siteId/new-folder', async (req, res) => {
@@ -90,9 +136,14 @@ router.post('/:siteId/new-file', async (req, res) => {
       return res.status(400).json({ error: 'Invalid file name' });
     }
     
+    
     const targetPath = path.join(parentPath, name);
     const { siteDir, fullPath } = validateAndResolvePath(siteId, targetPath);
-    
+    console.log({
+  body: req.body,
+  parentPath,
+  targetPath
+});
     // Ensure parent directory exists
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
     
@@ -227,46 +278,8 @@ router.delete('/:siteId/delete', async (req, res) => {
 });
 
 // Upload file
-router.post('/:siteId/upload', upload.single('file'), async (req, res) => {
-  try {
-    const { siteId } = req.params;
-    
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-    
-    const { destination = '' } = req.body;
-    const targetPath = path.join(destination, req.file.originalname);
-    const { siteDir, fullPath } = validateAndResolvePath(siteId, targetPath);
-    
-    // Ensure destination directory exists
-    await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    
-    // Move file from temp to destination
-    await fs.rename(req.file.path, fullPath);
-    
-    res.json({ 
-      success: true, 
-      file: {
-        name: req.file.originalname,
-        path: targetPath,
-        size: req.file.size
-      }
-    });
-  } catch (err) {
-    // Clean up temp file if it exists
-    if (req.file?.path) {
-      await fs.unlink(req.file.path).catch(() => {});
-    }
-    console.error('Error uploading file:', err);
-    if (err.message === 'Site not found') {
-      return res.status(404).json({ error: 'Site not found' });
-    }
-    if (err.message === 'Forbidden') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    res.status(500).json({ error: 'Failed to upload file' });
-  }
+router.post('/:siteId/upload', upload.single('file'), (req, res) => {
+  res.sendStatus(200);
 });
 
 // Download file

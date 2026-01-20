@@ -394,16 +394,30 @@ if (e.target.classList.contains('hide')) {
 
   // remove from the right open list
   if (kind === 'file') {
-    const openFiles = JSON.parse(localStorage.getItem('open-file-windows') || '[]')
-      .filter(x => x !== id);
-    localStorage.setItem('open-file-windows', JSON.stringify(openFiles));
-  } else {
+  const openFiles = JSON.parse(
+    localStorage.getItem('open-file-windows') || '[]'
+  ).filter(entry => {
+    console.log({id, windowElDataPath: windowEl.getAttribute('data-path')});
+    return !(
+      entry.site === windowEl.dataset.siteUuid &&
+      entry.path === windowEl.dataset.path
+    );
+  });
+  console.log({openFiles});
+
+  localStorage.setItem(
+    'open-file-windows',
+    JSON.stringify(openFiles)
+  );
+}
+ else {
     this.removeOpenWindow(id);
   }
 
   // remove kind-scoped keys
   localStorage.removeItem(this.key('win-pos', id));
   localStorage.removeItem(this.key('win-state', id));
+  localStorage.removeItem(this.key('win-path', id));
   localStorage.removeItem(this.key('win-z', id));
   if (kind === 'folder') {
     localStorage.removeItem(this.key('win-tab', id));

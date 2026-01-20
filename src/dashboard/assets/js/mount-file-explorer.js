@@ -135,78 +135,71 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
       
       xhr.Send();
     },
-    
-    onnewfolder: function(created, folder) {
-      const siteId = mount.dataset.siteUuid;
-      const parentPath = folder.GetPathIDs().slice(1).join('/');
-      
-      const xhr = new this.PrepareXHR({
-        url: `/files/${siteId}/new-folder`,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        params: {
-          name: 'New Folder',
-          parentPath: parentPath
-        },
-        onsuccess: function(e) {
-          const data = JSON.parse(e.target.response);
-          
-          if (data.success) {
-            created({
-              id: data.folder.name,
-              name: data.folder.name,
-              type: 'folder'
-            });
-          } else {
-            created(data.error || 'Failed to create folder');
-          }
-        },
-        onerror: function(e) {
-          created('Server error');
-        }
-      });
-      
-      xhr.Send();
-    },
+onnewfolder: function(created, folder) {
+  const siteId = mount.dataset.siteUuid;
+  const parentPath = folder.GetPathIDs().slice(1).join('/');
 
-    onnewfile: function(created, folder) {
-      const siteId = mount.dataset.siteUuid;
-      const parentPath = folder.GetPathIDs().slice(1).join('/');
-      
-      const xhr = new this.PrepareXHR({
-        url: `/files/${siteId}/new-file`,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        params: {
-          name: 'New File.txt',
-          parentPath: parentPath,
-          content: ''
-        },
-        onsuccess: function(e) {
-          const data = JSON.parse(e.target.response);
-          
-          if (data.success) {
-            created({
-              id: data.file.name,
-              name: data.file.name,
-              type: 'file'
-            });
-          } else {
-            created(data.error || 'Failed to create file');
-          }
-        },
-        onerror: function(e) {
-          created('Server error');
-        }
-      });
-      
-      xhr.Send();
-    },
+  const name = prompt('New folder name:');
+  if (!name) {
+    created(false); // user cancelled
+    return;
+  }
 
+  fetch(`/files/${siteId}/new-folder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      parentPath
+    })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) throw new Error(data.error);
+
+      created({
+        id: data.folder.name,
+        name: data.folder.name,
+        type: 'folder'
+      });
+    })
+    .catch(err => {
+      created(err.message || 'Server error');
+    });
+},
+onnewfile: function(created, folder) {
+  const siteId = mount.dataset.siteUuid;
+  const parentPath = folder.GetPathIDs().slice(1).join('/');
+
+  const name = prompt('New file name:');
+  if (!name) {
+    created(false);
+    return;
+  }
+
+  fetch(`/files/${siteId}/new-file`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      parentPath,
+      content: ''
+    })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) throw new Error(data.error);
+
+      created({
+        id: data.file.name,
+        name: data.file.name,
+        type: 'file'
+      });
+    })
+    .catch(err => {
+      created(err.message || 'Server error');
+    });
+},
     onrename: function(renamed, folder, entry, newname) {
       const siteId = mount.dataset.siteUuid;
       const parentPath = folder.GetPathIDs().slice(1).join('/');
@@ -283,44 +276,30 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
         xhr.Send();
       });
     },
+oninitupload: function(startupload, fileinfo) {
+  if (fileinfo.type === 'dir') {
+    startupload(false);
+    return;
+  }
 
-    oninitupload: function(startupload, fileinfo, queuestarted) {
-      const siteId = mount.dataset.siteUuid;
-      
-      if (fileinfo.isDir) {
-        const parentPath = fileinfo.folder.GetPathIDs().slice(1).join('/');
-        
-        const xhr = new this.PrepareXHR({
-          url: `/files/${siteId}/new-folder`,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          params: {
-            name: fileinfo.name,
-            parentPath: parentPath
-          },
-          onsuccess: function(e) {
-            const data = JSON.parse(e.target.response);
-            startupload(fileinfo, data.success ? 'skip' : data.error);
-          },
-          onerror: function(e) {
-            startupload(fileinfo, 'Server error');
-          }
-        });
-        
-        xhr.Send();
-      } else {
-        const parentPath = fileinfo.folder.GetPathIDs().slice(1).join('/');
-        
-        fileinfo.uploadurl = `/files/${siteId}/upload`;
-        fileinfo.uploadformdata = {
-          destination: parentPath
-        };
-        
-        startupload(fileinfo, true);
-      }
-    },
+  fileinfo.url = `/files/${mount.dataset.siteUuid}/upload`;
+  fileinfo.fileparam = 'file';
+
+  fileinfo.params = {
+    // send path info so backend knows where to write
+    path: JSON.stringify(fileinfo.folder.GetPathIDs())
+  };
+
+  startupload(true);
+},
+
+onfinishedupload: function(finalize, fileinfo) {
+  finalize(true);
+
+  // optional but recommended
+  fileinfo.folder.Refresh(true);
+},
+
 
     onfinishedupload: function(finalize, fileinfo) {
       finalize(true, {
