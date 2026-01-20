@@ -152,3 +152,7 @@ pre, code, .font-monospace {
 .fe_fileexplorer_body_wrap {
   @apply flex-row-reverse;
 }
+
+[data-tab][data-active="true"] {
+  @apply bg-gray-100 dark:bg-gray-800;
+}

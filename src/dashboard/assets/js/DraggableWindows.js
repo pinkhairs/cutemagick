@@ -10,7 +10,6 @@
     isLargeScreen: false,
     getOpenWindows() {
       try {
-        console.log(JSON.parse(localStorage.getItem('open-site-windows')).length);
         return JSON.parse(localStorage.getItem('open-site-windows')) || [];
       } catch {
         return [];
@@ -49,10 +48,10 @@
     },
     
     updateAllWindows() {
-      document.querySelectorAll('.window').forEach(win => {
+      document.querySelectorAll('.window-wrapper').forEach(win => {
         if (this.isLargeScreen) {
           if (!win.style.left) {
-            const offset = Array.from(document.querySelectorAll('.window')).indexOf(win) * 20;
+            const offset = Array.from(document.querySelectorAll('.window-wrapper')).indexOf(win) * 20;
             win.style.left = offset + 'px';
             win.style.top = offset + 'px';
           }
@@ -63,98 +62,160 @@
       });
     },
     
-    loadZ(id) {
-      try {
-        const z = localStorage.getItem(`win-z-${id}`);
-        return z ? Number(z) : null;
-      } catch {
-        return null;
-      }
-    },
-    
-    saveZ(id, z) {
-      try {
-        localStorage.setItem(`win-z-${id}`, String(z));
-      } catch {}
-    },
+loadZ(id, kind) {
+  try {
+    const z = localStorage.getItem(this.key('win-z', id));
+    return z ? Number(z) : null;
+  } catch {
+    return null;
+  }
+},
+
+saveZ(id, z, kind) {
+  try {
+    localStorage.setItem(this.key('win-z', id, kind), String(z));
+  } catch {}
+},
+
     
     
     initAllWindows() {
-      document.querySelectorAll('.window').forEach(win => this.initWindow(win));
+      document.querySelectorAll('.window-wrapper').forEach(win => this.initWindow(win));
     },
-    
-    initWindow(windowEl) {
-      if (windowEl.dataset.draggableInit) return;
-      windowEl.dataset.draggableInit = 'true';
-      
-      const uuid = windowEl.id;
-      
-      // Track open window
-      this.ensureDefaultTab(windowEl, uuid);
-      this.addOpenWindow(uuid);
-      if (!this.isLargeScreen) return;
-      
-      // Load saved position
-      const saved = this.loadPosition(uuid);
-      if (saved) {
-        windowEl.style.left = saved.x + 'px';
-        windowEl.style.top = saved.y + 'px';
-      } else {
-        const count =
-        document.querySelectorAll('.window[data-draggable-init]').length - 1;
-        const offset = count * 20 + 20;
-        windowEl.style.left = offset + 'px';
-        windowEl.style.top = offset + 'px';
-      }
-      
-      windowEl.style.position = 'fixed';
-      const savedZ = this.loadZ(uuid);
-      
-      if (savedZ !== null) {
-        windowEl.style.zIndex = savedZ;
-        this.zCounter = Math.max(this.zCounter, savedZ);
-      } else {
-        windowEl.style.zIndex = ++this.zCounter;
-        this.saveZ(uuid, this.zCounter);
-      }
-      
-      
-      this.makeDraggable(windowEl);
-      windowEl.addEventListener('mousedown', () =>
-        this.focusWindow(windowEl)
-    );
-    
-    this.loadState(windowEl, uuid);
-    
-    if (!this.loadPosition(uuid)) {
-      const rect = windowEl.getBoundingClientRect();
-      this.savePosition(uuid, rect.left, rect.top);
-    }
-    
-  },
-  ensureDefaultTab(windowEl, uuid) {
-  const key = `win-tab-${uuid}`;
-  const existing = localStorage.getItem(key);
+initWindow(windowEl) {
+  if (windowEl.dataset.draggableInit) return;
+  windowEl.dataset.draggableInit = 'true';
 
-  if (existing != null) return;
+  const uuid = windowEl.id;
+  const kind = this.getWindowKind(windowEl);
+if (!kind) return; // IMPORTANT
 
-  // First time ever
-  localStorage.setItem(key, 'files');
 
-  // Click default tab AFTER HTMX settles
-  const clickDefault = () => {
-    const btn = windowEl.querySelector('button[data-tab="files"]');
-    if (btn) {
-      btn.dataset._restored = '1'; // prevent double restore
-      btn.click();
-    }
-  };
+  // Track open windows (separate lists)
+  if (kind === 'folder') {
+    this.addOpenWindow(uuid); // folder windows only
+  }
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(clickDefault);
+  // Save file path separately for file windows
+if (kind === 'file') {
+  const siteUUID =
+    windowEl.closest('[data-site-uuid]')?.dataset.siteUuid ||
+    windowEl.dataset.siteUuid ||
+    null;
+
+  const filePath =
+    windowEl.dataset.path ||
+    windowEl.querySelector('[data-file-path]')?.dataset.filePath ||
+    null;
+
+  if (!siteUUID || !filePath) {
+    console.warn('[windows] file window missing site or path, not stored', {
+      siteUUID,
+      filePath,
+      windowEl
+    });
+    return;
+  }
+
+  const openFiles = JSON.parse(
+    localStorage.getItem('open-file-windows') || '[]'
+  );
+
+  const exists = openFiles.some(
+    f => f.site === siteUUID && f.path === filePath
+  );
+
+  if (!exists) {
+    openFiles.push({ site: siteUUID, path: filePath });
+    localStorage.setItem('open-file-windows', JSON.stringify(openFiles));
+  }
+}
+
+  if (!this.isLargeScreen) return;
+
+  // Folder-only default tab
+  if (kind === 'folder') {
+    this.ensureDefaultTab(windowEl, uuid);
+  }
+
+  // Load saved position
+  const savedPos = this.loadPosition(uuid, kind);
+  if (savedPos) {
+    windowEl.style.left = savedPos.x + 'px';
+    windowEl.style.top  = savedPos.y + 'px';
+  } else {
+    const count =
+      document.querySelectorAll('.window-wrapper[data-draggable-init]').length - 1;
+    const offset = count * 20 + 20;
+    windowEl.style.left = offset + 'px';
+    windowEl.style.top  = offset + 'px';
+  }
+
+  windowEl.style.position = 'fixed';
+
+  // Load / assign z-index
+  const savedZ = this.loadZ(uuid, kind);
+  if (savedZ !== null) {
+    windowEl.style.zIndex = savedZ;
+    this.zCounter = Math.max(this.zCounter, savedZ);
+  } else {
+    const z = ++this.zCounter;
+    windowEl.style.zIndex = z;
+    this.saveZ(uuid, z, kind);
+  }
+
+  // Draggable behavior
+  this.makeDraggable(windowEl);
+
+  windowEl.addEventListener('mousedown', () => {
+    this.bringToFront(windowEl);
   });
+
+  // Restore minimized / hidden state
+  this.loadState(windowEl, uuid, kind);
+
+  // Persist initial position if none existed
+  if (!savedPos) {
+    const rect = windowEl.getBoundingClientRect();
+    this.savePosition(uuid, rect.left, rect.top, kind);
+  }
 },
 
+  activateTabSilently(windowEl, tabName) {
+  const buttons = windowEl.querySelectorAll('button[data-tab]');
+  const panels  = windowEl.querySelectorAll('[data-tab-panel]');
+
+  buttons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+
+  panels.forEach(panel => {
+    panel.hidden = panel.dataset.tabPanel !== tabName;
+  });
+},
+ensureDefaultTab(windowEl) {
+  if (!(windowEl instanceof Element)) return;
+
+  const uuid = windowEl.id;
+  const key = `win-tab-${uuid}`;
+
+  // If already exists, do nothing (restore logic handles it)
+  if (localStorage.getItem(key) != null) return;
+
+  // First-ever open
+  localStorage.setItem(key, 'files');
+
+  // Click default tab after HTMX settles
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const btn = windowEl.querySelector('button[data-tab="files"]');
+      if (btn) {
+        btn.dataset._restored = '1';
+        btn.click();
+      }
+    });
+  });
+},
   restoreOpenWindows() {
     const uuids = this.getOpenWindows();
     if (!uuids.length) return;
@@ -187,13 +248,17 @@
     });
   },
   
-  makeDraggable(windowEl) {
-    const handle = windowEl.querySelector('h2');
-    if (!handle) return;
-    
-    handle.style.cursor = 'move';
-    handle.addEventListener('mousedown', (e) => this.onMouseDown(e, windowEl));
-  },
+makeDraggable(windowEl) {
+  const handle = windowEl.querySelector('.window-handle');
+  if (!handle) return;
+
+  handle.style.cursor = 'move';
+
+  handle.addEventListener('mousedown', (e) => {
+    e._fromHandle = true;        // 👈 mark event source
+    this.onMouseDown(e, windowEl);
+  });
+},
   
   onMouseDown(e, windowEl) {
     if (e.target.closest('button')) return;
@@ -226,26 +291,36 @@
     self.currentWindow.style.top = newY + 'px';
   },
   
-  onMouseUp: () => {
-    const self = DraggableWindows;
-    if (!self.isDragging) return;
-    
-    if (self.currentWindow) {
-      const windowId = self.currentWindow.id || self.currentWindow.dataset.windowId;
-      const rect = self.currentWindow.getBoundingClientRect();
-      self.savePosition(windowId, rect.left, rect.top);
-    }
-    
-    self.isDragging = false;
-    self.currentWindow = null;
-    document.removeEventListener('mousemove', self.onMouseMove);
-    document.removeEventListener('mouseup', self.onMouseUp);
-  },
-  bringToFront(windowEl) {
-    const newZ = ++this.zCounter;
-    windowEl.style.zIndex = newZ;
-    this.saveZ(windowEl.id, newZ);
-  },
+onMouseUp: () => {
+  const self = DraggableWindows;
+  if (!self.isDragging) return;
+
+  if (self.currentWindow) {
+    const windowEl = self.currentWindow;
+    const windowId = windowEl.id;
+    const kind = self.getWindowKind(windowEl);
+
+    const rect = windowEl.getBoundingClientRect();
+    self.savePosition(windowId, rect.left, rect.top, kind);
+  }
+
+  self.isDragging = false;
+  self.currentWindow = null;
+
+  document.removeEventListener('mousemove', self.onMouseMove);
+  document.removeEventListener('mouseup', self.onMouseUp);
+},
+bringToFront(windowEl) {
+  if (!windowEl) return;
+
+  const kind = this.getWindowKind(windowEl);
+  if (!kind) return;
+
+  const newZ = ++this.zCounter;
+  windowEl.style.zIndex = newZ;
+  this.saveZ(windowEl.id, newZ, kind);
+},
+
   
   observeNewWindows() {
     const observer = new MutationObserver((mutations) => {
@@ -254,12 +329,12 @@
           if (node.nodeType !== 1) continue; // elements only
           
           // Case A: node itself is a window
-          if (node.classList.contains('window')) {
+          if (node.classList.contains('window-wrapper')) {
             this.initWindow(node);
           }
           
           // Case B: node contains windows (common with HTMX fragments/wrappers)
-          node.querySelectorAll?.('.window').forEach((win) => {
+          node.querySelectorAll?.('.window-wrapper').forEach((win) => {
             this.initWindow(win);
           });
         }
@@ -271,103 +346,142 @@
   },
   setupControls() {
     document.addEventListener('click', (e) => {
-      const windowEl = e.target.closest('.window');
+      const windowEl = e.target.closest('.window-wrapper');
       if (!windowEl) return;
+      // Persist active tab selection
+const tabBtn = e.target.closest('button[data-tab]');
+if (tabBtn) {
+  const windowEl = tabBtn.closest('.window-wrapper');
+  if (!windowEl) return;
+
+  const kind = this.getWindowKind(windowEl);
+  if (kind !== 'folder') return;
+
+  const siteUUID = windowEl.id;
+  const tabName = tabBtn.dataset.tab;
+
+  console.log('[tabs] saving active tab', {
+    siteUUID,
+    tabName
+  });
+
+  localStorage.setItem(
+    this.key('win-tab', siteUUID),
+    tabName
+  );
+}
+
       
       if (e.target.classList.contains('minimize')) {
         const content = windowEl.querySelector('.hide-when-minimized');
         if (content) {
           const isMinimized = content.style.display === 'none';
           content.style.display = isMinimized ? '' : 'none';
-          this.saveState(windowEl.id, { minimized: !isMinimized });
+          const kind = this.getWindowKind(windowEl);
+if (!kind) return;
+
+this.saveState(windowEl.id, { minimized: !isMinimized }, kind);
+
           if (isMinimized) {
-            windowEl.classList.add('w-full');
+            windowEl.classList.add('lg:w-2xl', 'w-full', 'lg:h-130');
           } else {
-            windowEl.classList.remove('w-full');
+            windowEl.classList.remove('lg:w-2xl', 'w-full', 'lg:h-130');
           }
         }
       }
-      if (e.target.classList.contains('hide')) {
-        const uuid = windowEl.id;
-        
-        this.removeOpenWindow(uuid);
-        
-        localStorage.removeItem(`win-pos-${windowEl.id}`);
-        localStorage.removeItem(`win-state-${windowEl.id}`);
-        localStorage.removeItem(`win-path-site-${uuid}`);
-        localStorage.removeItem(`win-z-${windowEl.id}`);
-        localStorage.removeItem(`win-tab-${windowEl.id}`);
-        
-        windowEl.remove();
-      }
+if (e.target.classList.contains('hide')) {
+  const id = windowEl.id;
+  const kind = this.getWindowKind(windowEl);
+  if (!kind) {
+    windowEl.remove();
+    return;
+  }
+
+  // remove from the right open list
+  if (kind === 'file') {
+    const openFiles = JSON.parse(localStorage.getItem('open-file-windows') || '[]')
+      .filter(x => x !== id);
+    localStorage.setItem('open-file-windows', JSON.stringify(openFiles));
+  } else {
+    this.removeOpenWindow(id);
+  }
+
+  // remove kind-scoped keys
+  localStorage.removeItem(this.key('win-pos', id));
+  localStorage.removeItem(this.key('win-state', id));
+  localStorage.removeItem(this.key('win-z', id));
+  if (kind === 'folder') {
+    localStorage.removeItem(this.key('win-tab', id));
+  }
+
+  windowEl.remove();
+}
+
     });
   },
   
-  loadPosition(id) {
-    try {
-      const saved = localStorage.getItem(`win-pos-${id}`);
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
-  },
-  
-  savePosition(id, x, y) {
-    try {
-      localStorage.setItem(`win-pos-${id}`, JSON.stringify({ x, y }));
-    } catch (e) {}
-  },
+loadPosition(id, kind) {
+  try {
+    const saved = localStorage.getItem(this.key('win-pos', id));
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+},
+
+savePosition(id, x, y, kind) {
+  try {
+    localStorage.setItem(
+      this.key('win-pos', id),
+      JSON.stringify({ x, y })
+    );
+  } catch {}
+},
+
+getWindowKind(windowEl) {
+  const kind = windowEl.dataset.windowKind;
+  if (kind !== 'file' && kind !== 'folder') {
+    console.warn('Window missing/invalid data-window-kind; skipping init', windowEl);
+    return null;
+  }
+  return kind;
+},
+
+
+key(type, id) {
+  return `${type}-${id}`;
+},
   minimizeWindow(windowEl) {
     const content = windowEl.querySelector('.hide-when-minimized');
     if (!content) return;
     
     content.style.display = 'none';
-    windowEl.classList.remove('w-full');
+    windowEl.classList.remove('lg:w-2xl', 'w-full', 'lg:h-130');
     this.saveState(windowEl.id, { minimized: true });
   },
-  
-  unminimizeWindow(windowEl) {
-    const content = windowEl.querySelector('.hide-when-minimized');
-    if (!content) return;
-    
-    content.style.display = '';
-    windowEl.classList.add('w-full');
-    this.saveState(windowEl.id, { minimized: false });
-  },
-  focusWindow(windowEl) {
-    if (!windowEl) return;
-    
-    // Always bring to front
-    this.bringToFront(windowEl);
-    
-    const content = windowEl.querySelector('.hide-when-minimized');
-    const isMinimized = content && content.style.display === 'none';
-    
-    if (isMinimized) {
-      this.unminimizeWindow(windowEl);
+loadState(windowEl, id, kind) {
+  try {
+    const saved = localStorage.getItem(this.key('win-state', id));
+    if (!saved) return;
+
+    const state = JSON.parse(saved);
+
+    if (state.hidden) {
+      windowEl.style.display = 'none';
+    } else if (state.minimized) {
+      const content = windowEl.querySelector('.hide-when-minimized');
+      if (content) content.style.display = 'none';
+      windowEl.classList.remove('lg:w-2xl', 'w-full', 'lg:h-130');
     }
-  },
-  loadState(windowEl, id) {
-    try {
-      const saved = localStorage.getItem(`win-state-${id}`);
-      if (saved) {
-        const state = JSON.parse(saved);
-        if (state.hidden) {
-          windowEl.style.display = 'none';
-        } else if (state.minimized) {
-          const content = windowEl.querySelector('.hide-when-minimized');
-          if (content) content.style.display = 'none';
-          windowEl.classList.remove('w-full');
-        }
-      }
-    } catch (e) {}
-  },
-  
-  saveState(id, state) {
-    try {
-      localStorage.setItem(`win-state-${id}`, JSON.stringify(state));
-    } catch (e) {}
-  }
+  } catch {}
+},
+
+saveState(id, state, kind) {
+  try {
+    localStorage.setItem(this.key('win-state', id), JSON.stringify(state));
+  } catch {}
+},
+
 };
 
 // Initialize

@@ -63,7 +63,8 @@
     </div>
   </header>
   {{{body}}}
-  <aside id="windows"></aside>
+  <main id="windows">
+  </main>
   <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
   <script src="https://unpkg.com/popper.js@1"></script>
   <script src="https://unpkg.com/tippy.js@5"></script>
@@ -71,39 +72,74 @@
   <script src="/js/DraggableWindows.js" defer></script>
   <script src="/js/file-explorer.js" defer></script>
   <script src="/js/mount-file-explorer.js" defer></script>
-  <script>
-  (function restoreWindowsOnce() {
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js"></script>
+  <script src="/js/mount-code-editor.js"></script>
+
+<script>
+  (function restoreFileWindowsOnce() {
     let restored = false;
 
+    console.log('[restore-files] script loaded');
+
     document.body.addEventListener('htmx:afterOnLoad', (e) => {
-      // Only run once, and only when the body is the target
-      if (restored) return;
-      if (e.target !== document.body) return;
+      console.log('[restore-files] htmx:afterOnLoad fired', {
+        target: e.target,
+        restored
+      });
+
+      if (restored) {
+        console.log('[restore-files] already restored, skipping');
+        return;
+      }
 
       restored = true;
+      console.log('[restore-files] starting file restore');
 
-      const open = JSON.parse(
-        localStorage.getItem('open-site-windows') || '[]'
-      );
+      const raw = localStorage.getItem('open-file-windows');
+      console.log('[restore-files] raw open-file-windows:', raw);
 
-      open.forEach(uuid => {
-        if (document.getElementById(uuid)) return;
+      let files;
+      try {
+        files = JSON.parse(raw || '[]');
+      } catch (err) {
+        console.error('[restore-files] failed to parse open-file-windows', err);
+        return;
+      }
 
-        const path =
-          localStorage.getItem(`win-path-${uuid}`) || '';
+      if (!Array.isArray(files) || files.length === 0) {
+        console.log('[restore-files] no file windows to restore');
+        return;
+      }
 
-        const url = path
-          ? `/sites/${uuid}/${path}`
-          : `/sites/${uuid}`;
+      console.log('[restore-files] parsed file entries:', files);
 
-        htmx.ajax('GET', url, {
+      files.forEach(({ site, path }) => {
+        console.log('[restore-files] restoring file window', {
+          site,
+          path
+        });
+
+        if (!site || !path) {
+          console.warn('[restore-files] invalid file entry, skipping', {
+            site,
+            path
+          });
+          return;
+        }
+
+        htmx.ajax('POST', `/sites/${site}/editor`, {
           target: '#windows',
-          swap: 'afterbegin'
+          swap: 'afterbegin',
+          values: { path }
         });
       });
+
+      console.log('[restore-files] file restore loop finished');
     });
   })();
-  </script>
+</script>
+
+
   <script>
     function initTippy(root = document) {
       if (!window.tippy) return;
@@ -123,46 +159,7 @@
       initTippy(e.target);
     });
   </script>
-  <script>
-(function () {
-  function restoreAllWindows() {
-    document.querySelectorAll('.window').forEach(winEl => {
-      const key = `win-tab-${winEl.id}`;
-      const savedTab = localStorage.getItem(key);
-      if (!savedTab) return;
 
-      const btn = winEl.querySelector(
-        `button[data-tab="${CSS.escape(savedTab)}"]`
-      );
-
-      if (!btn || btn.dataset._restored) return;
-
-      btn.dataset._restored = '1';
-
-      // 🔑 wait until HTMX finishes the load-triggered request
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          btn.click();
-        });
-      });
-    });
-  }
-
-  // Save on click
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-tab]');
-    if (!btn) return;
-
-    const winEl = btn.closest('.window');
-    if (!winEl) return;
-
-    localStorage.setItem(`win-tab-${winEl.id}`, btn.dataset.tab);
-  });
-
-  document.body.addEventListener('htmx:afterSwap', restoreAllWindows);
-  document.addEventListener('DOMContentLoaded', restoreAllWindows);
-})();
-</script>
 <script>
   function forceCopy(text) {
     const input = document.createElement('input');
@@ -235,6 +232,21 @@
     }
   });
 </script>
-
+<script>
+document.addEventListener('click', function(e) {
+  const tab = e.target.closest('[data-tab]');
+  if (tab) {
+    // Remove data-active from all tabs in this window
+    tab.closest('.window').querySelectorAll('[data-tab]').forEach(el => {
+      delete el.dataset.active;
+    });
+    
+    // Set active on clicked tab after HTMX processes
+    setTimeout(() => {
+      tab.dataset.active = 'true';
+    }, 0);
+  }
+});
+</script>
 </body>
 </html>

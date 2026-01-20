@@ -5341,7 +5341,6 @@
 
 				e.preventDefault();
 			}
-console.log('MoveCopyEndHandler');
 
 			clearInterval(autoscrolltimer);
 			autoscrolltimer = null;
@@ -5466,7 +5465,6 @@ console.log('MoveCopyEndHandler');
 							x: e.clientX - rect.left,
 							y: e.clientY - rect.top
 						};
-console.log(selectanchorpos);
 
 						copyitems = e.ctrlKey;
 

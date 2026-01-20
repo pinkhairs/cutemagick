@@ -103,23 +103,6 @@ This is your site’s home. Every file here is a page on your site.
   .sendStatus(204);
 });
 
-router.get('/:uuid', (req, res) => {
-  const { uuid } = req.params;
-  const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
-  const siteName = row?.name;
-  const data = {
-    id: uuid,
-    title: siteName,
-    body: `<div class="p-4">Loading...</div>`,
-    path: ''
-  };
-
-  res.render('partials/folder', {
-    ...data,
-    layout: false
-  });
-});
-
 router.get('/:uuid/files', (req, res) => {
   const { uuid } = req.params;
 
@@ -242,8 +225,145 @@ router.get('/:uuid/settings', (req, res) => {
   });
 });
 
-router.get('/:uuid/*path', (req, res) => {
+router.post('/:uuid/editor', express.urlencoded({ extended: false }), async (req, res) => {
+  const { uuid } = req.params;
+  const relPath = req.body.path || '';
+  
+  console.log('EDITOR route matched:', { uuid, relPath });
+  
+  if (relPath.includes('..')) {
+    return res.status(400).send('Invalid path');
+  }
+  
+  const site = db
+    .prepare(`SELECT name, directory FROM sites WHERE uuid = ?`)
+    .get(uuid);
+  
+  if (!site) {
+    return res.status(404).send('Site not found');
+  }
+  
+  const filename = relPath
+    ? path.basename(relPath)
+    : site.name;
+  
+  // Detect language from file extension
+  const ext = path.extname(relPath).toLowerCase().substring(1); // Remove the dot
+  const languageMap = {
+    'php': 'php',
+    'js': 'javascript',
+    'ts': 'typescript',
+    'jsx': 'javascript',
+    'tsx': 'typescript',
+    'py': 'python',
+    'sh': 'sh',
+    'bash': 'sh',
+    'rb': 'ruby',
+    'go': 'golang',
+    'rs': 'rust',
+    'html': 'html',
+    'htm': 'html',
+    'css': 'css',
+    'json': 'json',
+    'md': 'markdown',
+    'xml': 'xml',
+    'yaml': 'yaml',
+    'yml': 'yaml',
+    'sql': 'sql',
+    'txt': 'text'
+  };
+  
+  const language = languageMap[ext] || 'text';
+  
+  // Read the file content
+  const siteRoot = path.resolve(SITES_DIR, site.directory);
+  const filePath = path.resolve(siteRoot, relPath);
+  
+  // Security: ensure file is within site directory
+  if (!filePath.startsWith(siteRoot)) {
+    return res.status(400).send('Invalid path');
+  }
+  
+  let content = '';
+  try {
+    const stats = await fs.stat(filePath);
+    if (stats.isDirectory()) {
+      return res.status(400).send('Cannot open directory as file');
+    }
+    
+    content = await fs.readFile(filePath, 'utf8');
+  } catch (err) {
+    console.error('Failed to read file:', err);
+    content = `// Error reading file: ${err.message}`;
+  }
+  
+  // Create human-readable ID: file-uuid-filepath-with-hyphens
+  const treatedPath = relPath
+    .replace(/\//g, '-')
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-zA-Z0-9-]/g, '')
+    .toLowerCase();
+  
+  const windowId = `${uuid}-${treatedPath}`;
+  
+  res.render('partials/editor', {
+    layout: false,
+    id: windowId,
+    siteUUID: uuid,
+    title: filename,
+    path: relPath,
+    content: content,
+    language: language  // Pass the detected language
+  });
+});
+router.post('/:uuid/code', express.urlencoded({ extended: false }), async (req, res) => {
+  const { uuid } = req.params;
+  const relPath = req.body.path || '';
+  
+  console.log('CODE route matched:', { uuid, relPath });
+  
+  if (relPath.includes('..')) {
+    return res.status(400).send('Invalid path');
+  }
+  
+  const site = db
+    .prepare('SELECT directory FROM sites WHERE uuid = ?')
+    .get(uuid);
+  
+  if (!site) {
+    return res.status(404).send('Site not found');
+  }
+  
+  // Read the file content
+  const siteRoot = path.resolve(SITES_DIR, site.directory);
+  const filePath = path.resolve(siteRoot, relPath);
+  
+  // Security: ensure file is within site directory
+  if (!filePath.startsWith(siteRoot)) {
+    return res.status(400).send('Invalid path');
+  }
+  
+  let content = '';
+  try {
+    // Check if it's a directory
+    const stats = await fs.stat(filePath);
+    if (stats.isDirectory()) {
+      return res.status(400).send('Cannot open directory as file');
+    }
+    
+    content = await fs.readFile(filePath, 'utf8');
+  } catch (err) {
+    console.error('Failed to read file:', err);
+    content = `// Error reading file: ${err.message}`;
+  }
+  
+  // Return just the plain text content (no HTML wrapper)
+  res.type('text/plain').send(content);
+});
+
+router.get('/:uuid/:path', (req, res) => {
   const { uuid, path } = req.params;
+  
   const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
   const siteName = row?.name;
   const data = {
@@ -251,6 +371,23 @@ router.get('/:uuid/*path', (req, res) => {
     title: siteName,
     body: `<div class="p-4">Loading...</div>`,
     path
+  };
+
+  res.render('partials/folder', {
+    ...data,
+    layout: false
+  });
+});
+
+router.get('/:uuid', (req, res) => {
+  const { uuid } = req.params;
+  const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
+  const siteName = row?.name;
+  const data = {
+    id: uuid,
+    title: siteName,
+    body: `<div class="p-4">Loading...</div>`,
+    path: ''
   };
 
   res.render('partials/folder', {
