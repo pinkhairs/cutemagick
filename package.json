@@ -5,9 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.js",
-    "start": "node src/index.js",
-    "init-db": "node scripts/init-db.js"
+    "dev": "node scripts/dev.js",
+    "start": "node src/index.js"
   },
   "author": "",
   "license": "ISC",
@@ -26,8 +25,6 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.18",
-    "concurrently": "^9.2.1",
-    "nodemon": "^3.1.11",
     "vite": "^7.3.1"
   }
 }
