@@ -20,6 +20,11 @@ RUN npm install --production
 
 COPY . .
 
+RUN npx @tailwindcss/cli \
+  -i src/dashboard/app.css \
+  -o src/dashboard/assets/css/style.css \
+  --minify
+
 EXPOSE 3000
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
