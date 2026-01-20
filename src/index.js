@@ -40,11 +40,6 @@ app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'dashboard/views'));
 
 /* ----------------------------
-   Static assets (PUBLIC)
------------------------------ */
-app.use(express.static(path.join(__dirname, 'dashboard/public')));
-
-/* ----------------------------
    Page auth (AFTER static)
 ----------------------------- */
 
@@ -58,6 +53,7 @@ const publicKey = ensureSSHKeypair();
 process.env.PUBLIC_SSH_KEY = publicKey;
 
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'dashboard/assets')));
 app.use('/sites', siteRoutes);
 app.use('/connect', connectRoutes);
 

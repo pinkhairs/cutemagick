@@ -10,7 +10,7 @@ const tailwind = spawn(
     '@tailwindcss/cli',
     '--',
     '-i', 'src/dashboard/app.css',
-    '-o', 'src/dashboard/public/css/style.css',
+    '-o', 'src/dashboard/assets/css/style.css',
     '--watch'
   ],
   {

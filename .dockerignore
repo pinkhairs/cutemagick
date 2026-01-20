@@ -8,7 +8,6 @@ npm-cache/
 # -----------------------------
 # Build artifacts (rebuilt in container or unused)
 # -----------------------------
-public/
 dist/
 build/
 .tmp/
