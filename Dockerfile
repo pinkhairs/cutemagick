@@ -20,7 +20,7 @@ RUN npm install --production
 
 COPY . .
 
-RUN npx @tailwindcss/cli \
+RUN npm exec @tailwindcss/cli \
   -i src/dashboard/app.css \
   -o src/dashboard/assets/css/style.css \
   --minify
