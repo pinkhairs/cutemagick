@@ -1,10 +1,10 @@
 import express from 'express';
 import crypto from 'crypto';
-import db from '../database.js';
+import db from '../../database.js';
 import {
   generateRandomSubdomain,
   slugify
-} from '../utils/siteNaming.js';
+} from '../lib/siteNaming.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { listDirectory } from '../lib/fileExplorerFS.js';
@@ -129,7 +129,7 @@ router.get('/:uuid/files', (req, res) => {
 
   if (!site) return res.sendStatus(404);
 
-  res.render('partials/file-explorer', {
+  res.render('partials/explorer', {
     uuid,
     layout: false
   });

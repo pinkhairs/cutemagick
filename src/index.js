@@ -4,12 +4,12 @@ import { engine } from 'express-handlebars';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
-import auth from './middleware/auth.js';
-import accountRoutes from './api/account.js';
-import connectRoutes from './api/connect.js';
-import siteRoutes from './api/sites.js';
-import publicRuntime from './runtime/public.js';
-import { ensureSSHKeypair, validateEnv } from './lib/index.js';
+import auth from './api/middleware/auth.js';
+import accountRoutes from './api/routes/account.js';
+import connectRoutes from './api/routes/connect.js';
+import siteRoutes from './api/routes/sites.js';
+import publicRuntime from './api/routes/public.js';
+import { ensureSSHKeypair, validateEnv } from './api/lib/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

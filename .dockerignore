@@ -12,6 +12,7 @@ public/
 dist/
 build/
 .tmp/
+sites/
 
 # -----------------------------
 # User data & runtime state (must come from volumes)
