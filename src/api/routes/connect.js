@@ -34,7 +34,6 @@ router.post('/public-key', (req, res) => {
     const key = readPublicKey();
     res.type('text/plain').send(key);
   } catch (err) {
-    console.error(err);
     res.status(500).send('Failed to read public SSH key');
   }
 });
@@ -48,7 +47,6 @@ router.post('/rotate-key', (req, res) => {
     rotateSSHKeypair();
     res.sendStatus(200);
   } catch (err) {
-    console.error(err);
     res.status(500).send('Failed to rotate SSH key');
   }
 });
