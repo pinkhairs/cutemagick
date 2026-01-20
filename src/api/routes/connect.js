@@ -1,7 +1,7 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
-import { ensureSSHKeypair, rotateSSHKeypair } from '../lib/index.js';
+import { rotateSSHKeypair } from '../lib/index.js';
 
 const router = express.Router();
 

@@ -7,7 +7,8 @@ import cookieParser from 'cookie-parser';
 import auth from './api/middleware/auth.js';
 import accountRoutes from './api/routes/account.js';
 import connectRoutes from './api/routes/connect.js';
-import siteRoutes from './api/routes/sites.js';
+import sitesRoutes from './api/routes/sites.js';
+import filesRoutes from './api/routes/files.js';
 import publicRuntime from './api/routes/public.js';
 import { ensureSSHKeypair, validateEnv } from './api/lib/index.js';
 
@@ -49,12 +50,12 @@ app.use('/site', publicRuntime);
 app.use(auth);
 
 validateEnv();
-const publicKey = ensureSSHKeypair();
-process.env.PUBLIC_SSH_KEY = publicKey;
+ensureSSHKeypair();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'dashboard/assets')));
-app.use('/sites', siteRoutes);
+app.use('/sites', sitesRoutes);
+app.use('/files', filesRoutes);
 app.use('/connect', connectRoutes);
 
 /* ----------------------------

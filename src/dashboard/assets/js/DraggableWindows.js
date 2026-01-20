@@ -360,11 +360,6 @@ if (tabBtn) {
   const siteUUID = windowEl.id;
   const tabName = tabBtn.dataset.tab;
 
-  console.log('[tabs] saving active tab', {
-    siteUUID,
-    tabName
-  });
-
   localStorage.setItem(
     this.key('win-tab', siteUUID),
     tabName

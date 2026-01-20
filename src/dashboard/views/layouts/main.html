@@ -79,24 +79,14 @@
   (function restoreFileWindowsOnce() {
     let restored = false;
 
-    console.log('[restore-files] script loaded');
-
     document.body.addEventListener('htmx:afterOnLoad', (e) => {
-      console.log('[restore-files] htmx:afterOnLoad fired', {
-        target: e.target,
-        restored
-      });
-
       if (restored) {
-        console.log('[restore-files] already restored, skipping');
         return;
       }
 
       restored = true;
-      console.log('[restore-files] starting file restore');
 
       const raw = localStorage.getItem('open-file-windows');
-      console.log('[restore-files] raw open-file-windows:', raw);
 
       let files;
       try {
@@ -107,23 +97,11 @@
       }
 
       if (!Array.isArray(files) || files.length === 0) {
-        console.log('[restore-files] no file windows to restore');
         return;
       }
 
-      console.log('[restore-files] parsed file entries:', files);
-
       files.forEach(({ site, path }) => {
-        console.log('[restore-files] restoring file window', {
-          site,
-          path
-        });
-
         if (!site || !path) {
-          console.warn('[restore-files] invalid file entry, skipping', {
-            site,
-            path
-          });
           return;
         }
 
@@ -133,8 +111,6 @@
           values: { path }
         });
       });
-
-      console.log('[restore-files] file restore loop finished');
     });
   })();
 </script>

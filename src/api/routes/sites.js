@@ -229,8 +229,6 @@ router.post('/:uuid/editor', express.urlencoded({ extended: false }), async (req
   const { uuid } = req.params;
   const relPath = req.body.path || '';
   
-  console.log('EDITOR route matched:', { uuid, relPath });
-  
   if (relPath.includes('..')) {
     return res.status(400).send('Invalid path');
   }
@@ -319,8 +317,6 @@ router.post('/:uuid/editor', express.urlencoded({ extended: false }), async (req
 router.post('/:uuid/code', express.urlencoded({ extended: false }), async (req, res) => {
   const { uuid } = req.params;
   const relPath = req.body.path || '';
-  
-  console.log('CODE route matched:', { uuid, relPath });
   
   if (relPath.includes('..')) {
     return res.status(400).send('Invalid path');
