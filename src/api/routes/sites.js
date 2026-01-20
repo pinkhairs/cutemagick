@@ -103,23 +103,6 @@ This is your site’s home. Every file here is a page on your site.
   .sendStatus(204);
 });
 
-router.get('/:uuid', (req, res) => {
-  const { uuid } = req.params;
-  const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
-  const siteName = row?.name;
-  const data = {
-    id: uuid,
-    title: siteName,
-    body: `<div class="p-4">Loading...</div>`,
-    path: ''
-  };
-
-  res.render('partials/folder', {
-    ...data,
-    layout: false
-  });
-});
-
 router.get('/:uuid/files', (req, res) => {
   const { uuid } = req.params;
 
@@ -238,23 +221,6 @@ router.get('/:uuid/secrets', (req, res) => {
 
 router.get('/:uuid/settings', (req, res) => {
   res.render('partials/settings', {
-    layout: false
-  });
-});
-
-router.get('/:uuid/*path', (req, res) => {
-  const { uuid, path } = req.params;
-  const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
-  const siteName = row?.name;
-  const data = {
-    id: uuid,
-    title: siteName,
-    body: `<div class="p-4">Loading...</div>`,
-    path
-  };
-
-  res.render('partials/folder', {
-    ...data,
     layout: false
   });
 });
