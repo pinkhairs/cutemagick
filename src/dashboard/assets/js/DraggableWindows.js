@@ -167,9 +167,11 @@ if (kind === 'file') {
   // Draggable behavior
   this.makeDraggable(windowEl);
 
-  windowEl.addEventListener('mousedown', () => {
+  windowEl.addEventListener('mousedown', (e) => {
+    console.log(e.target.closest('.fe_fileexplorer_item_wrap'));
+    if (e.target.closest('.fe_fileexplorer_item_wrap')) return;
     this.bringToFront(windowEl);
-  });
+});
 
   // Restore minimized / hidden state
   this.loadState(windowEl, uuid, kind);
