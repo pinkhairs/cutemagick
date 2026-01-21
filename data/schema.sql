@@ -9,8 +9,6 @@ CREATE TABLE IF NOT EXISTS sites (
   domain TEXT,
   directory TEXT,
   repository TEXT,
-  username TEXT,
-  password TEXT,
   live_commit TEXT,
   created_at TEXT,
   last_viewed TEXT

@@ -5,7 +5,7 @@ import path from 'path';
 import db from '../../database.js';
 
 const SITES_ROOT = '/app/sites';
-import fs from 'fs';
+import fs from 'fs/promises';
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
