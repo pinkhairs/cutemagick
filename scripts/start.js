@@ -14,7 +14,7 @@ if (isDev) {
     shell: true 
   });
 
-  const app = spawn('node', ['src/index.js'], { stdio: 'inherit' });
+  const app = spawn('node', ['--watch', 'src/index.js'], { stdio: 'inherit' });
 
   process.on('SIGINT', () => {
     console.log('\nShutting down...');
