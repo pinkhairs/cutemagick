@@ -122,7 +122,9 @@
 
       root.querySelectorAll('[data-tippy-content]').forEach(el => {
         if (!el._tippy) {
-          tippy(el);
+          tippy(el, {
+            placement: 'bottom'
+          });
         }
       });
     }

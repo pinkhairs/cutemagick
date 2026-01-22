@@ -16,12 +16,10 @@ html, body, #app {
 /* Your theme tokens live here in v4 */
 @theme {
   /* shadows */
-  --shadow-blue-gray: 0px 6px 8px -4px rgb(81 103 146 / 0.1);
-  --shadow-white-inset: 0px 6px 6px rgb(81 103 146 / 0.1), inset 0 0 64px 40px rgba(255, 255, 255, 0.9);
+  --shadow-white-inset: 0px 6px 6px rgb(81 103 146 / 0.25), inset 0 0 64px 40px rgba(255, 255, 255, 0.9);
   --shadow-dark: inset 0 0 64px 24px rgba(16, 24, 40, .9);
   
   /* colors */
-  --color-blue-gray: #516792;
   --color-pink: #FFA3D8;
   --color-purple: #D5A8FF;
   --color-periwinkle: #AAC6FF;
@@ -133,7 +131,7 @@ html, body, #app {
   @apply p-4 lg:py-8 lg:px-9 shadow-white-inset dark:shadow-dark bg-white dark:bg-gray-900 border-white/90 rounded-2xl;
 }
 .window {
-  @apply px-3 border-white/90 py-2 lg:px-5 lg:pt-3 lg:pb-4 shadow-white-inset dark:shadow-dark dark:bg-gray-800/80 bg-white/30 lg:rounded-2xl;
+  @apply px-3 border-white/90 py-2 lg:px-5 lg:pt-3 lg:pb-4 shadow-white-inset dark:shadow-dark dark:bg-gray-800 bg-gray-200 lg:rounded-2xl;
 }
 
 
@@ -155,4 +153,7 @@ pre, code, .font-monospace {
 
 [data-tab][data-active="true"] {
   @apply bg-gray-100 dark:bg-gray-800;
+}
+.fe_fileexplorer_wrap .fe_fileexplorer_inner_wrap {
+  border: 0 !important;
 }
