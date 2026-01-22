@@ -35,7 +35,7 @@ const storage = multer.diskStorage({
         ...safeParts
       );
 
-      fs.mkdirSync(dest, { recursive: true });
+      fs.mkdir(dest, { recursive: true });
 
       cb(null, dest);
     } catch (err) {
@@ -55,7 +55,7 @@ const upload = multer({ storage });
    Helpers (same pattern as sites.js)
 ----------------------------- */
 function assertRealPathInside(root, target) {
-  const real = fsSync.realpathSync(target);
+  const real = fs.realpath(target);
   const rel = path.relative(root, real);
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
     throw new Error('Symlink escapes site root');
