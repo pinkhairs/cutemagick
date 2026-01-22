@@ -64,6 +64,35 @@ function openBinaryFile(siteId, path) {
       console.error('[openBinaryFile] failed:', err);
     });
 }
+function openDatabaseFile(siteUUID, path) {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/sites/${siteUUID}/database`;
+  form.target = '_blank';
+
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'path';
+  input.value = path;
+
+  form.appendChild(input);
+  document.body.appendChild(form);
+
+  form.submit();
+
+  // cleanup
+  document.body.removeChild(form);
+}
+
+function fileWindowId(siteUUID, filePath) {
+  const name = filePath
+    .split('/')
+    .pop()
+    .toLowerCase()
+    .replace(/\.[^/.]+$/, ''); // strip extension
+
+  return `${siteUUID}-${name}`;
+}
 
 
 function openCodeWindow(siteUUID, path) {
@@ -109,8 +138,6 @@ function openCodeWindow(siteUUID, path) {
 
 
 document.body.addEventListener('htmx:afterSwap', (e) => {
-  const newWindow = e.detail.target.querySelector('.window-wrapper:first-child');
-
   const mount = e.target.querySelector('.file-explorer[data-site-uuid]');
   if (!mount) return;
   
@@ -136,7 +163,11 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
         : filename;
 
       if (isTextLikeFile(filename)) {
-        openCodeWindow(uuid, fullPath);
+
+openCodeWindow(uuid, fullPath);
+
+      } else if (fullPath.includes('.db')) {
+        openDatabaseFile(uuid, fullPath);
       } else {
         openBinaryFile(uuid, fullPath);
       }
@@ -151,7 +182,27 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
       upload: true,
       download: true,
     },
-    
+onselchanged(folder, selecteditemsmap, numselecteditems) {
+  if (numselecteditems !== 1) return;
+
+  const entry = Object.values(selecteditemsmap)[0];
+  if (!entry || entry.type !== 'file') return;
+
+  const pathIDs = folder.GetPathIDs().filter(p => p && p !== '/');
+  const filename = entry.name || entry.id;
+
+  const fullPath = pathIDs.length
+    ? `${pathIDs.join('/')}/${filename}`
+    : filename;
+
+  if (isTextLikeFile(filename)) {
+    openCodeWindow(uuid, fullPath);
+  } else {
+    openBinaryFile(uuid, fullPath);
+  }
+
+},
+
     onrefresh(folder, required) {
       const fe = this;
       

@@ -1,0 +1,46 @@
+<div data-current-table="{{table}}" data-site-uuid="{{siteUUID}}" data-db-path="{{dbPath}}" class="min-w-max overflow-auto">
+  <!-- Header -->
+  <div
+    class="sticky top-0 z-10 flex border-b
+           border-gray-200 dark:border-gray-700
+           bg-gray-50 dark:bg-gray-800
+           text-xs font-semibold tracking-wide
+           text-gray-600 dark:text-gray-300"
+  >
+    <div class="px-4 py-3 w-16 shrink-0 border-r border-gray-200 dark:border-gray-700 text-center">
+      🗑️
+    </div>
+    {{#each columns}}
+      <div class="px-4 py-3 w-72 shrink-0 border-r border-gray-200 dark:border-gray-700">
+        {{this}}
+      </div>
+    {{/each}}
+  </div>
+  <!-- Rows -->
+  <div class="divide-y divide-gray-200 dark:divide-gray-700">
+    {{#each rows}}
+      <div class="flex hover:bg-gray-50 dark:hover:bg-gray-800">
+        <div class="px-4 py-3 w-16 shrink-0 text-center">
+          <button
+            hx-post="/sites/{{@root.siteUUID}}/database/row/delete"
+            hx-vals='{"path": "{{@root.dbPath}}", "table": "{{@root.table}}", "rowIndex": "{{@index}}"}'
+            hx-confirm="Delete this row?"
+            hx-target="closest .flex"
+            hx-swap="outerHTML swap"
+            class="cursor-pointer text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+          >
+            🗑️
+          </button>
+        </div>
+        {{#each ../columns}}
+          <div
+            class="px-4 py-3 w-72 shrink-0 whitespace-nowrap overflow-hidden text-ellipsis"
+            title="{{lookup ../this this}}"
+          >
+            {{lookup ../this this}}
+          </div>
+        {{/each}}
+      </div>
+    {{/each}}
+  </div>
+</div>

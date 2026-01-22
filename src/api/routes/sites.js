@@ -11,6 +11,8 @@ import { listDirectory } from '../lib/fileExplorerFS.js';
 import multer from 'multer';
 const upload = multer();
 const router = express.Router();
+import Database from 'better-sqlite3';
+
 const SITES_DIR = path.resolve(process.cwd(), 'sites');
 
 router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
@@ -357,23 +359,259 @@ router.post('/:uuid/code', express.urlencoded({ extended: false }), async (req, 
   res.type('text/plain').send(content);
 });
 
-router.get('/:uuid/:path', (req, res) => {
-  const { uuid, path } = req.params;
-  
-  const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
-  const siteName = row?.name;
-  const data = {
-    id: uuid,
-    title: siteName,
-    body: `<div class="p-4">Loading...</div>`,
-    path
-  };
+router.post('/:uuid/database/row/delete', express.urlencoded({ extended: false }), (req, res) => {
+  console.log('🗑️ DELETE ROUTE HIT!', req.params, req.body);
+  // ... rest of code
+  const { uuid } = req.params;
+  const relPath = req.body.path;
+  const table = req.body.table;
+  const rowIndex = parseInt(req.body.rowIndex, 10);
 
-  res.render('partials/folder', {
-    ...data,
-    layout: false
-  });
+  if (!relPath || !table || isNaN(rowIndex)) {
+    return res.status(400).send('Missing required parameters');
+  }
+
+  const site = db
+    .prepare('SELECT directory FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) return res.sendStatus(404);
+
+  const siteRoot = path.resolve(SITES_DIR, site.directory);
+  const dbPath = path.resolve(siteRoot, relPath);
+
+  if (!dbPath.startsWith(siteRoot)) {
+    return res.status(400).send('Invalid path');
+  }
+
+  const sqlite = new Database(dbPath);
+
+  try {
+    // Get the primary key column(s) for this table
+    const tableInfo = sqlite
+      .prepare(`PRAGMA table_info("${table}")`)
+      .all();
+    
+    const pkColumns = tableInfo.filter(col => col.pk > 0);
+
+    // If there's a primary key, use it; otherwise use rowid
+    if (pkColumns.length > 0) {
+      // Get all rows to find the one at this index
+      const rows = sqlite
+        .prepare(`SELECT * FROM "${table}" LIMIT 200`)
+        .all();
+      
+      if (rowIndex >= rows.length) {
+        sqlite.close();
+        return res.status(400).send('Row not found');
+      }
+      
+      const targetRow = rows[rowIndex];
+      
+      // Build WHERE clause using primary key(s)
+      const whereConditions = pkColumns.map(col => `"${col.name}" = ?`).join(' AND ');
+      const whereValues = pkColumns.map(col => targetRow[col.name]);
+      
+      sqlite
+        .prepare(`DELETE FROM "${table}" WHERE ${whereConditions}`)
+        .run(...whereValues);
+    } else {
+      // Fall back to rowid
+      const rows = sqlite
+        .prepare(`SELECT rowid FROM "${table}" LIMIT 200`)
+        .all();
+      
+      if (rowIndex >= rows.length) {
+        sqlite.close();
+        return res.status(400).send('Row not found');
+      }
+      
+      const targetRowid = rows[rowIndex].rowid;
+      
+      sqlite
+        .prepare(`DELETE FROM "${table}" WHERE rowid = ?`)
+        .run(targetRowid);
+    }
+
+    sqlite.close();
+
+    // Return 200 with empty response - htmx will remove the row from DOM
+    res.sendStatus(200);
+  } catch (err) {
+    sqlite.close();
+    console.error('Delete failed:', err);
+    res.status(500).send('Delete failed');
+  }
 });
+
+router.post('/:uuid/database/tables', express.urlencoded({ extended: false }), (req, res) => {
+  const { uuid } = req.params;
+  const relPath = req.body.path;
+
+  const site = db
+    .prepare('SELECT directory FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) return res.sendStatus(404);
+
+  const siteRoot = path.resolve(SITES_DIR, site.directory);
+  const dbPath = path.resolve(siteRoot, relPath);
+
+  if (!dbPath.startsWith(siteRoot)) {
+    return res.status(400).send('Invalid path');
+  }
+
+  const sqlite = new Database(dbPath, { readonly: true });
+
+  const tables = sqlite.prepare(`
+    SELECT name
+    FROM sqlite_master
+    WHERE type = 'table'
+      AND name NOT LIKE 'sqlite_%'
+      AND name NOT IN ('query')
+    ORDER BY name COLLATE NOCASE ASC
+  `).all();
+
+  sqlite.close();
+
+  // Get first table name
+  const firstTable = tables.length > 0 ? tables[0].name : null;
+
+  res
+    .set('HX-Trigger', JSON.stringify({
+      loadFirstTable: { table: firstTable, path: relPath, uuid }
+    }))
+    .render('partials/database-tables', {
+      layout: false,
+      tables
+    });
+});
+
+router.post('/:uuid/database/table', express.urlencoded({ extended: false }), (req, res) => {
+  const { uuid } = req.params;
+  const relPath = req.body.path;
+  const requestedTable = req.body.table || null;
+
+console.log('📊 DATABASE TABLE REQUEST:', {
+    uuid,
+    body: req.body,
+    path: req.body.path,
+    table: req.body.table
+  });
+  
+  const site = db
+    .prepare('SELECT directory FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) return res.sendStatus(404);
+
+  const siteRoot = path.resolve(SITES_DIR, site.directory);
+  const dbPath = path.resolve(siteRoot, relPath);
+
+  if (!dbPath.startsWith(siteRoot)) {
+    return res.status(400).send('Invalid path');
+  }
+
+  let sqlite;
+  try {
+    sqlite = new Database(dbPath);
+
+    let table = requestedTable;
+
+    if (!table) {
+      const row = sqlite.prepare(`
+        SELECT name
+        FROM sqlite_master
+        WHERE type='table'
+          AND name NOT LIKE 'sqlite_%'
+        ORDER BY name ASC
+        LIMIT 1
+      `).get();
+
+      if (!row) {
+        sqlite.close();
+        return res.send(`<div class="p-4 text-gray-400">No tables found</div>`);
+      }
+
+      table = row.name;
+    }
+
+    const columns = sqlite
+      .prepare(`PRAGMA table_info("${table}")`)
+      .all()
+      .map(c => c.name);
+
+    const rows = sqlite
+      .prepare(`SELECT * FROM "${table}" LIMIT 200`)
+      .all();
+
+    sqlite.close();
+
+    res.render('partials/database-rows', {
+      layout: false,
+      siteUUID: uuid,
+      dbPath: relPath,
+      table,
+      columns,
+      rows
+    });
+  } catch (err) {
+    if (sqlite) sqlite.close();
+    console.error('Database table error:', err);
+    res.status(500).send('Error loading table');
+  }
+});
+
+router.post('/:uuid/database', express.urlencoded({ extended: false }), async (req, res) => {
+  const { uuid } = req.params;
+  const relPath = req.body.path || '';
+
+  // Basic traversal guard (consistent with others)
+  if (relPath.includes('..')) {
+    return res.status(400).send('Invalid path');
+  }
+
+  const site = db
+    .prepare('SELECT name, directory FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) {
+    return res.status(404).send('Site not found');
+  }
+
+  const siteRoot = path.resolve(SITES_DIR, site.directory);
+  const dbPath = path.resolve(siteRoot, relPath);
+
+  // 🔒 Security: ensure DB stays inside site directory
+  if (!dbPath.startsWith(siteRoot)) {
+    return res.status(400).send('Invalid path');
+  }
+
+  // Optional sanity check (can relax later)
+  if (!dbPath.endsWith('.db') && !dbPath.endsWith('.sqlite')) {
+    return res.status(400).send('Not a database file');
+  }
+
+  const filename = path.basename(relPath);
+
+  // Window id pattern (mirrors editor logic)
+  const treatedPath = relPath
+    .replace(/\//g, '-')
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-zA-Z0-9-]/g, '')
+    .toLowerCase();
+
+  const windowId = `${uuid}-db-${treatedPath}`;
+
+res.render('database', {
+  layout: 'dbgui',
+  id: windowId,
+  siteUUID: uuid,
+  title: filename,
+  path: relPath
+});
+});
+
 
 router.get('/:uuid', (req, res) => {
   const { uuid } = req.params;
@@ -411,6 +649,28 @@ router.get('/', (req, res) => {
     layout: false,
   });
 });
+
+
+
+
+router.get('/:uuid/:path', (req, res) => {
+  const { uuid, path } = req.params;
+  
+  const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
+  const siteName = row?.name;
+  const data = {
+    id: uuid,
+    title: siteName,
+    body: `<div class="p-4">Loading...</div>`,
+    path
+  };
+
+  res.render('partials/folder', {
+    ...data,
+    layout: false
+  });
+});
+
 
 export default router;
 

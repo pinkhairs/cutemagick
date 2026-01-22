@@ -2,7 +2,7 @@
   {{#each sites}}
   <button
   type="button"
-  class="cursor-pointer group flex flex-col gap-2 font-bold items-center text-center"
+  class="cursor-pointer group flex max-w-28 flex-col gap-2 font-bold items-center text-center"
   hx-on:click="
     const existing = document.getElementById('{{uuid}}');
     
