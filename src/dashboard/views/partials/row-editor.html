@@ -1,0 +1,40 @@
+<dialog id="new-row-modal">
+  <article>
+    <header>
+      <button data-close aria-label="Close" rel="prev"></button>
+      <p>
+        <strong>Row Editor</strong>
+      </p>
+    </header>
+
+    <!-- IMPORTANT: single form for new + edit -->
+    <form
+      method="post"
+      data-row-form
+      hx-post=""
+      hx-swap="none"
+    >
+      <!-- context (filled in by JS when opening modal) -->
+      <input type="hidden" name="path" />
+      <input type="hidden" name="table" />
+      <input type="hidden" name="pk" />
+      <input type="hidden" name="rowId" /> <!-- empty = new row -->
+
+      <!-- dynamic fields go here -->
+      <section data-row-fields>
+        <!-- JS will inject inputs like:
+             <label>
+               Name
+               <input name="values[name]" />
+             </label>
+        -->
+      </section>
+    </form>
+
+    <footer>
+      <button type="submit" class="big button">
+        Save Row
+      </button>
+    </footer>
+  </article>
+</dialog>

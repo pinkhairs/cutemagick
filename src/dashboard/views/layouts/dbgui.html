@@ -3,136 +3,213 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/css/style.css" />
+  <link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+  >
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=SUSE:wght@100..800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/file-explorer.css" />
   <title>Database Browser - Cute Magick</title>
+  <style>
+    body {
+      overflow-x: hidden;
+      font-size: 16px;
+    }
+    button {
+      background: none;
+      padding: 5px;
+      border: 0;
+      font-size: 16px !important;
+    }
+    h1 {
+      font-size: 24px !important;
+    }
+    hgroup, nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    @media (max-width: 768px) {
+      hgroup, nav {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+    [data-db-table-switcher] {
+      border: 1px #aaa solid;
+      border-radius: 10px;
+      padding: 5px 15px;
+      font-size: 16px !important;
+    }
+    header {
+      padding: 10px 10px 0;
+    }
+    .tippy-tooltip[data-interactive][data-state=visible] {
+      width: auto;
+    }
+    main {
+      overflow-x: auto;
+    }
+    main::-webkit-scrollbar {
+      display: none;
+    }
+    .button {
+      color: #fff;
+      background: #000;
+      padding: 5px 15px;
+      border-radius: 100px;
+    }
+    .big.button {
+      padding: 10px 20px;
+      font-size: 18px !important;
+    }
+    table {
+      table-layout: fixed;
+    }
+    table th,
+    table td {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    table col:first-child {
+      width: 120px;
+    }
+
+    input {
+      font-size: 16px !important;
+      padding: 0 15px !important;
+    }
+  </style>
 </head>
 <body class="dark:bg-gray-900 flex-col justify-between flex text-gray-900 dark:text-white">
-<div class="flex-1">
-<div id="{{id}}" class="mt-4 lg:mt-0 h-full w-full relative window-wrapper window" data-window-kind="db"
-data-path="{{path}}"
-data-site-uuid="{{siteUUID}}">
-<div class="window-handle h-full">
-  <div class="flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <h2 class="text-sm">{{title}}</h2>
-<div
-  class="cursor-pointer users font-bold border border-gray-200 dark:border-gray-500 rounded-full px-4 py-1 flex items-center"
-  data-db-table-switcher
->
-<span
-  data-current-table
-  data-window-id="{{id}}"
->
-  Loading…
-</span>
-  <span class="text-xs inline-block pl-3">▾</span>
-</div>
-
-    </div>
-    <div class="flex items-center gap-2 text-lg">
-    </div>
+<div>
+  <div id="{{id}}" data-window-kind="db" data-path="{{path}}" data-site-uuid="{{siteUUID}}">
+    <header>
+      <hgroup>
+        <h1>{{title}}</h1>
+        <p>
+          <div data-db-table-switcher>
+            <span data-current-table data-window-id="{{id}}">Loading…</span>
+            <span aria-hidden="true"> ▾</span>
+          </div>
+        </p>
+        <button class="button" data-target="new-row-modal">
+          New Row
+        </button>
+      </hgroup>
+      <nav>
+      </nav>
+    </header>
+    <main data-hide-when-minimized>
+      {{{body}}}
+    </main>
   </div>
 </div>
-<div class="lg:absolute top-12 left-0 w-full hide-when-minimized py-2">
-  {{{body}}}
-</div>
-</div>
-</div>
-  <script src="https://unpkg.com/popper.js@1"></script>
-  <script src="https://unpkg.com/tippy.js@5"></script>
-  <script src="/js/htmx.min.js"></script>
+{{> row-editor}}
+<script src="https://unpkg.com/popper.js@1"></script>
+<script src="https://unpkg.com/tippy.js@5"></script>
+<script src="/js/htmx.min.js"></script>
+<script src="/js/row-editor.js"></script>
 <script>
-(function () {
-  if (window.initDbTableSwitcher) return;
-  
-  window.initDbTableSwitcher = function (windowEl) {
-    const trigger = windowEl.querySelector('[data-db-table-switcher]');
-    if (!trigger) return;
-    
-    const siteUUID = windowEl.dataset.siteUuid;
-    const dbPath = windowEl.dataset.path;
-    const rowsTarget = windowEl.querySelector('#db-rows');
-    
-    // Update current table name after rows load
-    rowsTarget.addEventListener('htmx:afterSwap', (e) => {
-      const tableNameEl = rowsTarget.querySelector('[data-current-table]');
-      if (tableNameEl) {
-        const tableName = tableNameEl.dataset.currentTable;
-        const currentTableSpan = windowEl.querySelector('[data-current-table]');
-        if (currentTableSpan) {
-          currentTableSpan.textContent = tableName;
-        }
-      }
+  document
+  .querySelector('.button')
+  .addEventListener('click', () => {
+    openRowEditor({
+      windowEl: document.getElementById('{{id}}'),
+      table: document.querySelector('[data-current-table]').textContent
     });
+  });
+
+  (function () {
+    if (window.initDbTableSwitcher) return;
     
-    // Listen for first table load trigger
-    document.body.addEventListener('loadFirstTable', (e) => {
-      const { table, path, uuid } = e.detail;
-      if (uuid === siteUUID && table) {
+    window.initDbTableSwitcher = function (windowEl) {
+      const trigger = windowEl.querySelector('[data-db-table-switcher]');
+      if (!trigger) return;
+      
+      const siteUUID = windowEl.dataset.siteUuid;
+      const dbPath = windowEl.dataset.path;
+      const rowsTarget = windowEl.querySelector('#db-rows');
+      
+      // Update current table name after rows load
+      rowsTarget.addEventListener('htmx:afterSwap', (e) => {
+        const tableNameEl = rowsTarget.querySelector('[data-current-table]');
+        if (tableNameEl) {
+          const tableName = tableNameEl.dataset.currentTable;
+          const currentTableSpan = windowEl.querySelector('[data-current-table]');
+          if (currentTableSpan) {
+            currentTableSpan.textContent = tableName;
+          }
+        }
+      });
+      
+      // Listen for first table load trigger
+      document.body.addEventListener('loadFirstTable', (e) => {
+        const { table, path, uuid } = e.detail;
+        if (uuid === siteUUID && table) {
+          htmx.ajax('POST', `/sites/${siteUUID}/database/table`, {
+            target: rowsTarget,
+            swap: 'innerHTML',
+            values: { path: dbPath, table }
+          });
+        }
+      });
+      
+      // menu container
+      const menu = document.createElement('div');
+      menu.className = 'flex flex-col text-sm min-w-[10rem]';
+      
+      // tippy dropdown
+      const tip = tippy(trigger, {
+        content: menu,
+        interactive: true,
+        trigger: 'click',
+        placement: 'bottom-start',
+        theme: 'light-border'
+      });
+      
+      // Load tables on dropdown open
+      trigger.addEventListener('click', () => {
+        if (menu.dataset.loaded) return;
+        
+        htmx.ajax('POST', `/sites/${siteUUID}/database/tables`, {
+          target: menu,
+          swap: 'innerHTML',
+          values: { path: dbPath }
+        });
+        
+        menu.dataset.loaded = 'true';
+      });
+      
+      // Handle table selection
+      menu.addEventListener('click', (e) => {
+        const item = e.target.closest('[data-db-table]');
+        if (!item) return;
+        
+        const table = item.dataset.dbTable;
+        tip.hide();
+        
         htmx.ajax('POST', `/sites/${siteUUID}/database/table`, {
           target: rowsTarget,
           swap: 'innerHTML',
           values: { path: dbPath, table }
         });
-      }
-    });
-    
-    // menu container
-    const menu = document.createElement('div');
-    menu.className = 'flex flex-col text-sm min-w-[10rem]';
-    
-    // tippy dropdown
-    const tip = tippy(trigger, {
-      content: menu,
-      interactive: true,
-      trigger: 'click',
-      placement: 'bottom-start',
-      theme: 'light-border'
-    });
-    
-    // Load tables on dropdown open
-    trigger.addEventListener('click', () => {
-      if (menu.dataset.loaded) return;
+      });
       
+      // 🆕 Auto-load first table on page load
       htmx.ajax('POST', `/sites/${siteUUID}/database/tables`, {
         target: menu,
         swap: 'innerHTML',
         values: { path: dbPath }
       });
-      
       menu.dataset.loaded = 'true';
-    });
-    
-    // Handle table selection
-    menu.addEventListener('click', (e) => {
-      const item = e.target.closest('[data-db-table]');
-      if (!item) return;
-      
-      const table = item.dataset.dbTable;
-      tip.hide();
-      
-      htmx.ajax('POST', `/sites/${siteUUID}/database/table`, {
-        target: rowsTarget,
-        swap: 'innerHTML',
-        values: { path: dbPath, table }
-      });
-    });
-    
-    // 🆕 Auto-load first table on page load
-    htmx.ajax('POST', `/sites/${siteUUID}/database/tables`, {
-      target: menu,
-      swap: 'innerHTML',
-      values: { path: dbPath }
-    });
-    menu.dataset.loaded = 'true';
-  };
-})();
-
-initDbTableSwitcher(document.getElementById('f7876251-7f2b-497f-939b-a4856a0ec357-db-cutemagick'));
+    };
+  })();
+  
+  initDbTableSwitcher(document.getElementById('f7876251-7f2b-497f-939b-a4856a0ec357-db-cutemagick'));
 </script>
 </body>
 </html>

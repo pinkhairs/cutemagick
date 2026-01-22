@@ -1,15 +1,12 @@
 {{#each tables}}
-<div class="flex items-center justify-between">
+<nav>
   <div>
-    <div
-      class="px-3 py-2 cursor-pointer inline-block"
-      data-db-table="{{name}}"
-    >
+    <button data-db-table="{{name}}">
       {{name}}
-    </div>
+    </button>
   </div>
   <button>
     🗑️
   </button>
-</div>
+</nav>
 {{/each}}
