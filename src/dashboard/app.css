@@ -157,3 +157,6 @@ pre, code, .font-monospace {
 .fe_fileexplorer_wrap .fe_fileexplorer_inner_wrap {
   border: 0 !important;
 }
+iframe {
+  @apply bg-white w-full h-full border-0;
+}

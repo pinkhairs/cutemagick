@@ -29,16 +29,18 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
 
   const sitePath = path.join(SITES_DIR, directory);
 
-  const readmeContent = `✨ Welcome to your Cute Magick site ✨
+  const readmeContent = `Welcome to your site!
 
-This is your site’s home. Every file here is a page on your site.
+This is your site’s home.
 
 🔮 First steps:
-1. Edit **index.html** (your homepage) → see your magic come alive quickly.
-2. Add images or new files → they’ll come with an URL of your own.
-3. Click **Preview** → test your spell before you publish.
+1. Edit **index.html**
+2. Add images or new files
+3. Click **Preview**
 
-🌙 May your code be clear and your spells be strong. Happy creating!
+May your code be clear.
+
+Happy creating!
   `;
 
   const indexHtmlContent = `<!doctype html>
@@ -101,6 +103,25 @@ This is your site’s home. Every file here is a page on your site.
   res
   .set('HX-Trigger', 'refreshSites')
   .sendStatus(204);
+});
+
+
+router.get('/:uuid/iframe', (req, res) => {
+  const { uuid } = req.params;
+
+  const site = db
+    .prepare('SELECT directory FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) {
+    return res.status(404).send('Site not found');
+  }
+
+  res.send(`
+  <iframe
+    src="/site/${site.directory}/"
+  ></iframe>
+  `);
 });
 
 router.get('/:uuid/files', (req, res) => {
@@ -295,23 +316,24 @@ router.post('/:uuid/editor', express.urlencoded({ extended: false }), async (req
     content = `// Error reading file: ${err.message}`;
   }
   
-  // Create human-readable ID: file-uuid-filepath-with-hyphens
-  const treatedPath = relPath
-    .replace(/\//g, '-')
-    .replace(/\.[^.]+$/, '')
-    .replace(/[^a-zA-Z0-9-]/g, '')
-    .toLowerCase();
+  // Create window ID by hashing the file path
+  const pathHash = crypto
+    .createHash('sha256')
+    .update(relPath)
+    .digest('hex')
+    .substring(0, 12); // Use first 12 characters for brevity
   
-  const windowId = `${uuid}-${treatedPath}`;
+  const windowId = `${uuid}-${pathHash}`;
   
   res.render('partials/editor', {
     layout: false,
     id: windowId,
     siteUUID: uuid,
+    siteName: site.name,
     title: filename,
     path: relPath,
     content: content,
-    language: language  // Pass the detected language
+    language: language
   });
 });
 router.post('/:uuid/code', express.urlencoded({ extended: false }), async (req, res) => {
@@ -359,7 +381,7 @@ router.post('/:uuid/code', express.urlencoded({ extended: false }), async (req, 
 
 router.get('/:uuid/:path', (req, res) => {
   const { uuid, path } = req.params;
-  
+
   const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
   const siteName = row?.name;
   const data = {
@@ -411,6 +433,7 @@ router.get('/', (req, res) => {
     layout: false,
   });
 });
+
 
 export default router;
 
