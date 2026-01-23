@@ -36,6 +36,7 @@
       this.initAllWindows();
       this.setupControls();
       this.observeNewWindows();
+      this.setupDeleteListener();
       
       window.addEventListener('resize', () => {
         this.checkScreenSize();
@@ -76,31 +77,42 @@ saveZ(id, z, kind) {
     localStorage.setItem(this.key('win-z', id, kind), String(z));
   } catch {}
 },
-
-    
-    
-    initAllWindows() {
-      document.querySelectorAll('.window-wrapper').forEach(win => this.initWindow(win));
-    },
+setupDeleteListener() {
+  document.body.addEventListener('htmx:trigger', (event) => {
+    // HTMX triggers come through the htmx:trigger event
+    // The actual trigger name and data are in event.detail
+    if (event.detail['files:deleted']) {
+      const { hashedPaths } = event.detail['files:deleted'];
+      
+      if (!hashedPaths || !Array.isArray(hashedPaths)) return;
+      
+      hashedPaths.forEach(windowId => {
+        const windowEl = document.getElementById(windowId);
+        if (windowEl) {
+          this.closeWindow(windowEl);
+        }
+      });
+    }
+  });
+},
 initWindow(windowEl) {
   if (windowEl.dataset.draggableInit) return;
   windowEl.dataset.draggableInit = 'true';
-
-  const uuid = windowEl.id;
   const kind = this.getWindowKind(windowEl);
-if (!kind) return; // IMPORTANT
+if (!kind) return;
 
+const uuid = windowEl.id;
 
   // Track open windows (separate lists)
   if (kind === 'folder') {
-    this.addOpenWindow(uuid); // folder windows only
+    this.addOpenWindow(uuid);
   }
 
-  // Save file path separately for file windows
+// Save file path separately for file windows
 if (kind === 'file') {
   const siteUUID =
-    windowEl.closest('[data-site-uuid]')?.dataset.siteUuid ||
     windowEl.dataset.siteUuid ||
+    windowEl.closest('[data-site-uuid]')?.dataset.siteUuid ||
     null;
 
   const filePath =
@@ -117,6 +129,10 @@ if (kind === 'file') {
     return;
   }
 
+  // Ensure datasets are authoritative
+  windowEl.dataset.siteUuid = siteUUID;
+  windowEl.dataset.path = filePath;
+
   const openFiles = JSON.parse(
     localStorage.getItem('open-file-windows') || '[]'
   );
@@ -131,11 +147,25 @@ if (kind === 'file') {
   }
 }
 
+
   if (!this.isLargeScreen) return;
 
-  // Folder-only default tab
+  // Open default tab for folder windows (if no saved tab exists)
   if (kind === 'folder') {
-    this.ensureDefaultTab(windowEl, uuid);
+    const savedTab = localStorage.getItem(this.key('win-tab', uuid));
+    const tabToOpen = savedTab || 'view';
+    
+    // If no saved tab, save 'view' as default
+    if (!savedTab) {
+      localStorage.setItem(this.key('win-tab', uuid), 'view');
+    }
+    
+    // Open the tab after HTMX settles
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        this.openTab(windowEl, tabToOpen);
+      });
+    });
   }
 
   // Load saved position
@@ -181,41 +211,39 @@ if (kind === 'file') {
   }
 },
 
-  activateTabSilently(windowEl, tabName) {
-  const buttons = windowEl.querySelectorAll('button[data-tab]');
-  const panels  = windowEl.querySelectorAll('[data-tab-panel]');
-
-  buttons.forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabName);
-  });
-
-  panels.forEach(panel => {
-    panel.hidden = panel.dataset.tabPanel !== tabName;
-  });
-},
-ensureDefaultTab(windowEl) {
-  if (!(windowEl instanceof Element)) return;
-
-  const uuid = windowEl.id;
-  const key = `win-tab-${uuid}`;
-
-  // If already exists, do nothing (restore logic handles it)
-  if (localStorage.getItem(key) != null) return;
-
-  // First-ever open
-  localStorage.setItem(key, 'files');
-
-  // Click default tab after HTMX settles
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const btn = windowEl.querySelector('button[data-tab="files"]');
-      if (btn) {
-        btn.dataset._restored = '1';
-        btn.click();
+observeNewWindows() {
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType !== 1) continue; // elements only
+        
+        // Case A: node itself is a window
+        if (node.classList.contains('window-wrapper')) {
+          this.initWindow(node);
+        }
+        
+        // Case B: node contains windows (common with HTMX fragments/wrappers)
+        node.querySelectorAll?.('.window-wrapper').forEach((win) => {
+          this.initWindow(win);
+        });
       }
-    });
+    }
   });
+  
+  const windowsContainer = document.querySelector('#windows') || document.body;
+  observer.observe(windowsContainer, { childList: true, subtree: true });
 },
+
+// Opens a specific tab in a window
+  openTab(windowEl, tabName) {
+    if (!windowEl || !tabName) return;
+    
+    const btn = windowEl.querySelector(`button[data-tab="${tabName}"]`);
+    if (btn) {
+      btn.click();
+    }
+  },
+
   restoreOpenWindows() {
     const uuids = this.getOpenWindows();
     if (!uuids.length) return;
@@ -223,18 +251,46 @@ ensureDefaultTab(windowEl) {
     const container = document.querySelector('#windows');
     if (!container || !window.htmx) return;
     
-    // Only count windows that are NOT already in the DOM
-    const toRestore = uuids.filter(uuid =>
-      !document.getElementById(uuid)
-    );
+    const toRestore = uuids.filter(uuid => !document.getElementById(uuid));
+    if (toRestore.length === 0) return;
     
-    if (toRestore.length === 0) {
-      return;
-    }
+    // Track which windows still need restoration
+    const pendingRestoration = new Set(toRestore);
+    
+    const handleSettle = (event) => {
+      let windowEl = null;
+      
+      if (event.detail.target.classList?.contains('window-wrapper')) {
+        windowEl = event.detail.target;
+      } else {
+        windowEl = event.detail.target.querySelector('.window-wrapper');
+      }
+      
+      if (!windowEl) {
+        windowEl = event.detail.target.closest('.window-wrapper');
+      }
+      
+      if (windowEl && pendingRestoration.has(windowEl.id)) {
+        pendingRestoration.delete(windowEl.id);
+        
+        // Restore saved tab for this window
+        const savedTab = localStorage.getItem(this.key('win-tab', windowEl.id));
+        if (savedTab) {
+          setTimeout(() => {
+            this.openTab(windowEl, savedTab);
+          }, 100);
+        }
+        
+        // Remove listener only after ALL windows are restored
+        if (pendingRestoration.size === 0) {
+          document.body.removeEventListener('htmx:afterSettle', handleSettle);
+        }
+      }
+    };
+    
+    document.body.addEventListener('htmx:afterSettle', handleSettle);
     
     toRestore.forEach(uuid => {
-      // Create a unique placeholder element to use as source for this specific request
-      // This prevents HTMX from queuing/canceling requests (it defaults to body as source)
       const placeholder = document.createElement('div');
       placeholder.id = `${uuid}-placeholder`;
       placeholder.style.display = 'none';
@@ -247,7 +303,10 @@ ensureDefaultTab(windowEl) {
       });
     });
   },
-  
+
+initAllWindows() {
+  document.querySelectorAll('.window-wrapper').forEach(win => this.initWindow(win));
+},
 makeDraggable(windowEl) {
   const handle = windowEl.querySelector('.window-handle');
   if (!handle) return;
@@ -344,90 +403,152 @@ bringToFront(windowEl) {
     const windowsContainer = document.querySelector('#windows') || document.body;
     observer.observe(windowsContainer, { childList: true, subtree: true });
   },
-  setupControls() {
-    document.addEventListener('click', (e) => {
-      const windowEl = e.target.closest('.window-wrapper');
-      if (!windowEl) return;
-      // Persist active tab selection
-const tabBtn = e.target.closest('button[data-tab]');
-if (tabBtn) {
-  const windowEl = tabBtn.closest('.window-wrapper');
-  if (!windowEl) return;
+  hashPath(siteId, relPath) {
+  // Must match backend: sha256(path).slice(0, 12)
+  // Requires crypto.subtle (browser). We'll implement sync-ish via subtle+promise.
+  // But for rename we already receive oldHash/newHash from backend, so we mostly won't need this.
+},
 
-  const kind = this.getWindowKind(windowEl);
-  if (kind !== 'folder') return;
-
-  const siteUUID = windowEl.id;
-  const tabName = tabBtn.dataset.tab;
-
-  localStorage.setItem(
-    this.key('win-tab', siteUUID),
-    tabName
+getFileWindowEl(siteUUID, filePath) {
+  return document.querySelector(
+    `.window-wrapper[data-window-kind="file"][data-site-uuid="${CSS.escape(siteUUID)}"][data-path="${CSS.escape(filePath)}"]`
   );
-}
+},
 
-      
-      if (e.target.classList.contains('minimize')) {
-        const content = windowEl.querySelector('.hide-when-minimized');
-        if (content) {
-          const isMinimized = content.style.display === 'none';
-          content.style.display = isMinimized ? '' : 'none';
-          const kind = this.getWindowKind(windowEl);
-if (!kind) return;
 
-this.saveState(windowEl.id, { minimized: !isMinimized }, kind);
+// migrate all localStorage keys + open-site-windows id list + DOM id
+migrateWindowId(oldId, newId) {
+  if (!oldId || !newId || oldId === newId) return;
 
-          if (isMinimized) {
-            windowEl.classList.add('lg:w-2xl', 'w-full', 'lg:h-130');
-          } else {
-            windowEl.classList.remove('lg:w-2xl', 'w-full', 'lg:h-130');
-          }
-        }
-      }
-if (e.target.classList.contains('hide')) {
+  // 1) DOM id change (if element exists)
+  const el = document.getElementById(oldId);
+  if (el) el.id = newId;
+
+  // 2) Migrate persisted keys
+  ['win-pos', 'win-size', 'win-state', 'win-path', 'win-z', 'win-tab'].forEach(prefix => {
+    const oldKey = this.key(prefix, oldId);
+    const newKey = this.key(prefix, newId);
+
+    const val = localStorage.getItem(oldKey);
+    if (val !== null) {
+      localStorage.setItem(newKey, val);
+      localStorage.removeItem(oldKey);
+    }
+  });
+
+  // 3) open-site-windows (folder list, but we defensively migrate anyway)
+  const open = this.getOpenWindows();
+  const idx = open.indexOf(oldId);
+  if (idx !== -1) {
+    open[idx] = newId;
+    localStorage.setItem('open-site-windows', JSON.stringify(Array.from(new Set(open))));
+  }
+},
+
+closeWindow(windowEl) {
   const id = windowEl.id;
   const kind = this.getWindowKind(windowEl);
+
+  // Fallback: unknown window
   if (!kind) {
     windowEl.remove();
     return;
   }
 
-  // remove from the right open list
-  if (kind === 'file') {
-  const openFiles = JSON.parse(
-    localStorage.getItem('open-file-windows') || '[]'
-  ).filter(entry => {
-    console.log({id, windowElDataPath: windowEl.getAttribute('data-path')});
-    return !(
-      entry.site === windowEl.dataset.siteUuid &&
-      entry.path === windowEl.dataset.path
-    );
-  });
-  console.log({openFiles});
+  /* ---------------------------------
+   * 1. Remove from open-window tracking
+   * --------------------------------- */
 
-  localStorage.setItem(
-    'open-file-windows',
-    JSON.stringify(openFiles)
-  );
-}
- else {
+  if (kind === 'file') {
+    // Remove by site + path (authoritative)
+    const openFiles = JSON.parse(
+      localStorage.getItem('open-file-windows') || '[]'
+    ).filter(entry => {
+      return !(
+        entry.site === windowEl.dataset.siteUuid &&
+        entry.path === windowEl.dataset.path
+      );
+    });
+
+    localStorage.setItem(
+      'open-file-windows',
+      JSON.stringify(openFiles)
+    );
+
+    // Also defensively remove hashed ID
+    this.removeOpenWindow(id);
+  } else {
     this.removeOpenWindow(id);
   }
 
-  // remove kind-scoped keys
-  localStorage.removeItem(this.key('win-pos', id));
-  localStorage.removeItem(this.key('win-state', id));
-  localStorage.removeItem(this.key('win-path', id));
-  localStorage.removeItem(this.key('win-z', id));
-  if (kind === 'folder') {
-    localStorage.removeItem(this.key('win-tab', id));
-  }
+  /* ---------------------------------
+   * 2. Remove ALL persisted window state
+   * --------------------------------- */
+
+  [
+    'win-pos',
+    'win-size',
+    'win-state',
+    'win-path',
+    'win-z',
+    'win-tab'
+  ].forEach(prefix => {
+    localStorage.removeItem(this.key(prefix, id));
+  });
+
+  /* ---------------------------------
+   * 3. Remove the DOM element
+   * --------------------------------- */
 
   windowEl.remove();
-}
+},
 
-    });
-  },
+setupControls() {
+  document.addEventListener('click', (e) => {
+    const windowEl = e.target.closest('.window-wrapper');
+    if (!windowEl) return;
+    
+    // Persist active tab selection
+    const tabBtn = e.target.closest('button[data-tab]');
+    if (tabBtn) {
+      const windowEl = tabBtn.closest('.window-wrapper');
+      if (!windowEl) return;
+
+      const kind = this.getWindowKind(windowEl);
+      if (kind !== 'folder') return;
+
+      const siteUUID = windowEl.id;
+      const tabName = tabBtn.dataset.tab;
+
+      localStorage.setItem(
+        this.key('win-tab', siteUUID),
+        tabName
+      );
+    }
+    
+    if (e.target.classList.contains('minimize')) {
+      const content = windowEl.querySelector('.hide-when-minimized');
+      if (content) {
+        const isMinimized = content.style.display === 'none';
+        content.style.display = isMinimized ? '' : 'none';
+        const kind = this.getWindowKind(windowEl);
+        if (!kind) return;
+
+        this.saveState(windowEl.id, { minimized: !isMinimized }, kind);
+
+        if (isMinimized) {
+          windowEl.classList.add('lg:w-2xl', 'w-full', 'lg:h-130');
+        } else {
+          windowEl.classList.remove('lg:w-2xl', 'w-full', 'lg:h-130');
+        }
+      }
+    }
+    
+    if (e.target.classList.contains('hide')) {
+      this.closeWindow(windowEl);
+    }
+  });
+},
   
 loadPosition(id, kind) {
   try {

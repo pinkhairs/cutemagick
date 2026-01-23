@@ -3,10 +3,16 @@ data-path="{{path}}"
  data-site-uuid="{{siteUUID}}">
   <div class="window-handle h-full">
     <div class="flex items-center justify-between">
-      <h2 class="text-sm">{{title}}</h2>
+      <h2 class="text-sm">
+  <span
+    data-file-name
+    data-path="{{path}}"
+  >{{title}}</span>
+  <span class="opacity-60"> - {{siteName}}</span>
+</h2>
       <div class="flex items-center gap-2 text-lg">
         <button type="button" class="minimize text-gray-400 py-1 -top-px pl-6 pr-2 font-bold relative">&ndash;</button>
-        <button type="button" class="hide text-pink py-1 pl-2 font-bold relative">&times;</button>
+        <button type="button" class="hide text-rose-500 dark:text-pink py-1 pl-2 font-bold relative">&times;</button>
       </div>
     </div>
   </div>
@@ -17,8 +23,12 @@ data-path="{{path}}"
         id="site-toolbar"
         class="flex items-center gap-2 px-2 py-2 border-b border-gray-400 dark:border-gray-700 text-sm"
         >
-        <div class="flex items-center">
-          <span>🌍</span>
+        <div class="flex gap-1 items-center">
+          <a href="#" target="_blank">🌍</a>
+          <span>
+  /
+  <span data-file-path-display>{{path}}</span>
+</span>
         </div>
         <div class="flex items-center gap-4 ml-auto">
           <button

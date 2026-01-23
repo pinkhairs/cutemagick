@@ -5,7 +5,11 @@ import path from 'path';
 import db from '../../database.js';
 
 const SITES_ROOT = '/app/sites';
-import fs from 'fs';
+import fsSync from 'fs';
+import crypto from 'crypto';
+
+import fs from 'fs/promises';
+
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
@@ -91,6 +95,181 @@ function validateAndResolvePath(siteUUID, relativePath = '') {
   };
 }
 
+router.post('/:siteId/delete', async (req, res) => {
+  console.log('headers:', req.headers['content-type']);
+console.log('body:', req.body);
+  try {
+    const { siteId } = req.params;
+
+    // 🔑 Normalize paths from HTMX / forms
+    let { paths } = req.body;
+
+    if (typeof paths === 'string') {
+      paths = [paths];
+    }
+
+    if (!Array.isArray(paths) || paths.length === 0) {
+      return res.status(400).json({ error: 'Expected paths[]' });
+    }
+
+    const deleted = [];
+    const hashedPaths = [];
+
+    for (const relativePath of paths) {
+      let siteDir, fullPath;
+
+      ({ siteDir, fullPath } = validateAndResolvePath(siteId, relativePath));
+
+      // 🔒 symlink escape guard
+      try {
+        const real = await fs.realpath(fullPath);
+        const rel = path.relative(siteDir, real);
+
+        if (rel.startsWith('..') || path.isAbsolute(rel)) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
+      } catch {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      let stats;
+      try {
+        stats = await fs.stat(fullPath);
+      } catch (err) {
+        if (err.code === 'ENOENT') continue;
+        throw err;
+      }
+
+      if (stats.isDirectory()) {
+        await fs.rm(fullPath, { recursive: true, force: true });
+      } else {
+        await fs.unlink(fullPath);
+
+        const pathHash = crypto
+          .createHash('sha256')
+          .update(relativePath)
+          .digest('hex')
+          .slice(0, 12);
+
+        hashedPaths.push(`${siteId}-${pathHash}`);
+      }
+
+      deleted.push(relativePath);
+    }
+
+    // 🔔 HTMX event (works because request came from htmx.ajax)
+    res.set(
+      'HX-Trigger',
+      JSON.stringify({
+        'files:deleted': {
+          siteId,
+          paths: deleted,
+          hashedPaths
+        }
+      })
+    );
+
+    return res.sendStatus(204);
+
+  } catch (err) {
+    console.error('Delete failed:', err);
+
+    if (err.message === 'Site not found') {
+      return res.status(404).json({ error: 'Site not found' });
+    }
+    if (err.message === 'Forbidden') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    return res.status(500).json({ error: 'Failed to delete' });
+  }
+});
+
+router.post('/:siteId/rename', async (req, res) => {
+  try {
+    const { siteId } = req.params;
+    const { oldPath, newName } = req.body;
+
+    if (!oldPath || !newName) {
+      return res.status(400).json({ error: 'oldPath and newName required' });
+    }
+
+    if (
+      newName.includes('/') ||
+      newName.includes('\\') ||
+      newName === '.' ||
+      newName === '..'
+    ) {
+      return res.status(400).json({ error: 'Invalid new name' });
+    }
+
+    // Resolve old path
+    const { siteDir, fullPath: oldFullPath } =
+      validateAndResolvePath(siteId, oldPath);
+
+    // 🔒 realpath / symlink guard
+    try {
+      assertRealPathInside(siteDir, oldFullPath);
+    } catch {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Ensure old path exists
+    await fs.stat(oldFullPath);
+
+    // Build new path (same parent dir)
+    const parentDir = path.dirname(oldPath);
+    const newPath = parentDir === '.'
+      ? newName
+      : path.join(parentDir, newName);
+
+    const { fullPath: newFullPath } =
+      validateAndResolvePath(siteId, newPath);
+
+    // Prevent overwrite
+    try {
+      await fs.stat(newFullPath);
+      return res.status(409).json({
+        error: 'File or folder with that name already exists'
+      });
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
+    }
+
+    // Rename
+    await fs.rename(oldFullPath, newFullPath);
+
+    // 🔑 Stable hashes for window reconciliation
+    const hash = p =>
+      crypto.createHash('sha256').update(p).digest('hex').slice(0, 12);
+
+    const oldHash = `${siteId}-${hash(oldPath)}`;
+    const newHash = `${siteId}-${hash(newPath)}`;
+
+    return res.json({
+      success: true,
+      oldPath,
+      newPath,
+      oldHash,
+      newHash
+    });
+
+  } catch (err) {
+    console.error('Rename failed:', err);
+
+    if (err.message === 'Site not found') {
+      return res.status(404).json({ error: 'Site not found' });
+    }
+    if (err.message === 'Forbidden') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (err.code === 'ENOENT') {
+      return res.status(404).json({ error: 'File or folder not found' });
+    }
+
+    return res.status(500).json({ error: 'Failed to rename' });
+  }
+});
 
 // Create new folder
 router.post('/:siteId/new-folder', async (req, res) => {
@@ -232,51 +411,6 @@ router.post('/:siteId/rename', async (req, res) => {
   }
 });
 
-// Delete file or folder
-router.delete('/:siteId/delete', async (req, res) => {
-  try {
-    const { siteId } = req.params;
-    const { filePath } = req.body;
-    
-    if (!filePath) {
-      return res.status(400).json({ error: 'File path required' });
-    }
-    
-    const { siteDir, fullPath } = validateAndResolvePath(siteId, filePath);
-    
-    // 🔒 symlink guard (real filesystem check)
-    try {
-      assertRealPathInside(siteDir, fullPath);
-    } catch {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    
-    // Check if path exists
-    const stats = await fs.stat(fullPath);
-    
-    // Remove file or directory
-    if (stats.isDirectory()) {
-      await fs.rm(fullPath, { recursive: true, force: true });
-    } else {
-      await fs.unlink(fullPath);
-    }
-    
-    res.json({ success: true });
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      return res.status(404).json({ error: 'File not found' });
-    }
-    if (err.message === 'Site not found') {
-      return res.status(404).json({ error: 'Site not found' });
-    }
-    if (err.message === 'Forbidden') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    console.error('Error deleting:', err);
-    res.status(500).json({ error: 'Failed to delete' });
-  }
-});
-
 // Upload file
 router.post('/:siteId/upload', upload.single('file'), (req, res) => {
   res.sendStatus(200);
@@ -366,3 +500,4 @@ router.get('/:siteId/open', (req, res) => {
 });
 
 export default router;
+

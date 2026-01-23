@@ -1,97 +1,96 @@
 function isTextLikeFile(name) {
   // no extension → treat as text
   if (!name.includes('.')) return true;
-
+  
   const ext = name.split('.').pop().toLowerCase();
-
+  
   const TEXT_EXTS = [
     'txt', 'md', 'markdown',
     'js', 'ts', 'jsx', 'tsx',
     'json', 'yaml', 'yml',
     'html', 'htm', 'css',
     'php', 'py', 'go', 'rb',
-    'sh', 'bash',
-    'env', 'ini', 'conf',
+    'sh', 'bash', 'ini', 'conf',
     'sql', 'toml',
     'xml', 'svg'
   ];
-
+  
   return TEXT_EXTS.includes(ext);
 }
 
 function isBinaryLikeFile(name) {
   if (!name.includes('.')) return false;
-
+  
   const ext = name.split('.').pop().toLowerCase();
-
+  
   const BINARY_EXTS = [
     // images
     'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif',
-
+    
     // audio
     'mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac',
-
+    
     // video
     'mp4', 'webm', 'mov', 'avi', 'mkv',
-
+    
     // fonts
     'woff', 'woff2', 'ttf', 'otf',
-
+    
     // archives
     'zip', 'tar', 'gz', 'tgz', 'rar', '7z',
-
+    
     // binaries / misc
     'pdf', 'exe', 'bin', 'dmg', 'iso'
   ];
-
+  
   return BINARY_EXTS.includes(ext);
 }
 function openBinaryFile(siteId, path) {
   const params = new URLSearchParams({
     path
   });
-
+  
   fetch(`/files/${siteId}/open?${params.toString()}`)
-    .then(async res => {
-      if (!res.ok) throw new Error('Failed to resolve file URL');
-      return res.json();
-    })
-    .then(({ url }) => {
-      if (!url) return;
-      window.open(url, '_blank', 'noopener,noreferrer');
-    })
-    .catch(err => {
-      console.error('[openBinaryFile] failed:', err);
-    });
+  .then(async res => {
+    if (!res.ok) throw new Error('Failed to resolve file URL');
+    return res.json();
+  })
+  .then(({ url }) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  })
+  .catch(err => {
+    console.error('[openBinaryFile] failed:', err);
+  });
 }
 
 
 function openCodeWindow(siteUUID, path) {
   // Create human-readable ID to match server
   const treatedPath = path
-    .replace(/\//g, '-')
-    .replace(/\.[^.]+$/, '')
-    .replace(/[^a-zA-Z0-9-]/g, '')
-    .toLowerCase();
+  .replace(/\//g, '-')
+  .replace(/\.[^.]+$/, '')
+  .replace(/[^a-zA-Z0-9-]/g, '')
+  .toLowerCase();
   
   const windowId = `${siteUUID}-${treatedPath}`;
-
+  
   if (document.getElementById(windowId)) {
     DraggableWindows.bringToFront(document.getElementById(windowId));
     return;
   }
-
+  
   const container = document.querySelector('#windows');
   if (!container || !window.htmx) {
     return;
   }
-
+  
   const placeholder = document.createElement('div');
   placeholder.style.display = 'none';
   container.prepend(placeholder);
-
+  
   const url = `/sites/${siteUUID}/editor`;
-
+  
   window.htmx.ajax(
     'POST',
     url,
@@ -109,8 +108,6 @@ function openCodeWindow(siteUUID, path) {
 
 
 document.body.addEventListener('htmx:afterSwap', (e) => {
-  const newWindow = e.detail.target.querySelector('.window-wrapper:first-child');
-
   const mount = e.target.querySelector('.file-explorer[data-site-uuid]');
   if (!mount) return;
   
@@ -130,11 +127,11 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
       
       // Add the file name from entry to construct the full file path
       const filename = entry.name || entry.id;
-        // Construct full path: folder path + filename
+      // Construct full path: folder path + filename
       const fullPath = relPathIDs.length > 0 
-        ? `${relPathIDs.join('/')}/${filename}`
-        : filename;
-
+      ? `${relPathIDs.join('/')}/${filename}`
+      : filename;
+      
       if (isTextLikeFile(filename)) {
         openCodeWindow(uuid, fullPath);
       } else {
@@ -143,13 +140,13 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
       
       return false;
     },
-
+    
     tools: {
       new_folder: true,
       new_file: true,
       delete: true,
       upload: true,
-      download: true,
+      download: true
     },
     
     onrefresh(folder, required) {
@@ -185,172 +182,228 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
       
       xhr.Send();
     },
-onnewfolder: function(created, folder) {
-  const siteId = mount.dataset.siteUuid;
-  const parentPath = folder.GetPathIDs().slice(1).join('/');
-
-  const name = prompt('New folder name:');
-  if (!name) {
-    created(false); // user cancelled
-    return;
-  }
-
-  fetch(`/files/${siteId}/new-folder`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name,
-      parentPath
-    })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.success) throw new Error(data.error);
-
-      created({
-        id: data.folder.name,
-        name: data.folder.name,
-        type: 'folder'
-      });
-    })
-    .catch(err => {
-      created(err.message || 'Server error');
-    });
-},
-onnewfile: function(created, folder) {
-  const siteId = mount.dataset.siteUuid;
-  const parentPath = folder.GetPathIDs().slice(1).join('/');
-
-  const name = prompt('New file name:');
-  if (!name) {
-    created(false);
-    return;
-  }
-
-  fetch(`/files/${siteId}/new-file`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name,
-      parentPath,
-      content: ''
-    })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.success) throw new Error(data.error);
-
-      created({
-        id: data.file.name,
-        name: data.file.name,
-        type: 'file'
-      });
-    })
-    .catch(err => {
-      created(err.message || 'Server error');
-    });
-},
-    onrename: function(renamed, folder, entry, newname) {
+    onnewfolder: function(created, folder) {
       const siteId = mount.dataset.siteUuid;
       const parentPath = folder.GetPathIDs().slice(1).join('/');
-      const oldPath = parentPath ? `${parentPath}/${entry.id}` : entry.id;
       
-      const xhr = new this.PrepareXHR({
-        url: `/files/${siteId}/rename`,
+      const name = prompt('New folder name:');
+      if (!name) {
+        created(false); // user cancelled
+        return;
+      }
+      
+      fetch(`/files/${siteId}/new-folder`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        params: {
-          oldPath: oldPath,
-          newName: newname
-        },
-        onsuccess: function(e) {
-          const data = JSON.parse(e.target.response);
-          
-          if (data.success) {
-            entry.id = newname;
-            entry.name = newname;
-            renamed(entry);
-          } else {
-            renamed(data.error || 'Failed to rename');
-          }
-        },
-        onerror: function(e) {
-          renamed('Server error');
-        }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          parentPath
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) throw new Error(data.error);
+        
+        created({
+          id: data.folder.name,
+          name: data.folder.name,
+          type: 'folder'
+        });
+      })
+      .catch(err => {
+        created(err.message || 'Server error');
       });
-      
-      xhr.Send();
     },
-
-    ondelete: function(deleted, folder, ids, entries, recycle) {
+    onnewfile: function(created, folder) {
       const siteId = mount.dataset.siteUuid;
       const parentPath = folder.GetPathIDs().slice(1).join('/');
       
-      let completed = 0;
-      let hasError = false;
+      const name = prompt('New file name:');
+      if (!name) {
+        created(false);
+        return;
+      }
       
-      ids.forEach(id => {
-        const filePath = parentPath ? `${parentPath}/${id}` : id;
+      fetch(`/files/${siteId}/new-file`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          parentPath,
+          content: ''
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) throw new Error(data.error);
         
-        const xhr = new this.PrepareXHR({
-          url: `/files/${siteId}/delete`,
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          params: {
-            filePath: filePath
-          },
-          onsuccess: function(e) {
-            completed++;
-            const data = JSON.parse(e.target.response);
-            
-            if (!data.success) hasError = true;
-            
-            if (completed === ids.length) {
-              deleted(!hasError);
-            }
-          },
-          onerror: function(e) {
-            completed++;
-            hasError = true;
-            
-            if (completed === ids.length) {
-              deleted(false);
-            }
-          }
+        created({
+          id: data.file.name,
+          name: data.file.name,
+          type: 'file'
         });
-        
-        xhr.Send();
+      })
+      .catch(err => {
+        created(err.message || 'Server error');
       });
     },
-oninitupload: function(startupload, fileinfo) {
-  if (fileinfo.type === 'dir') {
-    startupload(false);
-    return;
-  }
+onrename: function (renamed, folder, entry, newname) {
+  const siteId = mount.dataset.siteUuid;
+  const parentPath = folder.GetPathIDs().slice(1).join('/');
+  const oldPath = parentPath ? `${parentPath}/${entry.id}` : entry.id;
 
-  fileinfo.url = `/files/${mount.dataset.siteUuid}/upload`;
-  fileinfo.fileparam = 'file';
+  console.group('[rename]');
+  console.log({ siteId, oldPath, newname });
 
-  fileinfo.params = {
-    // send path info so backend knows where to write
-    path: JSON.stringify(fileinfo.folder.GetPathIDs())
-  };
+  fetch(`/files/${siteId}/rename`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      oldPath,
+      newName: newname
+    })
+  })
+    .then(r => r.json())
+    .then(data => {
+      console.log('[rename] server response:', data);
 
-  startupload(true);
+      if (!data?.success) {
+        console.error('[rename] server error:', data?.error);
+        console.groupEnd();
+        renamed(data?.error || 'Rename failed');
+        return;
+      }
+
+      const { newPath, oldHash, newHash } = data;
+
+      /* ---------------------------------
+       * 1. Persist state FIRST (source of truth)
+       * --------------------------------- */
+
+      const open = JSON.parse(
+        localStorage.getItem('open-file-windows') || '[]'
+      );
+
+      const updated = open.map(f =>
+        f.site === siteId && f.path === oldPath
+          ? { ...f, path: newPath, id: newHash }
+          : f
+      );
+
+      localStorage.setItem(
+        'open-file-windows',
+        JSON.stringify(updated)
+      );
+
+      /* ---------------------------------
+       * 2. Locate live window by OLD PATH
+       * --------------------------------- */
+
+      let win = document.querySelector(
+        `[data-path="${CSS.escape(oldPath)}"]`
+      );
+
+      if (!win) {
+        console.warn('[rename] no open editor window found');
+        console.groupEnd();
+        renamed();
+        return;
+      }
+
+      /* ---------------------------------
+       * 3. Migrate window ID (manager owns DOM)
+       * --------------------------------- */
+
+      if (window.DraggableWindows && win.id !== newHash) {
+        DraggableWindows.migrateWindowId(win.id, newHash);
+      }
+
+      // Always re-acquire — migrate may replace the node
+      win = document.getElementById(newHash);
+
+      if (!win) {
+        console.warn('[rename] window lost after migration');
+        console.groupEnd();
+        renamed();
+        return;
+      }
+
+      /* ---------------------------------
+       * 4. Shallow DOM updates ONLY
+       * --------------------------------- */
+
+      win.dataset.path = newPath;
+
+      win.querySelector('[data-file-name]')?.replaceChildren(newname);
+
+      win.querySelector('[data-file-path-display]')
+        ?.replaceChildren(newPath);
+
+      win.querySelectorAll('[data-path]').forEach(el => {
+        el.dataset.path = newPath;
+      });
+
+      console.log('[rename] editor window updated', {
+        id: win.id,
+        path: newPath
+      });
+
+      console.groupEnd();
+
+      // SUCCESS — must be called with no args
+      renamed();
+    })
+    .catch(err => {
+      console.error('[rename] fetch failed:', err);
+      console.groupEnd();
+      renamed('Server error');
+    });
+},
+ondelete: function (deleted, folder, ids) {
+  if (!confirm('Are you sure?')) return;
+
+  const siteId = mount.dataset.siteUuid;
+  const parentPath = folder.GetPathIDs().slice(1).join('/');
+
+  const paths = ids.map(id =>
+    parentPath ? `${parentPath}/${id}` : id
+  );
+
+htmx.ajax('POST', `/files/${siteId}/delete`, {
+  values: { paths },
+  encoding: 'json'
+});
+
+deleted(true);
 },
 
-onfinishedupload: function(finalize, fileinfo) {
-  finalize(true);
-
-  // optional but recommended
-  fileinfo.folder.Refresh(true);
-},
-
-
+    
+    
+    oninitupload: function(startupload, fileinfo) {
+      if (fileinfo.type === 'dir') {
+        startupload(false);
+        return;
+      }
+      
+      fileinfo.url = `/files/${mount.dataset.siteUuid}/upload`;
+      fileinfo.fileparam = 'file';
+      
+      fileinfo.params = {
+        // send path info so backend knows where to write
+        path: JSON.stringify(fileinfo.folder.GetPathIDs())
+      };
+      
+      startupload(true);
+    },
+    
+    onfinishedupload: function(finalize, fileinfo) {
+      finalize(true);
+      
+      // optional but recommended
+      fileinfo.folder.Refresh(true);
+    },
+    
+    
     onfinishedupload: function(finalize, fileinfo) {
       finalize(true, {
         id: fileinfo.name,
@@ -359,10 +412,10 @@ onfinishedupload: function(finalize, fileinfo) {
         size: fileinfo.size
       });
     },
-
+    
     onuploaderror: function(fileinfo, e) {
     },
-
+    
     oninitdownload: function(startdownload, folder, ids, entries) {
       const siteId = mount.dataset.siteUuid;
       
@@ -380,11 +433,21 @@ onfinishedupload: function(finalize, fileinfo) {
         startdownload('Downloading multiple files/folders not yet implemented');
       }
     },
-
+    
     ondownloadstarted: function(options) {
     },
-
+    
     ondownloaderror: function(options) {
     }
+  });
+});
+
+document.addEventListener('files:deleted', (e) => {
+  const { hashedPaths } = e.detail || {};
+  if (!hashedPaths || !window.DraggableWindows) return;
+
+  hashedPaths.forEach(id => {
+    const win = document.getElementById(id);
+    if (win) DraggableWindows.closeWindow(win);
   });
 });
