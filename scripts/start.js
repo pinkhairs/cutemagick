@@ -10,11 +10,15 @@ if (isDev) {
     '-o', 'src/dashboard/assets/css/style.css',
     '--watch'
   ], { 
-    stdio: 'pipe',  // Changed from 'inherit' to capture output
+    stdio: 'pipe',
     shell: true 
   });
 
-  const app = spawn('node', ['src/index.js'], { stdio: 'inherit' });
+  const app = spawn(
+    'node',
+    ['--watch', 'src/index.js'],
+    { stdio: 'inherit' }
+  );
 
   process.on('SIGINT', () => {
     console.log('\nShutting down...');

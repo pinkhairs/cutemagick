@@ -1,5 +1,7 @@
 services:
   app:
+    environment:
+      - NODE_ENV=development
     build: .
     ports:
       - "3000:3000"
