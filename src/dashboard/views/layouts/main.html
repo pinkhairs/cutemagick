@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=SUSE:wght@100..800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/file-explorer.css" />
+  <title>Cute Magick</title>
+</head>
+<body class="flex-col justify-between flex text-gray-900 dark:text-white">
+  <header class="w-full bottom-0">
+    <div class="font-semibold p-4 w-full inline-flex large:text-lg gap-4 lg:gap-6 justify-between items-center">
+      <nav class="inline-flex text-sm lg:text-base items-center gap-4 lg:gap-6">
+        <button
+        hx-on:click="
+          const name = prompt('Enter site name:');
+          if (!name) return;
+          htmx.ajax('POST', '/sites', {
+            values: { name },
+            swap: 'none'
+          });
+        "
+        class="btn py-1! rainbow-tiler border-0! lg:px-4! text-black!">New Site</button>
+      </nav>
+      <nav class="inline-flex text-sm lg:text-base gap-4 lg:gap-6">
+        <div
+          class="cursor-pointer select-none"
+          data-tippy-content='
+            <div class="inline-block
+            rounded-2xl
+            text-white
+            shadow-lg">
+
+  <button
+    class="w-full text-left px-3 py-2"
+    data-action="copy-key">
+    📋 Copy public SSH key
+  </button>
+
+  <button
+    class="w-full text-left px-3 py-2"
+    data-action="rotate-key">
+    🔄 Rotate SSH key
+  </button>
+
+</div>
+
+          '
+          data-tippy-placement="bottom-start"
+          data-tippy-interactive="true"
+          data-tippy-trigger="click"
+        >
+          🔌 Connect
+        </div>
+        <button onclick="if (confirm('Ready to log out?')) {
+          htmx.ajax('POST', '/account/logout');
+          setTimeout(() => {}, 0);
+        }">🚪 Log Out</button>
+      </nav>
+    </div>
+  </header>
+  {{{body}}}
+  <main id="windows">
+  </main>
+  <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
+  <script src="/js/events.js"></script>
+  <script src="https://unpkg.com/popper.js@1"></script>
+  <script src="https://unpkg.com/tippy.js@5"></script>
+  <script src="/js/htmx.min.js" defer></script>
+  <script src="/js/DraggableWindows.js" defer></script>
+  <script src="/js/file-explorer.js" defer></script>
+  <script src="/js/mount-file-explorer.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js"></script>
+  <script src="/js/mount-code-editor.js"></script>
+  <script src="/js/save-file.js"></script>
+
+<script>
+  (function restoreFileWindowsOnce() {
+    let restored = false;
+
+    document.body.addEventListener('htmx:afterOnLoad', (e) => {
+      if (restored) {
+        return;
+      }
+
+      restored = true;
+
+      const raw = localStorage.getItem('open-file-windows');
+
+      let files;
+      try {
+        files = JSON.parse(raw || '[]');
+      } catch (err) {
+        console.error('[restore-files] failed to parse open-file-windows', err);
+        return;
+      }
+
+      if (!Array.isArray(files) || files.length === 0) {
+        return;
+      }
+
+      files.forEach(({ site, path }) => {
+        if (!site || !path) {
+          return;
+        }
+
+        htmx.ajax('POST', `/sites/${site}/editor`, {
+          target: '#windows',
+          swap: 'afterbegin',
+          values: { path }
+        });
+      });
+    });
+  })();
+</script>
+
+
+  <script>
+    function initTippy(root = document) {
+      if (!window.tippy) return;
+
+      root.querySelectorAll('[data-tippy-content]').forEach(el => {
+        if (!el._tippy) {
+          tippy(el, {
+            placement: 'bottom'
+          });
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initTippy();
+    });
+
+    document.body.addEventListener('htmx:afterSwap', (e) => {
+      initTippy(e.target);
+    });
+  </script>
+
+<script>
+  function forceCopy(text) {
+    const input = document.createElement('input');
+    input.value = text;
+
+    // Make it focusable & invisible
+    input.style.position = 'fixed';
+    input.style.top = '-1000px';
+    input.style.left = '-1000px';
+
+    document.body.appendChild(input);
+
+    input.focus();
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+
+    const success = document.execCommand('copy');
+    document.body.removeChild(input);
+
+    return success;
+  }
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const action = btn.dataset.action;
+
+    try {
+      if (action === 'copy-key') {
+        const res = await fetch('/connect/public-key', {
+          method: 'POST',
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch key');
+
+        const key = await res.text();
+
+        // 🔑 THE IMPORTANT PART
+        const copied = forceCopy(key);
+
+        if (!copied) {
+          alert('Copy failed. Please copy manually:\n\n' + key);
+          return;
+        }
+
+        alert('Your public SSH key has been copied to your clipboard!');
+      }
+
+      if (action === 'rotate-key') {
+        const ok = confirm(
+          'Are you sure? This will disable your existing key.'
+        );
+        if (!ok) return;
+
+        const res = await fetch('/connect/rotate-key', {
+          method: 'POST',
+        });
+
+        if (!res.ok) throw new Error('Failed to rotate key');
+
+        alert('Your SSH key has been rotated.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Something went wrong. Please try again.');
+    }
+  });
+</script>
+<script>
+document.addEventListener('click', function(e) {
+  const tab = e.target.closest('[data-tab]');
+  if (tab) {
+    // Remove data-active from all tabs in this window
+    tab.closest('.window').querySelectorAll('[data-tab]').forEach(el => {
+      delete el.dataset.active;
+    });
+    
+    // Set active on clicked tab after HTMX processes
+    setTimeout(() => {
+      tab.dataset.active = 'true';
+    }, 0);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<div class="p-4">
+  <div class="history-notices space-y-3 mb-4">
+    <h2 class="font-bold text-xl">
+      History
+    </h2>
+
+    <p class="mt-1 pb-1">
+      This is your time machine. Every change is recorded here.
+    </p>
+
+    <!-- Notice 2: Read-only -->
+    <div class="flex gap-3 rounded-md border border-gray-400 dark:border-gray-700
+                bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
+
+      <div class="text-lg">🔒</div>
+
+      <p>You can't edit your history, but you can travel in time. <span
+          class="inline-flex items-center justify-center ml-1
+                w-4 h-4 rounded-full border border-gray-500
+                text-xs cursor-help"
+          data-tippy-content="You can jump back and forth to any point in history without fear. Every change is preserved."
+        >
+          ?
+        </span></p>
+    </div>
+
+    <!-- Notice 3: Going live -->
+    <div class="flex gap-3 rounded-md border border-gray-400 dark:border-gray-700
+                bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
+
+      <div class="text-lg">🌍</div>
+
+      <p>Your changes are private until you share a link.</p>
+    </div>
+
+  </div>
+  
+<ul class="space-y-1 max-w-3xl">
+  
+  <!-- DRAFTS SECTION LABEL -->
+  <li class="px-2 py-1">
+    <div class="flex items-center justify-between">
+      <div class="text-xs uppercase tracking-wider">
+      Drafts
+  </div>
+</div>
+  </li>
+  
+  <!-- DRAFT CHECKPOINT -->
+  <li class="flex items-center gap-4 px-3 py-2 rounded-md
+             bg-yellow-50 border border-yellow-200
+             dark:bg-yellow-900/20 dark:border-yellow-700"
+      data-id="snap-001"
+      data-kind="checkpoint"
+      data-scope="draft">
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 font-bold truncate">
+        <span>Before major redesign</span>
+
+        <!-- Checkpoint actions (left) -->
+        <button class="text-sm hover:scale-110 transition"
+                aria-label="Edit checkpoint"
+                data-tippy-content="Edit the checkpoint.">
+          ✏️
+        </button>
+      </div>
+
+      <div class="text-sm flex items-center gap-2 text-gray-500 dark:text-gray-400 mt-0.5">
+        <time datetime="2026-01-18T08:00:00Z">2 hours ago</time>
+
+        <button class="font-bold text-sm hover:scale-110 transition text-green-600 dark:text-green-400"
+                aria-label="Go live from here"
+                data-tippy-content="Make this the live version of your site.">
+          Go live
+        </button>
+      </div>
+    </div>
+
+    <!-- Right actions -->
+    <div class="flex gap-3 shrink-0">
+      <button aria-label="Share this version"
+              data-tippy-content="Download this site version.">⬇️</button>
+      <button aria-label="Preview this version"
+              data-tippy-content="Preview this version privately.">👀</button>
+      <button aria-label="Share this version"
+              data-tippy-content="Copy or view the shareable link for this version.">🔗</button>
+    </div>
+  </li>
+  <li class="flex items-center gap-4 px-3 py-2 rounded-md
+             bg-yellow-50 border border-yellow-200
+             dark:bg-yellow-900/20 dark:border-yellow-700"
+      data-id="snap-001"
+      data-kind="checkpoint"
+      data-scope="draft">
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 font-bold truncate">
+        <span>Old site final tweaks</span>
+
+        <!-- Checkpoint actions (left) -->
+        <button class="text-sm hover:scale-110 transition"
+                aria-label="Edit checkpoint"
+                data-tippy-content="Edit the checkpoint.">
+          ✏️
+        </button>
+
+      </div>
+
+      <div class="text-sm flex items-center gap-2 text-gray-500 dark:text-gray-400 mt-0.5">
+        <time datetime="2026-01-18T08:00:00Z">2 hours ago</time>
+        <button class="text-sm font-bold hover:scale-110 transition text-blue-600 dark:text-blue-400"
+                aria-label="Restore this version"
+                data-tippy-content="Restore your files to this point.">
+          Go back
+        </button>
+
+        <button class="text-sm font-bold hover:scale-110 transition text-green-600 dark:text-green-400"
+                aria-label="Go live from here"
+                data-tippy-content="Make this the live version of your site.">
+          Go live
+        </button>
+      </div>
+    </div>
+
+    <!-- Right actions -->
+    <div class="flex gap-3 shrink-0">
+      <button aria-label="Share this version"
+              data-tippy-content="Download this site version.">⬇️</button>
+      <button aria-label="Preview this version"
+              data-tippy-content="Preview this version privately.">👀</button>
+      <button aria-label="Share this version"
+              data-tippy-content="Copy or view the shareable link for this version.">🔗</button>
+    </div>
+  </li>
+  
+  <!-- DRAFT SAVE -->
+  <li class="flex items-center gap-4 px-2 py-2 rounded-md
+             hover:bg-gray-50 dark:hover:bg-gray-800"
+      data-id="snap-002"
+      data-kind="change"
+      data-scope="draft">
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 text-sm truncate">
+        <span>Saved index.html</span>
+
+
+        <button class="text-sm font-bold hover:scale-110 transition text-purple-600 dark:text-purple-400"
+                aria-label="Restore this version"
+                data-tippy-content="Preview the file version.">
+          Preview
+        </button>
+        <button class="text-xs hover:scale-110 transition"
+                aria-label="Edit checkpoint"
+                data-tippy-content="Add a checkpoint.">
+          ➕
+        </button>
+      </div>
+
+      <div class="text-xs flex items-center gap-2 text-gray-500 dark:text-gray-400 mt-0.5">
+        <time datetime="2026-01-18T09:15:00Z">45 minutes ago</time>
+
+        <button class="text-xs font-bold hover:scale-110 transition text-blue-600 dark:text-blue-400"
+                aria-label="Restore this version"
+                data-tippy-content="Restore your files to this point.">
+          Go back
+        </button>
+      </div>
+    </div>
+
+    <div class="flex gap-3 shrink-0">
+      <button aria-label="Share this version"
+              data-tippy-content="Download this site version.">⬇️</button>
+      <button aria-label="Preview this version"
+              data-tippy-content="Preview this version privately.">👀</button>
+      <button aria-label="Share this version"
+              data-tippy-content="Copy or view the shareable link for this version.">🔗</button>
+    </div>
+  </li>
+  
+  <!-- DRAFT DELETE -->
+  <li class="flex items-center gap-4 px-2 py-2 rounded-md
+             hover:bg-gray-50 dark:hover:bg-gray-800"
+      data-id="snap-005"
+      data-kind="change"
+      data-action="delete"
+      data-scope="draft">
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 text-sm truncate">
+        <span class="line-through opacity-70">Deleted old-logo.png</span>
+
+        <button class="text-sm font-bold hover:scale-110 transition text-yellow-600 dark:text-yellow-300"
+                aria-label="Restore this version"
+                data-tippy-content="Restore just this file.">
+          Restore
+        </button>
+        <button class="text-xs hover:scale-110 transition"
+                aria-label="Edit checkpoint"
+                data-tippy-content="Add a checkpoint.">
+          ➕
+        </button>
+      </div>
+
+      <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        <time datetime="2026-01-18T08:30:00Z">2 hours ago</time>
+        <button class="text-xs font-bold hover:scale-110 transition text-blue-600 dark:text-blue-400"
+                aria-label="Restore this version"
+                data-tippy-content="Restore your files to this point.">
+          Go back
+        </button>
+      </div>
+    </div>
+
+    <div class="flex gap-3 shrink-0">
+      <button aria-label="Share this version"
+              data-tippy-content="Download this site version.">⬇️</button>
+      <button aria-label="Preview this version"
+              data-tippy-content="Preview this version privately.">👀</button>
+      <button aria-label="Share this version"
+              data-tippy-content="Copy or view the shareable link for this version.">🔗</button>
+    </div>
+  </li>
+  
+  <!-- LIVE SECTION LABEL -->
+  <li class="text-xs uppercase tracking-wider px-2 py-1 mt-6 dark:text-gray-400">
+    Live
+  </li>
+  
+  <!-- CURRENT LIVE -->
+  <li class="flex items-center gap-4 px-3 py-2 rounded-md
+             bg-green-50 border border-green-200
+             dark:bg-green-900/20 dark:border-green-700"
+      data-id="snap-006"
+      data-kind="checkpoint"
+      data-scope="live"
+      data-live="true">
+
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 font-bold truncate">
+        <span>Launch v2.0</span>
+
+        <button class="text-sm hover:scale-110 transition"
+                aria-label="Edit checkpoint"
+                data-tippy-content="Edit the checkpoint.">
+          ✏️
+        </button>
+      </div>
+
+      <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+        <time datetime="2026-01-17T14:00:00Z">Yesterday</time>
+      </div>
+    </div>
+
+    <button aria-label="Share this version"
+            data-tippy-content="Download this site version.">⬇️</button>
+    <!-- Public site link -->
+    <div class="shrink-0">
+      <a href="#"
+         aria-label="View live site"
+         data-tippy-content="Open the live site in a new tab."
+         class="text-lg hover:scale-110 transition">
+        🌍
+      </a>
+    </div>
+  </li>
+
+</ul>
+
+
+  <script>
+    // Active row handling (mobile tap support)
+    document.addEventListener('click', (e) => {
+      const row = e.target.closest('li[data-id]');
+      if (!row) {
+        // Clicked outside - clear all active states
+        document.querySelectorAll('li.is-active').forEach(r => {
+          r.classList.remove('is-active');
+        });
+        return;
+      }
+
+      // Toggle active state
+      const wasActive = row.classList.contains('is-active');
+      document.querySelectorAll('li.is-active').forEach(r => {
+        r.classList.remove('is-active');
+      });
+      
+      if (!wasActive) {
+        row.classList.add('is-active');
+        // Make actions visible on mobile
+        const actions = row.querySelector('div:last-child');
+        if (actions) {
+          actions.classList.remove('opacity-0', 'pointer-events-none');
+          actions.classList.add('opacity-100', 'pointer-events-auto');
+        }
+      }
+    });
+
+    // Button click handlers (declarative only)
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      const row = btn.closest('li[data-id]');
+      const id = row?.dataset.id;
+    });
+  </script>
+</div>

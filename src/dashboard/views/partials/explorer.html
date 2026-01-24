@@ -1,0 +1,61 @@
+<div>
+  <div
+  id="site-toolbar"
+  class="flex items-center gap-2 px-2 py-2 border-b border-gray-400 dark:border-gray-700 text-sm"
+  >
+  <div class="flex gap-3 items-center">
+    <a href="#" target="_blank">🌍</a>
+    <button
+  hx-get="/sites/{{uuid}}/commits/count"
+  hx-trigger="load, commitsChanged from:body"
+  hx-swap="innerHTML"
+  onclick="
+    const tab = this.closest('.window')
+      ?.querySelector(`[data-tab='history']`);
+    if (tab) tab.click();
+  "
+  class="text-sm opacity-80 hover:opacity-100"
+>
+  …
+</button>
+
+  </div>
+  
+  <div class="flex items-center gap-4 ml-auto">
+    <button
+    id="preview-btn"
+    class="btn-secondary"
+    type="button"
+    >
+    👁 Preview
+  </button>
+  
+  <button
+  id="publish-btn"
+  class="btn-primary"
+  type="button"
+  onclick="prompt('This will make all your changes live instantly. Ready? Enter a message describing this version:')"
+  >
+  🚀 Go Live
+</button>
+</div>
+<!-- <div class="flex items-center gap-2">
+    <span data-tippy-content="Go to the History tab to review changes or add checkpoints">Last change 2 days ago</span>
+</div>
+
+<div class="flex items-center gap-2 ml-auto">
+  
+  <span class="inline-flex items-center gap-2">
+    <div class="bg-mint size-2 rounded-full"></div> LIVE 
+  </span>
+  <button>🌍</button>
+</div> -->
+</div>
+
+<div
+id="explorer-mount-{{uuid}}"
+data-site-uuid="{{uuid}}"
+hx-boost="false"
+class="file-explorer text-black h-101 w-full relative"
+></div>
+</div>

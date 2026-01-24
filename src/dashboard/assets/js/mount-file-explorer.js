@@ -132,10 +132,10 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
       ? `${relPathIDs.join('/')}/${filename}`
       : filename;
       
-      if (isTextLikeFile(filename)) {
-        openCodeWindow(uuid, fullPath);
-      } else {
+      if (isBinaryLikeFile(filename)) {
         openBinaryFile(uuid, fullPath);
+      } else {
+        openCodeWindow(uuid, fullPath);
       }
       
       return false;
@@ -236,6 +236,8 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
       .then(r => r.json())
       .then(data => {
         if (!data.success) throw new Error(data.error);
+
+        CuteMagickEvents.commitsChanged(siteId);
         
         created({
           id: data.file.name,
@@ -352,6 +354,8 @@ onrename: function (renamed, folder, entry, newname) {
 
       // SUCCESS — must be called with no args
       renamed();
+
+        CuteMagickEvents.commitsChanged(siteId);
     })
     .catch(err => {
       console.error('[rename] fetch failed:', err);
@@ -369,12 +373,21 @@ ondelete: function (deleted, folder, ids) {
     parentPath ? `${parentPath}/${id}` : id
   );
 
-htmx.ajax('POST', `/files/${siteId}/delete`, {
-  values: { paths },
-  encoding: 'json'
-});
+fetch(`/files/${siteId}/delete`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ paths })
+})
+  .then(r => r.json())
+  .then(data => {
+    if (!data.success) throw new Error(data.error);
+    CuteMagickEvents.commitsChanged(siteId);
+  })
+  .catch(console.error);
+
 
 deleted(true);
+
 },
 
     
@@ -396,25 +409,29 @@ deleted(true);
       startupload(true);
     },
     
-    onfinishedupload: function(finalize, fileinfo) {
-      finalize(true);
-      
-      // optional but recommended
-      fileinfo.folder.Refresh(true);
-    },
     
-    
-    onfinishedupload: function(finalize, fileinfo) {
-      finalize(true, {
-        id: fileinfo.name,
-        name: fileinfo.name,
-        type: 'file',
-        size: fileinfo.size
-      });
-    },
-    
-    onuploaderror: function(fileinfo, e) {
-    },
+onfinishedupload: function(finalize, fileinfo) {
+  const resp = fileinfo.response;
+
+  // If server returned an error JSON, treat as failure
+  if (!resp || resp.error) {
+    finalize(resp?.error || 'Upload failed');
+    return;
+  }
+
+  // Success: resp should be the entry object
+  finalize(true, resp);
+  
+  setTimeout(() => {
+    CuteMagickEvents.commitsChanged(mount.dataset.siteUuid);
+  
+  }, 1000)
+  fileinfo.folder.Refresh(true);
+},
+onuploaderror: function(fileinfo, e) {
+  console.error('[upload] failed', e);
+},
+
     
     oninitdownload: function(startdownload, folder, ids, entries) {
       const siteId = mount.dataset.siteUuid;

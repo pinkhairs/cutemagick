@@ -2,7 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import db from '../../database.js';
 import {
-  generateRandomSubdomain,
+  getUniqueFolderNameSuffix,
   slugify
 } from '../lib/siteNaming.js';
 import fs from 'fs/promises';
@@ -12,6 +12,10 @@ import multer from 'multer';
 const upload = multer();
 const router = express.Router();
 const SITES_DIR = path.resolve(process.cwd(), 'sites');
+import {
+  countCommitsSince
+} from '../lib/gitService.js'; // adjust path as needed
+
 
 router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
   const name = req.body.name?.trim();
@@ -20,11 +24,11 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
   }
 
   const uuid = crypto.randomUUID();
-  const randomPart = generateRandomSubdomain();
   const slug = slugify(name);
+  const suffix = await getUniqueFolderNameSuffix(SITES_DIR, slug);
 
   const domain = ``;
-  const directory = `${slug}-${randomPart}`;
+  const directory = `${slug}${suffix}`;
   const now = new Date().toISOString();
 
   const sitePath = path.join(SITES_DIR, directory);
@@ -225,7 +229,11 @@ router.post('/:uuid/files/list', upload.none(), async (req, res) => {
   }
 
   const entries = await listDirectory(siteRoot, safeRelPath.split('/').filter(Boolean));
-  res.json(entries);
+  const HIDDEN_NAMES = new Set(['.env', '.git']);
+
+  const filtered = entries.filter(entry => !HIDDEN_NAMES.has(entry.name));
+
+  res.json(filtered);
 });
 
 router.get('/:uuid/history', (req, res) => {
@@ -433,6 +441,37 @@ router.get('/', (req, res) => {
     layout: false,
   });
 });
+router.get('/:uuid/commits/count', async (req, res) => {
+  const { uuid } = req.params;
+
+  const site = db
+    .prepare('SELECT live_commit FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) {
+    return res.status(404).send('');
+  }
+
+  let count = 0;
+  try {
+    count = await countCommitsSince({
+      siteId: uuid,
+      sinceCommit: site.live_commit
+    });
+  } catch (err) {
+    console.error('Commit count failed:', err);
+    return res.type('text/plain').send('');
+  }
+
+  if (count === 0) {
+    return res.type('text/plain').send('No changes');
+  }
+
+  res
+    .type('text/plain')
+    .send(`${count} change${count === 1 ? '' : 's'}`);
+});
+
 
 
 export default router;
