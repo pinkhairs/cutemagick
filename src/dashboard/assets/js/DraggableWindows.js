@@ -147,26 +147,26 @@ if (kind === 'file') {
   }
 }
 
+// ----- TAB RESTORE SHOULD ALWAYS RUN -----
+if (kind === 'folder') {
+  const savedTab = localStorage.getItem(this.key('win-tab', uuid));
+  const tabToOpen = savedTab || 'view';
 
-  if (!this.isLargeScreen) return;
-
-  // Open default tab for folder windows (if no saved tab exists)
-  if (kind === 'folder') {
-    const savedTab = localStorage.getItem(this.key('win-tab', uuid));
-    const tabToOpen = savedTab || 'view';
-    
-    // If no saved tab, save 'view' as default
-    if (!savedTab) {
-      localStorage.setItem(this.key('win-tab', uuid), 'view');
-    }
-    
-    // Open the tab after HTMX settles
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        this.openTab(windowEl, tabToOpen);
-      });
-    });
+  if (!savedTab) {
+    localStorage.setItem(this.key('win-tab', uuid), 'view');
   }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      this.openTab(windowEl, tabToOpen);
+    });
+  });
+}
+
+// ----- MOBILE: STOP HERE -----
+if (!this.isLargeScreen) {
+  return;
+}
 
   // Load saved position
   const savedPos = this.loadPosition(uuid, kind);
