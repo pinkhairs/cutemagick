@@ -114,7 +114,7 @@ function resolveCommitMessage(userMessage, fallback) {
   if (typeof userMessage === 'string' && userMessage.trim()) {
     return userMessage.trim();
   }
-  return `Cute Magick: ${fallback}`;
+  return fallback;
 }
 
 async function commitIfStaged(sitePath, message) {
@@ -351,6 +351,6 @@ export async function commitInitialScaffold({ siteId, message }) {
     siteId,
     action: 'Create site',
     stageAll: true,
-    message: message || 'Cute Magick: Create site'
+    message: message || 'Create site'
   });
 }
