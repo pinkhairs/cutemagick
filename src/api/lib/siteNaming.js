@@ -7,6 +7,7 @@ import {
   countries,
   names
 } from 'unique-names-generator';
+import fs from 'fs/promises';
 
 function shuffleArray(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -53,4 +54,43 @@ export function slugify(str) {
     .replace(/[^a-zA-Z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
     .toLowerCase();
+}
+
+export async function getUniqueFolderNameSuffix(sitesDir, slug) {
+  let entries;
+
+  try {
+    entries = await fs.readdir(sitesDir, { withFileTypes: true });
+  } catch {
+    // If sites dir doesn't exist yet, no suffix needed
+    return '';
+  }
+
+  const used = new Set();
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+
+    if (entry.name === slug) {
+      used.add(1);
+      continue;
+    }
+
+    const match = entry.name.match(
+      new RegExp(`^${slug}-(\\d+)$`)
+    );
+
+    if (match) {
+      used.add(Number(match[1]));
+    }
+  }
+
+  if (!used.has(1)) {
+    return '';
+  }
+
+  let i = 2;
+  while (used.has(i)) i++;
+
+  return `-${i}`;
 }

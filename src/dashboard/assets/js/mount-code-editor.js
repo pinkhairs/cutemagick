@@ -162,6 +162,8 @@ function initializeEditor(editorEl) {
   if (!editorEl.id) {
     editorEl.id = `editor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
+
+  const windowEl = editorEl.closest('.window');
   
   try {
     const editor = ace.edit(editorEl.id);
@@ -205,6 +207,21 @@ function initializeEditor(editorEl) {
     });
     
     editorEl.classList.add('ace-initialized');
+    // 🔹 Mark editor as clean on init
+if (windowEl && window.CuteMagickSaveState) {
+  window.CuteMagickSaveState.markClean(windowEl);
+}
+
+
+// 🔹 Track changes → mark dirty
+if (windowEl && window.CuteMagickSaveState && !editor._dirtyTrackingAttached) {
+  editor._dirtyTrackingAttached = true;
+
+  editor.session.on('change', () => {
+    window.CuteMagickSaveState.markDirty(windowEl);
+  });
+}
+
   } catch (error) {
     console.error('❌ Error initializing ACE editor:', error);
   }

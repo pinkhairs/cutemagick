@@ -3,8 +3,22 @@
   id="site-toolbar"
   class="flex items-center gap-2 px-2 py-2 border-b border-gray-400 dark:border-gray-700 text-sm"
   >
-  <div class="flex items-center">
-    <span data-tippy-content="Go to the History tab to review changes or add checkpoints">4 changes</span>
+  <div class="flex gap-3 items-center">
+    <a href="#" target="_blank">🌍</a>
+    <button
+  hx-get="/sites/{{uuid}}/commits/count"
+  hx-trigger="load, commitsChanged from:body"
+  hx-swap="innerHTML"
+  onclick="
+    const tab = this.closest('.window')
+      ?.querySelector(`[data-tab='history']`);
+    if (tab) tab.click();
+  "
+  class="text-sm opacity-80 hover:opacity-100"
+>
+  …
+</button>
+
   </div>
   
   <div class="flex items-center gap-4 ml-auto">

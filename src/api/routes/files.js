@@ -7,46 +7,39 @@ import db from '../../database.js';
 const SITES_ROOT = '/app/sites';
 import fsSync from 'fs';
 import crypto from 'crypto';
+import { commitFileCreate, commitFileDelete, commitFileUpload, commitFileEdit } from '../lib/gitService.js';
 
 import fs from 'fs/promises';
-
+const BLOCKED_NAMES = new Set(['.env', '.git']);
 
 const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    try {
-      const siteId = req.params.siteId;
+destination(req, file, cb) {
+  const siteId = req.params.siteId;
 
-      // ✅ CORRECT: sites.directory
-      const row = db
-        .prepare('SELECT directory FROM sites WHERE uuid = ?')
-        .get(siteId);
+  try {
+    const row = db
+      .prepare('SELECT directory FROM sites WHERE uuid = ?')
+      .get(siteId);
 
-      if (!row || !row.directory) {
-        throw new Error('Site directory not found');
-      }
-
-      const folderPath = JSON.parse(req.body.path || '[]');
-
-      const safeParts = folderPath.filter(
-        p => typeof p === 'string' &&
-             !p.includes('..') &&
-             !p.includes('/')
-      );
-
-      const dest = path.join(
-        '/app/sites',
-        row.directory,
-        ...safeParts
-      );
-
-      fs.mkdirSync(dest, { recursive: true });
-
-      cb(null, dest);
-    } catch (err) {
-      cb(err);
+    if (!row?.directory) {
+      return cb(new Error('Site directory not found'));
     }
-  },
 
+    const folderPath = JSON.parse(req.body.path || '[]');
+
+    const safeParts = folderPath.filter(
+      p => typeof p === 'string' && !p.includes('..') && !p.includes('/')
+    );
+
+    const dest = path.join('/app/sites', row.directory, ...safeParts);
+
+    fsSync.mkdirSync(dest, { recursive: true });
+
+    cb(null, dest);
+  } catch (err) {
+    cb(err);
+  }
+},
   filename(req, file, cb) {
     cb(null, file.originalname);
   }
@@ -95,13 +88,73 @@ function validateAndResolvePath(siteUUID, relativePath = '') {
   };
 }
 
+// Save / edit file
+router.post('/:siteId/save', async (req, res) => {
+  try {
+    const { siteId } = req.params;
+    const { path: filePath, content, message = null } = req.body;
+
+    if (!filePath || typeof content !== 'string') {
+      return res.status(400).json({ error: 'Missing path or content' });
+    }
+
+    const { siteDir, fullPath } = validateAndResolvePath(siteId, filePath);
+
+    // 🔒 symlink escape guard
+    try {
+      assertRealPathInside(siteDir, fullPath);
+    } catch {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Ensure file exists
+    const stat = await fs.stat(fullPath);
+    if (!stat.isFile()) {
+      return res.status(400).json({ error: 'Not a file' });
+    }
+
+    // Write contents
+    await fs.writeFile(fullPath, content, 'utf8');
+
+    // Git commit (single-file edit)
+    await commitFileEdit({
+      siteId,
+      filePath,
+      message
+    });
+
+    // 🔔 HTMX / UI signal
+    res.set(
+      'HX-Trigger-After-Settle',
+      JSON.stringify({
+        'file:saved': {
+          siteId,
+          path: filePath
+        },
+        commitsChanged: true
+      })
+    )
+
+    res.sendStatus(204);
+  } catch (err) {
+    console.error('[save] failed:', err);
+
+    if (err.message === 'Site not found') {
+      return res.status(404).json({ error: 'Site not found' });
+    }
+    if (err.message === 'Forbidden') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    res.status(500).json({ error: 'Failed to save file' });
+  }
+});
+
+
 router.post('/:siteId/delete', async (req, res) => {
-  console.log('headers:', req.headers['content-type']);
-console.log('body:', req.body);
   try {
     const { siteId } = req.params;
 
-    // 🔑 Normalize paths from HTMX / forms
     let { paths } = req.body;
 
     if (typeof paths === 'string') {
@@ -115,10 +168,13 @@ console.log('body:', req.body);
     const deleted = [];
     const hashedPaths = [];
 
+    let siteDirForCommit; // ✨ remember once
+
     for (const relativePath of paths) {
       let siteDir, fullPath;
 
       ({ siteDir, fullPath } = validateAndResolvePath(siteId, relativePath));
+      siteDirForCommit ??= siteDir; // ✨ capture repo root
 
       // 🔒 symlink escape guard
       try {
@@ -156,21 +212,19 @@ console.log('body:', req.body);
 
       deleted.push(relativePath);
     }
-
-    // 🔔 HTMX event (works because request came from htmx.ajax)
-    res.set(
-      'HX-Trigger',
-      JSON.stringify({
-        'files:deleted': {
+      // after the for-loop, before sending the response
+      if (deleted.length > 0) {
+        await commitFileDelete({
           siteId,
-          paths: deleted,
-          hashedPaths
-        }
-      })
-    );
-
-    return res.sendStatus(204);
-
+          paths: deleted
+        });
+      }
+res.status(200).json({
+  success: true,
+  deleted,        // array of relative paths actually removed
+  requested: paths, // what the client asked for
+  commitsChanged: deleted.length > 0
+});
   } catch (err) {
     console.error('Delete failed:', err);
 
@@ -185,92 +239,6 @@ console.log('body:', req.body);
   }
 });
 
-router.post('/:siteId/rename', async (req, res) => {
-  try {
-    const { siteId } = req.params;
-    const { oldPath, newName } = req.body;
-
-    if (!oldPath || !newName) {
-      return res.status(400).json({ error: 'oldPath and newName required' });
-    }
-
-    if (
-      newName.includes('/') ||
-      newName.includes('\\') ||
-      newName === '.' ||
-      newName === '..'
-    ) {
-      return res.status(400).json({ error: 'Invalid new name' });
-    }
-
-    // Resolve old path
-    const { siteDir, fullPath: oldFullPath } =
-      validateAndResolvePath(siteId, oldPath);
-
-    // 🔒 realpath / symlink guard
-    try {
-      assertRealPathInside(siteDir, oldFullPath);
-    } catch {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-
-    // Ensure old path exists
-    await fs.stat(oldFullPath);
-
-    // Build new path (same parent dir)
-    const parentDir = path.dirname(oldPath);
-    const newPath = parentDir === '.'
-      ? newName
-      : path.join(parentDir, newName);
-
-    const { fullPath: newFullPath } =
-      validateAndResolvePath(siteId, newPath);
-
-    // Prevent overwrite
-    try {
-      await fs.stat(newFullPath);
-      return res.status(409).json({
-        error: 'File or folder with that name already exists'
-      });
-    } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
-    }
-
-    // Rename
-    await fs.rename(oldFullPath, newFullPath);
-
-    // 🔑 Stable hashes for window reconciliation
-    const hash = p =>
-      crypto.createHash('sha256').update(p).digest('hex').slice(0, 12);
-
-    const oldHash = `${siteId}-${hash(oldPath)}`;
-    const newHash = `${siteId}-${hash(newPath)}`;
-
-    return res.json({
-      success: true,
-      oldPath,
-      newPath,
-      oldHash,
-      newHash
-    });
-
-  } catch (err) {
-    console.error('Rename failed:', err);
-
-    if (err.message === 'Site not found') {
-      return res.status(404).json({ error: 'Site not found' });
-    }
-    if (err.message === 'Forbidden') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    if (err.code === 'ENOENT') {
-      return res.status(404).json({ error: 'File or folder not found' });
-    }
-
-    return res.status(500).json({ error: 'Failed to rename' });
-  }
-});
-
 // Create new folder
 router.post('/:siteId/new-folder', async (req, res) => {
   try {
@@ -279,6 +247,12 @@ router.post('/:siteId/new-folder', async (req, res) => {
     
     if (!name || name.includes('/') || name.includes('\\') || name === '.' || name === '..') {
       return res.status(400).json({ error: 'Invalid folder name' });
+    }
+
+    if (BLOCKED_NAMES.has(name)) {
+      return res.status(403).json({
+        error: `Creation of "${name}" is not allowed`
+      });
     }
     
     const targetPath = path.join(parentPath, name);
@@ -310,43 +284,55 @@ router.post('/:siteId/new-file', async (req, res) => {
   try {
     const { siteId } = req.params;
     const { name, parentPath = '', content = '' } = req.body;
-    
+
     if (!name || name.includes('/') || name.includes('\\')) {
       return res.status(400).json({ error: 'Invalid file name' });
     }
-    
-    
+
+    if (BLOCKED_NAMES.has(name)) {
+      return res.status(403).json({
+        error: `Creation of "${name}" is not allowed`
+      });
+    }
+
     const targetPath = path.join(parentPath, name);
     const { siteDir, fullPath } = validateAndResolvePath(siteId, targetPath);
-    console.log({
-  body: req.body,
-  parentPath,
-  targetPath
-});
+
     // Ensure parent directory exists
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    
+
     // Create file
     await fs.writeFile(fullPath, content, 'utf8');
-    
-    res.json({ 
-      success: true, 
-      file: { 
-        name, 
-        path: targetPath
-      } 
+
+    await commitFileCreate({
+      siteId,
+      fullPath
     });
+
+    res.json({
+      success: true,
+      file: {
+        id: name,
+        name,
+        type: 'file',
+        size: 0
+      }
+    });
+
   } catch (err) {
     console.error('Error creating file:', err);
+
     if (err.message === 'Site not found') {
       return res.status(404).json({ error: 'Site not found' });
     }
     if (err.message === 'Forbidden') {
       return res.status(403).json({ error: 'Forbidden' });
     }
+
     res.status(500).json({ error: 'Failed to create file' });
   }
 });
+
 
 // Rename file or folder
 router.post('/:siteId/rename', async (req, res) => {
@@ -360,6 +346,12 @@ router.post('/:siteId/rename', async (req, res) => {
     
     if (newName.includes('/') || newName.includes('\\') || newName === '.' || newName === '..') {
       return res.status(400).json({ error: 'Invalid new name' });
+    }
+
+    if (BLOCKED_NAMES.has(newName)) {
+      return res.status(403).json({
+        error: `Creation of "${newName}" is not allowed`
+      });
     }
     
     const { siteDir, fullPath: oldFullPath } = validateAndResolvePath(siteId, oldPath);
@@ -411,10 +403,58 @@ router.post('/:siteId/rename', async (req, res) => {
   }
 });
 
-// Upload file
-router.post('/:siteId/upload', upload.single('file'), (req, res) => {
-  res.sendStatus(200);
+router.post('/:siteId/upload', upload.single('file'), async (req, res) => {
+  try {
+    const { siteId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const site = db
+      .prepare('SELECT directory FROM sites WHERE uuid = ?')
+      .get(siteId);
+
+    if (!site || !site.directory) {
+      return res.status(404).json({ error: 'Site not found' });
+    }
+
+    const siteDir = path.resolve(SITES_ROOT, site.directory);
+
+    // Convert absolute FS path → repo-relative path
+    const relativePath = path.relative(siteDir, req.file.path);
+
+    if (relativePath.startsWith('..')) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+  console.log('[upload] req.file:', req.file);
+console.log('[upload] relativePath:', relativePath);
+    try {
+  await commitFileUpload({ siteId, filePath: relativePath });
+
+
+  await commitFileUpload({ siteId, filePath: relativePath });
+res.status(200).json({
+  id: req.file.originalname,
+  name: req.file.originalname,
+  type: 'file',
+  size: req.file.size
 });
+
+} catch (err) {
+  console.error('[upload] git commit failed:', err);
+  // IMPORTANT: still return 200 or client will think upload failed
+  res.status(200);
+}
+
+  } catch (err) {
+    console.error('[upload] commit failed:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+
 
 // Download file
 router.get('/:siteId/download', async (req, res) => {
