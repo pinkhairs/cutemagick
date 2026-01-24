@@ -126,11 +126,17 @@ async function commitIfStaged(sitePath, message) {
   ]);
 
   if (!stdout.trim()) {
-    return false;
+    return null;
   }
 
   await git(sitePath, ['commit', '-m', message]);
-  return true;
+
+  const { stdout: hashOut } = await git(sitePath, [
+    'rev-parse',
+    'HEAD'
+  ]);
+
+  return hashOut.trim();
 }
 
 /* ------------------------------------------------------------------
@@ -161,7 +167,7 @@ async function commitSiteChange({
   const fallback = describeAction(action, paths);
   const finalMessage = resolveCommitMessage(message, fallback);
 
-  await commitIfStaged(sitePath, finalMessage);
+  return await commitIfStaged(sitePath, finalMessage);
 }
 
 /* ------------------------------------------------------------------
@@ -347,10 +353,42 @@ export async function countCommitsSince({
 ------------------------------------------------------------------- */
 
 export async function commitInitialScaffold({ siteId, message }) {
-  await commitSiteChange({
+  const hash = await commitSiteChange({
     siteId,
-    action: 'Create site',
+    action: 'Created site',
     stageAll: true,
-    message: message || 'Create site'
+    message: message || 'Created site'
   });
+
+  if (!hash) return;
+
+  db.prepare(`
+    UPDATE sites
+    SET live_commit = ?
+    WHERE uuid = ?
+  `).run(hash, siteId);
+}
+
+
+export async function getCommitHistory({ siteId }) {
+  const { sitePath } = getSiteGitConfig(siteId);
+
+  try {
+    const { stdout } = await git(sitePath, [
+      'log',
+      '--date=iso',
+      '--pretty=format:%H%x1f%ad%x1f%s'
+    ]);
+
+    return stdout
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map(line => {
+        const [hash, date, subject] = line.split('\x1f');
+        return { hash, date, subject };
+      });
+  } catch {
+    return [];
+  }
 }
