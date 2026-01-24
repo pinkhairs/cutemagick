@@ -13,6 +13,7 @@ const upload = multer();
 const router = express.Router();
 const SITES_DIR = path.resolve(process.cwd(), 'sites');
 import {
+  commitInitialScaffold,
   countCommitsSince
 } from '../lib/gitService.js'; // adjust path as needed
 
@@ -74,6 +75,7 @@ Happy creating!
       indexHtmlContent,
       'utf8'
     );
+
   } catch (err) {
     console.error('Failed to scaffold site:', err);
     return res.status(500).send('Failed to create site files');
@@ -103,6 +105,10 @@ Happy creating!
     now,
     now
   );
+
+await commitInitialScaffold({
+  siteId: uuid
+});
 
   res
   .set('HX-Trigger', 'refreshSites')

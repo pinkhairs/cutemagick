@@ -223,7 +223,8 @@ res.status(200).json({
   success: true,
   deleted,        // array of relative paths actually removed
   requested: paths, // what the client asked for
-  commitsChanged: deleted.length > 0
+  commitsChanged: deleted.length > 0,
+  hashedPaths
 });
   } catch (err) {
     console.error('Delete failed:', err);
@@ -339,12 +340,17 @@ router.post('/:siteId/rename', async (req, res) => {
   try {
     const { siteId } = req.params;
     const { oldPath, newName } = req.body;
-    
+
     if (!oldPath || !newName) {
       return res.status(400).json({ error: 'Old path and new name required' });
     }
-    
-    if (newName.includes('/') || newName.includes('\\') || newName === '.' || newName === '..') {
+
+    if (
+      newName.includes('/') ||
+      newName.includes('\\') ||
+      newName === '.' ||
+      newName === '..'
+    ) {
       return res.status(400).json({ error: 'Invalid new name' });
     }
 
@@ -353,37 +359,61 @@ router.post('/:siteId/rename', async (req, res) => {
         error: `Creation of "${newName}" is not allowed`
       });
     }
-    
-    const { siteDir, fullPath: oldFullPath } = validateAndResolvePath(siteId, oldPath);
-    
-    // 🔒 symlink guard on old path
+
+    const { siteDir, fullPath: oldFullPath } =
+      validateAndResolvePath(siteId, oldPath);
+
+    // Build new path (same parent directory, new name)
+    const parentDir = path.dirname(oldPath);
+    const newPath = path.join(parentDir, newName);
+    const { fullPath: newFullPath } =
+      validateAndResolvePath(siteId, newPath);
+
+    /* ---------------------------------
+     * 1. Check if old path exists FIRST
+     * --------------------------------- */
+    try {
+      await fs.stat(oldFullPath);
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        // Already renamed → idempotent success
+        return res.json({
+          success: true,
+          oldPath,
+          newPath
+        });
+      }
+      throw err;
+    }
+
+    /* ---------------------------------
+     * 2. Symlink guard (only if exists)
+     * --------------------------------- */
     try {
       assertRealPathInside(siteDir, oldFullPath);
     } catch {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    
-    // Build new path (same parent directory, new name)
-    const parentDir = path.dirname(oldPath);
-    const newPath = path.join(parentDir, newName);
-    const { fullPath: newFullPath } = validateAndResolvePath(siteId, newPath);
-    
-    // Check if old path exists
-    await fs.stat(oldFullPath);
-    
-    // Check if new path already exists
+
+    /* ---------------------------------
+     * 3. Check if new path already exists
+     * --------------------------------- */
     try {
       await fs.stat(newFullPath);
-      return res.status(409).json({ error: 'File or folder with new name already exists' });
+      return res
+        .status(409)
+        .json({ error: 'File or folder with new name already exists' });
     } catch (err) {
       if (err.code !== 'ENOENT') throw err;
-      // New path doesn't exist, good to proceed
+      // New path doesn't exist — good to proceed
     }
-    
-    // Rename
+
+    /* ---------------------------------
+     * 4. Rename
+     * --------------------------------- */
     await fs.rename(oldFullPath, newFullPath);
-    
-    res.json({ 
+
+    res.json({
       success: true,
       oldPath,
       newPath
@@ -398,6 +428,7 @@ router.post('/:siteId/rename', async (req, res) => {
     if (err.message === 'Forbidden') {
       return res.status(403).json({ error: 'Forbidden' });
     }
+
     console.error('Error renaming:', err);
     res.status(500).json({ error: 'Failed to rename' });
   }
@@ -428,13 +459,10 @@ router.post('/:siteId/upload', upload.single('file'), async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-  console.log('[upload] req.file:', req.file);
-console.log('[upload] relativePath:', relativePath);
     try {
   await commitFileUpload({ siteId, filePath: relativePath });
 
 
-  await commitFileUpload({ siteId, filePath: relativePath });
 res.status(200).json({
   id: req.file.originalname,
   name: req.file.originalname,
