@@ -568,6 +568,19 @@ savePosition(id, x, y, kind) {
   } catch {}
 },
 
+focusWindow(windowEl) {
+    if (!windowEl) return;
+    
+    // Always bring to front
+    this.bringToFront(windowEl);
+    
+    const content = windowEl.querySelector('.hide-when-minimized');
+    const isMinimized = content && content.style.display === 'none';
+    
+    if (isMinimized) {
+      this.unminimizeWindow(windowEl);
+    }
+  },
 getWindowKind(windowEl) {
   const kind = windowEl.dataset.windowKind;
   if (kind !== 'file' && kind !== 'folder') {
