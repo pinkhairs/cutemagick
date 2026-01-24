@@ -254,9 +254,17 @@ onrename: function (renamed, folder, entry, newname) {
   const parentPath = folder.GetPathIDs().slice(1).join('/');
   const oldPath = parentPath ? `${parentPath}/${entry.id}` : entry.id;
 
-  console.group('[rename]');
-  console.log({ siteId, oldPath, newname });
+  // 🔑 Construct the updated entry IMMEDIATELY
+  const updatedEntry = {
+    ...entry,
+    id: newname,
+    name: newname
+  };
 
+  // ✅ This is what prevents revert on blur
+  renamed(updatedEntry);
+
+  // Server-side rename (async, secondary)
   fetch(`/files/${siteId}/rename`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -267,102 +275,18 @@ onrename: function (renamed, folder, entry, newname) {
   })
     .then(r => r.json())
     .then(data => {
-      console.log('[rename] server response:', data);
-
       if (!data?.success) {
-        console.error('[rename] server error:', data?.error);
-        console.groupEnd();
-        renamed(data?.error || 'Rename failed');
-        return;
+        throw new Error(data?.error || 'Rename failed');
       }
 
-      const { newPath, oldHash, newHash } = data;
-
-      /* ---------------------------------
-       * 1. Persist state FIRST (source of truth)
-       * --------------------------------- */
-
-      const open = JSON.parse(
-        localStorage.getItem('open-file-windows') || '[]'
-      );
-
-      const updated = open.map(f =>
-        f.site === siteId && f.path === oldPath
-          ? { ...f, path: newPath, id: newHash }
-          : f
-      );
-
-      localStorage.setItem(
-        'open-file-windows',
-        JSON.stringify(updated)
-      );
-
-      /* ---------------------------------
-       * 2. Locate live window by OLD PATH
-       * --------------------------------- */
-
-      let win = document.querySelector(
-        `[data-path="${CSS.escape(oldPath)}"]`
-      );
-
-      if (!win) {
-        console.warn('[rename] no open editor window found');
-        console.groupEnd();
-        renamed();
-        return;
-      }
-
-      /* ---------------------------------
-       * 3. Migrate window ID (manager owns DOM)
-       * --------------------------------- */
-
-      if (window.DraggableWindows && win.id !== newHash) {
-        DraggableWindows.migrateWindowId(win.id, newHash);
-      }
-
-      // Always re-acquire — migrate may replace the node
-      win = document.getElementById(newHash);
-
-      if (!win) {
-        console.warn('[rename] window lost after migration');
-        console.groupEnd();
-        renamed();
-        return;
-      }
-
-      /* ---------------------------------
-       * 4. Shallow DOM updates ONLY
-       * --------------------------------- */
-
-      win.dataset.path = newPath;
-
-      win.querySelector('[data-file-name]')?.replaceChildren(newname);
-
-      win.querySelector('[data-file-path-display]')
-        ?.replaceChildren(newPath);
-
-      win.querySelectorAll('[data-path]').forEach(el => {
-        el.dataset.path = newPath;
-      });
-
-      console.log('[rename] editor window updated', {
-        id: win.id,
-        path: newPath
-      });
-
-      console.groupEnd();
-
-      // SUCCESS — must be called with no args
-      renamed();
-
-        CuteMagickEvents.commitsChanged(siteId);
+      CuteMagickEvents.commitsChanged(siteId);
     })
     .catch(err => {
-      console.error('[rename] fetch failed:', err);
-      console.groupEnd();
-      renamed('Server error');
+      console.error('[rename] server failed:', err);
+      // optional: folder.Refresh(true)
     });
 },
+
 ondelete: function (deleted, folder, ids) {
   if (!confirm('Are you sure?')) return;
 
@@ -381,6 +305,13 @@ fetch(`/files/${siteId}/delete`, {
   .then(r => r.json())
   .then(data => {
     if (!data.success) throw new Error(data.error);
+    document.dispatchEvent(
+  new CustomEvent('files:deleted', {
+    detail: {
+      hashedPaths: data.hashedPaths
+    }
+  })
+);
     CuteMagickEvents.commitsChanged(siteId);
   })
   .catch(console.error);

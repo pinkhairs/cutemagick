@@ -120,13 +120,17 @@ function resolveCommitMessage(userMessage, fallback) {
 async function commitIfStaged(sitePath, message) {
   await assertNoEnvStaged(sitePath);
 
-  try {
-    await git(sitePath, ['diff', '--cached', '--quiet']);
+  const { stdout } = await git(sitePath, [
+    'status',
+    '--porcelain'
+  ]);
+
+  if (!stdout.trim()) {
     return false;
-  } catch {
-    await git(sitePath, ['commit', '-m', message]);
-    return true;
   }
+
+  await git(sitePath, ['commit', '-m', message]);
+  return true;
 }
 
 /* ------------------------------------------------------------------
@@ -336,4 +340,17 @@ export async function countCommitsSince({
   }
 
   return commits.length - (idx + 1);
+}
+
+/* ------------------------------------------------------------------
+   Initial scaffold commit (system-authored)
+------------------------------------------------------------------- */
+
+export async function commitInitialScaffold({ siteId, message }) {
+  await commitSiteChange({
+    siteId,
+    action: 'Create site',
+    stageAll: true,
+    message: message || 'Cute Magick: Create site'
+  });
 }
