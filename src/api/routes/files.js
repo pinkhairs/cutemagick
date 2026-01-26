@@ -5,9 +5,12 @@ import path from 'path';
 import db from '../../database.js';
 
 const SITES_ROOT = '/app/sites';
+
+
+import archiver from 'archiver';
 import fsSync from 'fs';
 import crypto from 'crypto';
-import { commitFileCreate, commitFileDelete, commitFileUpload, commitFileEdit } from '../lib/gitService.js';
+import { commitFileCreate, commitFileDelete, commitFileUpload, commitFileEdit, commitFileRename } from '../lib/gitService.js';
 
 import fs from 'fs/promises';
 const BLOCKED_NAMES = new Set(['.env', '.git']);
@@ -411,7 +414,16 @@ router.post('/:siteId/rename', async (req, res) => {
     /* ---------------------------------
      * 4. Rename
      * --------------------------------- */
-    await fs.rename(oldFullPath, newFullPath);
+    await commitFileRename({
+  siteId,
+  oldPath,
+  newPath
+});
+
+res.set(
+  'HX-Trigger',
+  JSON.stringify({ commitsChanged: true })
+);
 
     res.json({
       success: true,
@@ -482,49 +494,131 @@ res.status(200).json({
   }
 });
 
-
-
-// Download file
-router.get('/:siteId/download', async (req, res) => {
-  try {
-    const { siteId } = req.params;
-    const { filePath } = req.query;
-    
-    if (!filePath) {
-      return res.status(400).json({ error: 'File path required' });
-    }
-    
-    const { siteDir, fullPath } = validateAndResolvePath(siteId, filePath);
-    
-    // 🔒 symlink guard (real filesystem check)
+router.post(
+  '/:siteId/download',
+  multer().none(), // 👈 parses multipart/form-data
+  async (req, res) => {
     try {
-      assertRealPathInside(siteDir, fullPath);
-    } catch {
-      return res.status(403).json({ error: 'Forbidden' });
+      const { siteId } = req.params;
+
+      // 🔑 normalize input from ALL callers
+      const relativePath =
+        req.body?.path ??
+        req.body?.filePath ??
+        req.query?.path ??
+        req.query?.filePath ??
+        null;
+
+      if (!relativePath || typeof relativePath !== 'string') {
+        return res.status(400).json({ error: 'path required' });
+      }
+
+      const { siteDir, fullPath } =
+        validateAndResolvePath(siteId, relativePath);
+
+      // 🔒 symlink escape guard
+      try {
+        assertRealPathInside(siteDir, fullPath);
+      } catch {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      const stat = await fs.stat(fullPath);
+      if (!stat.isFile()) {
+        return res.status(400).json({ error: 'Not a file' });
+      }
+
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${path.basename(fullPath)}"`
+      );
+
+      res.sendFile(fullPath);
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        return res.status(404).json({ error: 'File not found' });
+      }
+      if (err.message === 'Site not found') {
+        return res.status(404).json({ error: 'Site not found' });
+      }
+      if (err.message === 'Forbidden') {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      console.error('[download] failed:', err);
+      res.status(500).json({ error: 'Failed to download file' });
     }
-    
-    // Check if file exists and is a file
-    const stats = await fs.stat(fullPath);
-    if (!stats.isFile()) {
-      return res.status(400).json({ error: 'Not a file' });
-    }
-    
-    // Send file
-    res.download(fullPath);
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      return res.status(404).json({ error: 'File not found' });
-    }
-    if (err.message === 'Site not found') {
-      return res.status(404).json({ error: 'Site not found' });
-    }
-    if (err.message === 'Forbidden') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    console.error('Error downloading file:', err);
-    res.status(500).json({ error: 'Failed to download file' });
   }
-});
+);
+router.post(
+  '/:siteId/download-zip',
+  multer().none(), // 👈 required for FileExplorer
+  async (req, res) => {
+    try {
+      const { siteId } = req.params;
+
+      // 🔑 normalize paths from ALL callers
+      let paths =
+        req.body?.paths ??
+        req.query?.paths ??
+        null;
+
+      if (typeof paths === 'string') {
+        try {
+          paths = JSON.parse(paths);
+        } catch {
+          return res.status(400).json({ error: 'paths must be JSON' });
+        }
+      }
+
+      if (!Array.isArray(paths) || paths.length === 0) {
+        return res.status(400).json({ error: 'paths[] required' });
+      }
+
+      const site = db
+        .prepare('SELECT directory FROM sites WHERE uuid = ?')
+        .get(siteId);
+
+      if (!site?.directory) {
+        return res.status(404).json({ error: 'Site not found' });
+      }
+
+      const siteRoot = path.resolve(SITES_ROOT, site.directory);
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader(
+        'Content-Disposition',
+        'attachment; filename="files.zip"'
+      );
+
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      archive.pipe(res);
+
+      for (const relPath of paths) {
+        if (typeof relPath !== 'string') continue;
+
+        const absPath = path.resolve(siteRoot, relPath);
+
+        // 🚨 traversal guard
+        if (!absPath.startsWith(siteRoot)) continue;
+        if (!fsSync.existsSync(absPath)) continue;
+
+        const stat = fsSync.statSync(absPath);
+
+        if (stat.isDirectory()) {
+          archive.directory(absPath, relPath);
+        } else if (stat.isFile()) {
+          archive.file(absPath, { name: relPath });
+        }
+      }
+
+      await archive.finalize();
+    } catch (err) {
+      console.error('[download-zip] failed:', err);
+      res.status(500).json({ error: 'Failed to create zip' });
+    }
+  }
+);
 
 // Open file via public URL (binary / direct access)
 router.get('/:siteId/open', (req, res) => {
@@ -569,3 +663,7 @@ router.get('/:siteId/open', (req, res) => {
 
 export default router;
 
+
+function getSiteDiskPath(siteId) {
+  return path.join(process.cwd(), 'sites', siteId);
+}
