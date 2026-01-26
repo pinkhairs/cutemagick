@@ -37,7 +37,7 @@
             <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
           </span>
         {{else}}
-          <span class="timeline-dot size-3 rounded-full border-gray-600 border-dashed border-[1.5px]"></span>
+          <span class="timeline-dot size-3 rounded-full border-gray-600 dark:border-gray-300 border-dashed border-[1.5px]"></span>
         {{/if}}
 
         {{#unless @last}}
@@ -96,8 +96,29 @@
 <button
   aria-label="Restore as draft"
   data-history-action="restore-draft"
-  data-site="{{uuid}}"
+  data-site="{{../uuid}}"
   data-commit="{{hash}}"
+  data-tippy-content="Restore this point in time as a draft"
+  hx-post="/sites/{{../uuid}}/restore"
+  hx-confirm="Are you sure? (This is non-destructive.)"
+  hx-vals='{"commit":"{{hash}}"}'
+hx-on::after-request="
+  const status = event.detail.xhr.status;
+  console.log({status})
+
+  if (status < 200 || status >= 300) {
+    alert('That didn\'t work...');
+    return;
+  }
+
+  alert('Draft restored. Check out your files');
+
+  const siteId = this.dataset.site;
+  const siteRoot = document.querySelector('#' + siteId);
+  const filesTab = siteRoot?.querySelector('button[data-tab=&quot;files&quot;]');
+
+  filesTab?.click();
+"
 >
   ⏪️
 </button>
@@ -109,6 +130,35 @@
 
           {{#if isLive}}
             <button aria-label="Preview live version">🌍</button>
+            <button
+  aria-label="Restore as draft"
+  data-history-action="restore-draft"
+  data-site="{{../uuid}}"
+  data-commit="{{hash}}"
+  data-tippy-content="Restore this point in time as a draft"
+  hx-post="/sites/{{../uuid}}/restore"
+  hx-confirm="Are you sure? (This is non-destructive.)"
+  hx-vals='{"commit":"{{hash}}"}'
+hx-on::after-request="
+  const status = event.detail.xhr.status;
+  console.log({status})
+
+  if (status < 200 || status >= 300) {
+    alert('That didn\'t work...');
+    return;
+  }
+
+  alert('Draft restored. Check out your files');
+
+  const siteId = this.dataset.site;
+  const siteRoot = document.querySelector('#' + siteId);
+  const filesTab = siteRoot?.querySelector('button[data-tab=&quot;files&quot;]');
+
+  filesTab?.click();
+"
+>
+  ⏪️
+</button>
           {{/if}}
         </div>
       </div>

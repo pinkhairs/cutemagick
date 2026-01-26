@@ -12,6 +12,10 @@ import filesRoutes from './api/routes/files.js';
 import liveRuntime from './api/routes/live.js';
 import previewRuntime from './api/routes/preview.js';
 import { ensureSSHKeypair, validateEnv } from './api/lib/index.js';
+import { startMaintenanceScheduler } from './api/lib/maintenance.js';
+
+startMaintenanceScheduler();
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +32,12 @@ const app = express();
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  if (req.headers['hx-request']) {
+    res.set('Cache-Control', 'no-store');
+  }
+  next();
+});
 
 /* ----------------------------
   Handlebars (.html templates)
@@ -61,8 +71,6 @@ app.use('/sites', sitesRoutes);
 app.use('/files', filesRoutes);
 app.use('/connect', connectRoutes);
 app.use('/preview', previewRuntime);
-app.use('/', liveRuntime);
-
 /* ----------------------------
   Routes
 ----------------------------- */
@@ -78,6 +86,15 @@ res.render('index', {
   title: 'Cute Magick'
 });
 });
+
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path === '/login') {
+    return next();
+  }
+  return liveRuntime(req, res, next);
+});
+
+
 
 /* ----------------------------
   Server
