@@ -9,7 +9,8 @@ import accountRoutes from './api/routes/account.js';
 import connectRoutes from './api/routes/connect.js';
 import sitesRoutes from './api/routes/sites.js';
 import filesRoutes from './api/routes/files.js';
-import publicRuntime from './api/routes/public.js';
+import liveRuntime from './api/routes/live.js';
+import previewRuntime from './api/routes/preview.js';
 import { ensureSSHKeypair, validateEnv } from './api/lib/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -49,7 +50,6 @@ app.set('views', path.join(__dirname, 'dashboard/views'));
 ----------------------------- */
 
 app.use('/account', accountRoutes);
-app.use('/site', publicRuntime);
 
 app.use(auth);
 
@@ -60,6 +60,8 @@ app.use(express.static(path.join(__dirname, 'dashboard/assets')));
 app.use('/sites', sitesRoutes);
 app.use('/files', filesRoutes);
 app.use('/connect', connectRoutes);
+app.use('/preview', previewRuntime);
+app.use('/', liveRuntime);
 
 /* ----------------------------
   Routes

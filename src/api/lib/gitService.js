@@ -392,3 +392,37 @@ export async function getCommitHistory({ siteId }) {
     return [];
   }
 }
+
+export async function getHeadCommit({ siteId }) {
+  const { sitePath } = getSiteGitConfig(siteId);
+
+  try {
+    const { stdout } = await git(sitePath, [
+      'rev-parse',
+      'HEAD'
+    ]);
+
+    return stdout.trim();
+  } catch {
+    return null;
+  }
+}
+
+export async function getFileAtCommit({
+  siteId,
+  commit,
+  filePath
+}) {
+  const { sitePath } = getSiteGitConfig(siteId);
+
+  try {
+    const { stdout } = await git(sitePath, [
+      'show',
+      `${commit}:${filePath}`
+    ]);
+
+    return stdout;
+  } catch {
+    return null;
+  }
+}

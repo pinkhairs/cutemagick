@@ -2,7 +2,10 @@
 (function () {
   function emit(name, detail) {
     document.body.dispatchEvent(
-      new CustomEvent(name, { detail })
+      new CustomEvent(name, { detail,
+          bubbles: true,
+         composed: true },
+      )
     );
   }
 

@@ -1,0 +1,38 @@
+<div class="h-full grid lg:grid-flow-col-dense grid-cols-5 grid-flow-row lg:grid-cols-none grid-rows-none lg:grid-rows-10 w-160 justify-start p-4 content-start">
+
+{{#each sites}}
+  <div class="overflow-hidden flex items-center justify-center size-20">
+    <button
+    type="button"
+    class="cursor-pointer group flex flex-col gap-2 font-bold items-center text-center"
+    hx-on:click="
+    const existing = document.getElementById('{{uuid}}');
+    
+    if (existing) {
+      window.DraggableWindows?.focusWindow(existing);
+      return;
+    }
+    
+    
+    const key = 'win-path-site-{{uuid}}';
+    const currentPath = localStorage.getItem(key) || '';
+    
+    const url = currentPath
+    ? `/sites/{{uuid}}/${currentPath}`
+    : `/sites/{{uuid}}`;
+    
+    window.htmx.ajax('GET', url, {
+      target: '#windows',
+      swap: 'afterbegin'
+    });
+    "
+    >
+    <div class="bg-cover bg-no-repeat bg-center rounded-md overflow-hidden group-hover:scale-110 transition-transform size-8" style="background-image: url('{{#if icon}}{{icon}}{{else}}/img/default-icon.png{{/if}}')"
+    ></div>
+    <h3 data-tippy-content="{{name}}" class="group-hover:text-blue-700 dark:group-hover:text-blue-400 truncate max-w-20">
+      {{name}}
+    </h3>
+  </button>
+</div>
+{{/each}}
+</div>

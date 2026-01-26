@@ -1,12 +1,12 @@
 <div class="p-4">
-  <div class="history-notices space-y-2 mb-4">
-    <h2 class="font-bold text-xl">Time Machine</h2>
+  <div class="history-notices mb-4">
+    <h2 class="font-bold text-xl pb-2">Time Machine</h2>
 
-    <p class="mt-1 pb-1">
+    <p class="mt-1 pb-4">
       This is your history. Every change is recorded here.
     </p>
 
-    <div class="flex gap-2 rounded-md border border-gray-400 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
+    <div class="flex gap-2 rounded-md border border-gray-400 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed rounded-bl-none rounded-br-none border-b-0">
       <div class="text-lg">🔒</div>
       <p>
         You can't edit your past, but you can travel in time.
@@ -17,109 +17,113 @@
       </p>
     </div>
 
-    <div class="flex gap-3 rounded-md border border-gray-400 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
+    <div class="flex gap-3 rounded-tr-none rounded-tl-none rounded-md border border-gray-400 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
       <div class="text-lg">🌍</div>
-      <p>Your files are private until you go live.</p>
+      <p>Your changes are private until you go live.</p>
     </div>
   </div>
 <ul class="space-y-1 max-w-3xl">
 
-  <!-- newest (draft) -->
-  <li class="relative flex items-center gap-4 px-2 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
-    
-    <!-- timeline -->
-    <div class="relative flex flex-col items-center w-6 shrink-0">
-      <span class="size-3 rounded-full border-gray-400 border-dashed border"></span>
-      <span class="absolute top-3 bottom-0 w-px border-l border-dashed border-gray-300 dark:border-gray-600"></span>
-    </div>
+  {{#if commits.length}}
 
-    <!-- content -->
-    <div class="flex items-center gap-4 flex-1 min-w-0">
-      <div class="flex-1 min-w-0">
-        <div class="truncate">Fix spacing and mobile nav edge cases</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          <time datetime="2026-01-18T11:05:00Z">10 minutes ago</time>
+    {{#each commits}}
+    <li class="relative flex items-center gap-4 px-2 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
+
+      <!-- timeline -->
+      <div class="relative flex flex-col items-center w-6 shrink-0">
+        {{#if isLive}}
+          <span data-tippy-content="Live version" class="is-live relative flex h-3 w-3">
+            <span class="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
+            <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
+          </span>
+        {{else}}
+          <span class="timeline-dot size-3 rounded-full border-gray-600 border-dashed border-[1.5px]"></span>
+        {{/if}}
+
+        {{#unless @last}}
+          <span class="absolute top-3 bottom-0 w-px border-l border-dashed border-gray-400 dark:border-gray-600"></span>
+        {{/unless}}
+      </div>
+
+      <!-- content -->
+      <div class="flex items-center gap-4 flex-1 min-w-0">
+        <div class="flex-1 min-w-0">
+          <div class="truncate {{#if isLive}}font-medium{{/if}}">
+            {{subject}}
+          </div>
+
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            <time datetime="{{date}}">
+              {{date}}
+            </time>
+          </div>
+        </div>
+
+        <!-- actions -->
+        <div class="flex gap-2 shrink-0">
+          {{#unless isLive}}
+            <button
+  aria-label="Preview this version"
+  data-history-action="preview"
+  data-commit="{{hash}}"
+  data-tippy-content="Preview this version">
+  👀
+</button>
+
+          {{/unless}}
+          {{#unless isLive}}
+            {{#if @first}}
+                <button
+  type="button"
+>
+  🚀
+</button>
+
+            {{#if isLive}}
+<button
+  aria-label="Preview live version"
+  data-history-action="preview-live"
+>
+  🌍
+</button>
+{{/if}}
+
+            {{/if}}
+          {{/unless}}
+
+          {{#unless isLive}}
+            {{#unless @first}}
+<button
+  aria-label="Restore as draft"
+  data-history-action="restore-draft"
+  data-site="{{uuid}}"
+  data-commit="{{hash}}"
+>
+  ⏪️
+</button>
+
+
+            {{/unless}}
+          {{/unless}}
+
+
+          {{#if isLive}}
+            <button aria-label="Preview live version">🌍</button>
+          {{/if}}
         </div>
       </div>
+    </li>
+    {{/each}}
 
-      <!-- actions -->
-      <div class="flex gap-2 shrink-0">
-        <button aria-label="Preview this version"
-                data-tippy-content="Preview this version">👀</button>
-      </div>
-    </div>
-  </li>
+  {{else}}
 
-  <!-- another draft -->
-  <li class="relative flex items-center gap-4 px-2 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
-    <div class="relative flex flex-col items-center w-6 shrink-0">
-      <span class="size-3 rounded-full border-gray-400 border-dashed border"></span>
-      <span class="absolute top-3 bottom-0 w-px border-l border-dashed border-gray-300 dark:border-gray-600"></span>
-    </div>
+    <li class="text-gray-500 italic px-2 py-4">
+      No history yet.
+    </li>
 
-    <div class="flex items-center gap-4 flex-1 min-w-0">
-      <div class="flex-1 min-w-0">
-        <div class="truncate">Tweak hero copy and button hierarchy</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          <time datetime="2026-01-18T10:32:00Z">45 minutes ago</time>
-        </div>
-      </div>
-
-      <div class="flex gap-2 shrink-0">
-        <button aria-label="Preview this version"
-                data-tippy-content="Preview this version">👀</button>
-        <button aria-label="Restore as draft"
-                data-tippy-content="Restore this point in time, as as draft.">⏪️</button>
-      </div>
-    </div>
-  </li>
-
-  <!-- 🚀 LIVE COMMIT -->
-  <li class="relative flex items-center gap-4 px-2 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
-    
-    <div class="relative flex flex-col items-center w-6 shrink-0">
-      <span class="relative flex h-3 w-3">
-        <span class="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
-        <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
-      </span>
-      <span class="absolute top-4 bottom-0 w-px bg-gray-300 dark:bg-gray-600"></span>
-    </div>
-
-    <div class="flex items-center gap-4 flex-1 min-w-0">
-      <div class="flex-1 min-w-0">
-        <div class="truncate font-medium">Launch site ✨</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          <time datetime="2026-01-18T09:47:00Z">2 hours ago</time>
-        </div>
-      </div>
-
-      <div class="flex gap-2 shrink-0">
-        <button aria-label="Preview live version">🌍</button>
-      </div>
-    </div>
-  </li>
-
-  <!-- older commits (no timeline continuation if you choose) -->
-  <li class="flex items-center gap-4 px-2 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800">
-    <div class="w-6 shrink-0"></div>
-
-    <div class="flex items-center gap-4 flex-1 min-w-0">
-      <div class="flex-1 min-w-0">
-        <div class="truncate">Initial layout and index.html</div>
-        <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          <time datetime="2026-01-17T20:10:00Z">Yesterday evening</time>
-        </div>
-      </div>
-
-      <div class="flex gap-2 shrink-0">
-        <button aria-label="Preview this version"
-                data-tippy-content="Preview this version">👀</button>
-        <button aria-label="Restore as draft"
-                data-tippy-content="Restore this point in time, as a draft.">⏪️</button>
-      </div>
-    </div>
-  </li>
+  {{/if}}
 
 </ul>
+
 
 </div>

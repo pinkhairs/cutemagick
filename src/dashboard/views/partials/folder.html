@@ -1,11 +1,14 @@
 <div id="{{id}}" class="mt-4 lg:mt-0 lg:h-130 w-full lg:w-2xl relative window-wrapper window"
-data-window-kind="folder">
+data-window-kind="folder"
+    data-site-directory="{{directory}}"
+    data-site-uuid="{{id}}"
+>
 <div class="window-handle h-full">
   <div class="flex items-center justify-between">
     <h2 class="text-sm">{{title}}</h2>
-    <div class="flex items-center gap-2 text-lg">
-      <button type="button" class="minimize text-gray-400 py-1 -top-px pl-6 pr-2 font-bold relative">&ndash;</button>
-      <button type="button" class="hide text-rose-500 dark:text-pink py-1 pl-2 font-bold relative">&times;</button>
+    <div class="flex items-center gap-2 text-2xl">
+      <button type="button" class="minimize text-gray-400 py-1 -top-1 pl-6 pr-2 font-bold relative">&ndash;</button>
+      <button type="button" class="hide text-rose-500 dark:text-pink pb-1 pl-2 font-bold relative">&times;</button>
     </div>
   </div>
 </div>
@@ -21,7 +24,7 @@ data-window-kind="folder">
       hx-target="#site-{{id}}-content"
       hx-swap="innerHTML">
   <img class="size-6" src="/img/preview-icon.png">
-  <h4 class="font-bold text-xs">View</h4>
+  <h4 class="font-bold text-xs">Home</h4>
 </button>
       <button class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center"
       data-tab="files"

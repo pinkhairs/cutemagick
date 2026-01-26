@@ -14,7 +14,9 @@ const router = express.Router();
 const SITES_DIR = path.resolve(process.cwd(), 'sites');
 import {
   commitInitialScaffold,
-  countCommitsSince
+  countCommitsSince,
+  getCommitHistory,
+  getHeadCommit
 } from '../lib/gitService.js'; // adjust path as needed
 
 
@@ -129,7 +131,7 @@ router.get('/:uuid/iframe', (req, res) => {
 
   res.send(`
   <iframe
-    src="/site/${site.directory}/"
+    src="/${site.directory}/"
   ></iframe>
   `);
 });
@@ -242,11 +244,30 @@ router.post('/:uuid/files/list', upload.none(), async (req, res) => {
   res.json(filtered);
 });
 
-router.get('/:uuid/history', (req, res) => {
+
+router.get('/:uuid/history', async (req, res) => {
+  const { uuid } = req.params;
+
+  const site = db
+    .prepare('SELECT live_commit FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) return res.sendStatus(404);
+
+  const commits = await getCommitHistory({ siteId: uuid });
+
+  const enriched = commits.map(c => ({
+    ...c,
+    isLive: site.live_commit === c.hash,
+    isSystem: c.subject.startsWith('Cute Magick:')
+  }));
+
   res.render('partials/history', {
-    layout: false
+    layout: false,
+    commits: enriched
   });
 });
+
 
 router.get('/:uuid/secrets', (req, res) => {
   res.render('partials/secrets', {
@@ -259,6 +280,45 @@ router.get('/:uuid/settings', (req, res) => {
     layout: false
   });
 });
+router.post('/:uuid/go-live', async (req, res) => {
+  const { uuid } = req.params;
+
+  const site = db
+    .prepare('SELECT live_commit FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) {
+    return res.status(404).send('Site not found');
+  }
+
+  let headCommit;
+  try {
+    headCommit = await getHeadCommit({ siteId: uuid });
+  } catch (err) {
+    console.error('Failed to resolve HEAD commit:', err);
+    return res.status(500).send('Failed to go live');
+  }
+
+  if (!headCommit) {
+    return res.status(400).send('No changes to make live.');
+  }
+
+  // No-op if already live
+  if (site.live_commit === headCommit) {
+    return res.sendStatus(204);
+  }
+
+  db.prepare(`
+    UPDATE sites
+    SET live_commit = ?
+    WHERE uuid = ?
+  `).run(headCommit, uuid);
+
+  res
+    .set('HX-Trigger', 'commitsChanged')
+    .sendStatus(204);
+});
+
 
 router.post('/:uuid/editor', express.urlencoded({ extended: false }), async (req, res) => {
   const { uuid } = req.params;
@@ -347,7 +407,8 @@ router.post('/:uuid/editor', express.urlencoded({ extended: false }), async (req
     title: filename,
     path: relPath,
     content: content,
-    language: language
+    language: language,
+    fileHash: pathHash
   });
 });
 router.post('/:uuid/code', express.urlencoded({ extended: false }), async (req, res) => {
@@ -392,15 +453,51 @@ router.post('/:uuid/code', express.urlencoded({ extended: false }), async (req, 
   // Return just the plain text content (no HTML wrapper)
   res.type('text/plain').send(content);
 });
+router.get('/:uuid/commits-count', async (req, res) => {
+  const { uuid } = req.params;
+
+  const site = db
+    .prepare('SELECT live_commit FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) {
+    return res.type('text/plain').send('');
+  }
+
+  let count = 0;
+  try {
+    count = await countCommitsSince({
+      siteId: uuid,
+      sinceCommit: site.live_commit
+    });
+  } catch (err) {
+    console.error('Toolbar commit count failed:', err);
+    return res.type('text/plain').send('');
+  }
+
+  const label =
+    count === 0
+      ? 'No changes'
+      : `${count} change${count === 1 ? '' : 's'}`;
+
+  return res
+    .type('text/plain')
+    .send(
+      `<span data-count="${count}">
+        ${label}
+      </span>`
+    );
+});
 
 router.get('/:uuid/:path', (req, res) => {
   const { uuid, path } = req.params;
 
-  const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
+  const row = db.prepare(`SELECT name, directory FROM sites WHERE uuid = ?`).get(uuid);
   const siteName = row?.name;
   const data = {
     id: uuid,
     title: siteName,
+    directory: row?.directory,
     body: `<div class="p-4">Loading...</div>`,
     path
   };
@@ -413,10 +510,11 @@ router.get('/:uuid/:path', (req, res) => {
 
 router.get('/:uuid', (req, res) => {
   const { uuid } = req.params;
-  const row = db.prepare(`SELECT name FROM sites WHERE uuid = ?`).get(uuid);
+  const row = db.prepare(`SELECT name, directory FROM sites WHERE uuid = ?`).get(uuid);
   const siteName = row?.name;
   const data = {
     id: uuid,
+    directory: row?.directory,
     title: siteName,
     body: `<div class="p-4">Loading...</div>`,
     path: ''
@@ -446,36 +544,6 @@ router.get('/', (req, res) => {
     sites,
     layout: false,
   });
-});
-router.get('/:uuid/commits/count', async (req, res) => {
-  const { uuid } = req.params;
-
-  const site = db
-    .prepare('SELECT live_commit FROM sites WHERE uuid = ?')
-    .get(uuid);
-
-  if (!site) {
-    return res.status(404).send('');
-  }
-
-  let count = 0;
-  try {
-    count = await countCommitsSince({
-      siteId: uuid,
-      sinceCommit: site.live_commit
-    });
-  } catch (err) {
-    console.error('Commit count failed:', err);
-    return res.type('text/plain').send('');
-  }
-
-  if (count === 0) {
-    return res.type('text/plain').send('No changes');
-  }
-
-  res
-    .type('text/plain')
-    .send(`${count} change${count === 1 ? '' : 's'}`);
 });
 
 

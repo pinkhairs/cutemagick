@@ -1,61 +1,83 @@
 <div>
   <div
-  id="site-toolbar"
-  class="flex items-center gap-2 px-2 py-2 border-b border-gray-400 dark:border-gray-700 text-sm"
+    id="site-toolbar"
+    class="flex items-center gap-2 px-2 py-2 border-b border-gray-400 dark:border-gray-700 text-sm"
   >
-  <div class="flex gap-3 items-center">
-    <a href="#" target="_blank">🌍</a>
-    <button
-  hx-get="/sites/{{uuid}}/commits/count"
+    <div class="flex gap-3 items-center">
+      <a href="#" target="_blank">🌍</a>
+<div
+  id="commits-count"
+  hx-get="/sites/{{uuid}}/commits-count"
   hx-trigger="load, commitsChanged from:body"
   hx-swap="innerHTML"
-  onclick="
-    const tab = this.closest('.window')
-      ?.querySelector(`[data-tab='history']`);
+hx-on::after-swap="
+    const window = this.closest('.window');
+    const previewBtn = window?.querySelector('#preview-btn');
+    const goLiveBtn = window?.querySelector('#go-live-btn');
+    const hasCommits = !this.textContent.includes('No');
+    
+    if (previewBtn) {
+      if (hasCommits) {
+        previewBtn.classList.remove('hidden');
+      } else {
+        previewBtn.classList.add('hidden');
+      }
+    }
+    
+    if (goLiveBtn) {
+      if (hasCommits) {
+        goLiveBtn.classList.remove('hidden');
+      } else {
+        goLiveBtn.classList.add('hidden');
+      }
+    }
+  "
+  hx-on:click="
+    const tab = this.closest('.window')?.querySelector('[data-tab=history]');
     if (tab) tab.click();
   "
-  class="text-sm opacity-80 hover:opacity-100"
+  class="text-sm opacity-80 hover:opacity-100 cursor-pointer"
 >
-  …
-</button>
+  <span class="commit-label">…</span>
+</div>
+    </div>
 
-  </div>
-  
-  <div class="flex items-center gap-4 ml-auto">
-    <button
-    id="preview-btn"
-    class="btn-secondary"
-    type="button"
-    >
-    👁 Preview
-  </button>
-  
-  <button
-  id="publish-btn"
-  class="btn-primary"
+    <div class="flex items-center gap-4 ml-auto">
+      <div
+        id="live-indicator"
+        class="hidden items-center gap-2 font-semibold"
+      >
+        <span class="inline-block size-2 rounded-full bg-green-500"></span>
+        LIVE
+      </div>
+
+      <button
+        id="preview-btn"
+        class="btn-secondary hidden"
+        type="button"
+      >
+        👀 Preview
+      </button>
+
+      <button
+  id="go-live-btn"
+  class="btn-primary hidden"
   type="button"
-  onclick="prompt('This will make all your changes live instantly. Ready? Enter a message describing this version:')"
-  >
+
+  hx-post="/sites/{{uuid}}/go-live"
+  hx-confirm="This will make all your changes go live. Are you ready?"
+  hx-swap="none"
+>
   🚀 Go Live
 </button>
-</div>
-<!-- <div class="flex items-center gap-2">
-    <span data-tippy-content="Go to the History tab to review changes or add checkpoints">Last change 2 days ago</span>
-</div>
 
-<div class="flex items-center gap-2 ml-auto">
-  
-  <span class="inline-flex items-center gap-2">
-    <div class="bg-mint size-2 rounded-full"></div> LIVE 
-  </span>
-  <button>🌍</button>
-</div> -->
-</div>
+    </div>
+  </div>
 
-<div
-id="explorer-mount-{{uuid}}"
-data-site-uuid="{{uuid}}"
-hx-boost="false"
-class="file-explorer text-black h-101 w-full relative"
-></div>
+  <div
+    id="explorer-mount-{{uuid}}"
+    data-site-uuid="{{uuid}}"
+    hx-boost="false"
+    class="file-explorer text-black h-101 w-full relative"
+  ></div>
 </div>
