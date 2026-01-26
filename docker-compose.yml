@@ -11,6 +11,7 @@ services:
       - ./sites:/app/sites
       - ./data:/app/data
       - ssh-data:/app/.ssh
+      - ~/.ssh:/home/node/.ssh:ro
     develop:
       watch:
         # Sync source files (no rebuild needed)

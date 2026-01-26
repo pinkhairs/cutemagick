@@ -21,6 +21,7 @@ RUN npm install --production
 COPY . .
 
 EXPOSE 3000
+USER node
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["npm", "start"]
