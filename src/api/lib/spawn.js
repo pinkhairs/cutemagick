@@ -40,18 +40,29 @@ const RUNTIMES = {
     args: [],
   },
 };
-
-const EXEC_ROOT = process.env.EXEC_ROOT || '/app/sites';
+const EXEC_ROOTS = [
+  '/app/sites',
+  '/app/.live',
+  '/app/.previews'
+];
 
 function isEnabled(envKey) {
   return process.env[envKey] === '1';
 }
 
-function assertInsideRoot(root, target) {
-  const rel = path.relative(root, target);
-  if (rel.startsWith('..') || path.isAbsolute(rel)) {
-    throw new Error(`Path escapes execution root: ${target}`);
+function assertInsideAllowedRoots(target) {
+  const realTarget = fs.realpathSync(target);
+
+  for (const root of EXEC_ROOTS) {
+    const realRoot = fs.realpathSync(root);
+    const rel = path.relative(realRoot, realTarget);
+
+    if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+      return; // ✅ allowed
+    }
   }
+
+  throw new Error(`Path escapes execution roots: ${target}`);
 }
 
 export function runProcess({
@@ -70,26 +81,21 @@ export function runProcess({
     throw new Error(`Runtime disabled: ${lang}`);
   }
 
-  // 🔒 Normalize execution root
-  const root = path.resolve(EXEC_ROOT);
-  if (!fs.existsSync(root)) {
-    throw new Error(`Execution root does not exist: ${root}`);
+  if (!cwd) {
+    throw new Error('cwd is required');
   }
 
-  // 🔒 Normalize cwd (relative → inside root, absolute → validated)
-  const resolvedCwd = cwd
-    ? path.resolve(root, cwd)
-    : root;
-
-  assertInsideRoot(root, resolvedCwd);
+  // 🔒 Resolve and validate cwd
+  const resolvedCwd = path.resolve(cwd);
+  assertInsideAllowedRoots(resolvedCwd);
 
   if (!fs.existsSync(resolvedCwd)) {
     throw new Error(`Invalid cwd: ${resolvedCwd}`);
   }
 
-  // 🔒 Resolve script path relative to cwd
+  // 🔒 Resolve and validate script path
   const resolvedScript = path.resolve(resolvedCwd, scriptPath);
-  assertInsideRoot(root, resolvedScript);
+  assertInsideAllowedRoots(resolvedScript);
 
   if (!fs.existsSync(resolvedScript)) {
     throw new Error(`Script not found: ${resolvedScript}`);
@@ -98,7 +104,7 @@ export function runProcess({
   const command = rt.cmd ?? resolvedScript;
   const args = rt.cmd ? [...rt.args, resolvedScript] : [];
 
-  // 🧠 Base env (safe inheritance)
+  // 🧠 Base env (minimal, safe)
   let childEnv = {
     PATH: process.env.PATH,
     HOME: resolvedCwd,
@@ -111,9 +117,10 @@ export function runProcess({
       ...childEnv,
       REDIRECT_STATUS: '200',
       SCRIPT_FILENAME: resolvedScript,
-      SCRIPT_NAME: '/' + path.relative(root, resolvedScript),
+      SCRIPT_NAME: '/' + path.basename(resolvedScript),
       REQUEST_METHOD: childEnv.REQUEST_METHOD || 'GET',
       CONTENT_TYPE: childEnv.CONTENT_TYPE || 'text/html',
+      QUERY_STRING: childEnv.QUERY_STRING || '',
     };
   }
 
@@ -157,3 +164,4 @@ export function runProcess({
     child.on('error', reject);
   });
 }
+
