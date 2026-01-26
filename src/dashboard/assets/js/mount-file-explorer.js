@@ -45,24 +45,6 @@ function isBinaryLikeFile(name) {
   
   return BINARY_EXTS.includes(ext);
 }
-function openBinaryFile(siteId, path) {
-  const params = new URLSearchParams({
-    path
-  });
-  
-  fetch(`/files/${siteId}/open?${params.toString()}`)
-  .then(async res => {
-    if (!res.ok) throw new Error('Failed to resolve file URL');
-    return res.json();
-  })
-  .then(({ url }) => {
-    if (!url) return;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  })
-  .catch(err => {
-    console.error('[openBinaryFile] failed:', err);
-  });
-}
 
 
 function openCodeWindow(siteUUID, path) {
@@ -119,27 +101,33 @@ document.body.addEventListener('htmx:afterSwap', (e) => {
   new FileExplorer(mount, {
     initpath: [['/', '/', { canmodify: true }]],
     rename: true,
-    onopenfile(folder, entry) {
-      // Get the parent folder's path
-      const pathIDs = folder.GetPathIDs();
-      
-      const relPathIDs = pathIDs.filter(p => p && p !== '/');
-      
-      // Add the file name from entry to construct the full file path
-      const filename = entry.name || entry.id;
-      // Construct full path: folder path + filename
-      const fullPath = relPathIDs.length > 0 
-      ? `${relPathIDs.join('/')}/${filename}`
-      : filename;
-      
-      if (isBinaryLikeFile(filename)) {
-        openBinaryFile(uuid, fullPath);
-      } else {
-        openCodeWindow(uuid, fullPath);
-      }
-      
-      return false;
-    },
+onopenfile(folder, entry) {
+  const pathIDs = folder.GetPathIDs().filter(p => p && p !== '/');
+  const filename = entry.name || entry.id;
+
+  const fullPath = pathIDs.length
+    ? `${pathIDs.join('/')}/${filename}`
+    : filename;
+
+  const ext = filename.split('.').pop().toLowerCase();
+
+  // 🔥 Executable / runtime files → PREVIEW (never download)
+  if (['php', 'js', 'py', 'sh'].includes(ext)) {
+    openCodeWindow(uuid, fullPath);
+    return false;
+  }
+
+  // 📦 Binary files → download
+if (isBinaryLikeFile(filename)) {
+  downloadFile(uuid, fullPath).catch(console.error);
+  return false;
+}
+
+  // 📝 Everything else → editor
+  openCodeWindow(uuid, fullPath);
+  return false;
+},
+
     
     tools: {
       new_folder: true,
@@ -363,25 +351,41 @@ onuploaderror: function(fileinfo, e) {
   console.error('[upload] failed', e);
 },
 
-    
-    oninitdownload: function(startdownload, folder, ids, entries) {
-      const siteId = mount.dataset.siteUuid;
-      
-      if (ids.length === 1 && entries[0].type === 'file') {
-        const parentPath = folder.GetPathIDs().slice(1).join('/');
-        const filePath = parentPath ? `${parentPath}/${ids[0]}` : ids[0];
-        
-        startdownload({
-          url: `/files/${siteId}/download`,
-          params: {
-            filePath: filePath
-          }
-        });
-      } else {
-        startdownload('Downloading multiple files/folders not yet implemented');
+oninitdownload(startdownload, folder, ids, entries) {
+  const siteId = mount.dataset.siteUuid;
+  const parentPath = folder.GetPathIDs().slice(1).join('/');
+
+  // single file
+  if (ids.length === 1 && entries[0].type === 'file') {
+    const filePath = parentPath
+      ? `${parentPath}/${entries[0].name}`
+      : entries[0].name;
+
+    startdownload({
+      url: `/files/${siteId}/download`,
+      method: 'POST',
+      params: {
+        path: filePath   // ✅ EXACT FIELD NAME
       }
-    },
-    
+    });
+
+    return;
+  }
+
+  // multiple files / folders → zip
+  const paths = entries.map(e =>
+    parentPath ? `${parentPath}/${e.name}` : e.name
+  );
+
+  startdownload({
+    url: `/files/${siteId}/download-zip`,
+    method: 'POST',
+    params: {
+      paths: JSON.stringify(paths)  // ✅ STRINGIFIED
+    }
+  });
+}
+,
     ondownloadstarted: function(options) {
     },
     
@@ -399,3 +403,28 @@ document.addEventListener('files:deleted', (e) => {
     if (win) DraggableWindows.closeWindow(win);
   });
 });
+
+async function downloadFile(siteId, filePath) {
+  const res = await fetch(`/files/${siteId}/download`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: filePath })
+  });
+
+  if (!res.ok) {
+    throw new Error('Download failed');
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filePath.split('/').pop();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  URL.revokeObjectURL(url);
+}
+
