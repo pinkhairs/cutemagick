@@ -6,5 +6,6 @@ COPY package.json ./
 COPY index.js ./
 
 EXPOSE 3000
+USER node
 
 CMD ["node", "index.js"]
