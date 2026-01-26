@@ -548,7 +548,7 @@ router.get('/:siteId/open', (req, res) => {
 
     if (!site.domain) {
       // hosted under Cute Magick
-      baseUrl = `/site/${site.directory}`;
+      baseUrl = `/${site.directory}`;
     } else {
       // custom domain
       baseUrl = site.domain.startsWith('http')

@@ -17,7 +17,7 @@ export function validateEnv() {
   const HOSTING_MODE = requireVar('HOSTING_MODE');
 
   // Guard against accidental dev secret usage
-  if (JWT_SECRET.includes('dev-secret') || JWT_SECRET.length < 16) {
+  if (JWT_SECRET.includes('put-a-long-random-string-here') || JWT_SECRET.length < 16) {
     fail(`JWT_SECRET looks unsafe. Use a long random secret (>= 32 chars recommended).`);
   }
 

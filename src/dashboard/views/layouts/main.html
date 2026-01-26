@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/css/file-explorer.css" />
   <title>Cute Magick</title>
 </head>
-<body class="flex-col justify-between flex text-gray-900 dark:text-white">
+<body class="flex-col lg:h-svh justify-between flex text-gray-900 dark:text-white">
   <header class="w-full bottom-0">
     <div class="font-semibold p-4 w-full inline-flex large:text-lg gap-4 lg:gap-6 justify-between items-center">
       <nav class="inline-flex text-sm lg:text-base items-center gap-4 lg:gap-6">
@@ -33,22 +33,18 @@
             rounded-2xl
             text-white
             shadow-lg">
+              <button
+                class="w-full text-left px-3 py-2"
+                data-action="copy-key">
+                📋 Copy public SSH key
+              </button>
 
-  <button
-    class="w-full text-left px-3 py-2"
-    data-action="copy-key">
-    📋 Copy public SSH key
-  </button>
-
-  <button
-    class="w-full text-left px-3 py-2"
-    data-action="rotate-key">
-    🔄 Rotate SSH key
-  </button>
-
-</div>
-
-          '
+              <button
+                class="w-full text-left px-3 py-2"
+                data-action="rotate-key">
+                🔄 Rotate SSH key
+              </button>
+            </div>'
           data-tippy-placement="bottom-start"
           data-tippy-interactive="true"
           data-tippy-trigger="click"
@@ -69,54 +65,13 @@
   <script src="/js/events.js"></script>
   <script src="https://unpkg.com/popper.js@1"></script>
   <script src="https://unpkg.com/tippy.js@5"></script>
-  <script src="/js/htmx.min.js" defer></script>
+  <script src="/js/htmx.min.js"></script>
   <script src="/js/DraggableWindows.js" defer></script>
   <script src="/js/file-explorer.js" defer></script>
   <script src="/js/mount-file-explorer.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js"></script>
   <script src="/js/mount-code-editor.js"></script>
   <script src="/js/save-file.js"></script>
-
-<script>
-  (function restoreFileWindowsOnce() {
-    let restored = false;
-
-    document.body.addEventListener('htmx:afterOnLoad', (e) => {
-      if (restored) {
-        return;
-      }
-
-      restored = true;
-
-      const raw = localStorage.getItem('open-file-windows');
-
-      let files;
-      try {
-        files = JSON.parse(raw || '[]');
-      } catch (err) {
-        console.error('[restore-files] failed to parse open-file-windows', err);
-        return;
-      }
-
-      if (!Array.isArray(files) || files.length === 0) {
-        return;
-      }
-
-      files.forEach(({ site, path }) => {
-        if (!site || !path) {
-          return;
-        }
-
-        htmx.ajax('POST', `/sites/${site}/editor`, {
-          target: '#windows',
-          swap: 'afterbegin',
-          values: { path }
-        });
-      });
-    });
-  })();
-</script>
-
 
   <script>
     function initTippy(root = document) {
@@ -228,5 +183,100 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
+<script>
+(function () {
+  console.log('[TimeMachine] script loaded');
+
+  document.addEventListener('click', async (e) => {
+    console.log('[TimeMachine] click event', e.target);
+
+    const btn = e.target.closest('button[data-history-action]');
+    console.log('[TimeMachine] closest button[data-history-action]:', btn);
+
+    if (!btn) return;
+
+    const action = btn.dataset.historyAction;
+    const commit = btn.dataset.commit;
+
+    console.log('[TimeMachine] action:', action);
+    console.log('[TimeMachine] commit:', commit);
+
+    // 🔒 Resolve site from the nearest owner that declares it
+    const windowEl = btn.closest('.window');
+    console.log('[TimeMachine] closest .window:', windowEl);
+
+    const siteUuid = windowEl?.id;
+    console.log('[TimeMachine] resolved siteUuid:', siteUuid);
+
+    const siteDir = windowEl?.dataset.siteDirectory;
+    console.log('[TimeMachine] resolved siteUuid:', siteDir);
+
+    if (!siteUuid) {
+      console.warn('[TimeMachine] abort: no site UUID found');
+      return;
+    }
+
+    /* ----------------------------
+       👀 Preview arbitrary commit
+    ----------------------------- */
+if (action === 'preview') {
+  console.log('[TimeMachine] PREVIEW → POST in new tab');
+
+  const site = siteDir;        // window.id
+  const path = 'index.html';    // default
+  const previewUrl = `/preview/${site}/${commit}`;
+
+  console.log('[TimeMachine] previewUrl:', previewUrl);
+  console.log('[TimeMachine] commit:', commit);
+
+  // Create a temporary form
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = previewUrl;
+  form.target = '_blank';
+
+  // Commit input
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'commit';
+  input.value = commit;
+
+  form.appendChild(input);
+  document.body.appendChild(form);
+
+  form.submit();
+  document.body.removeChild(form);
+
+  return;
+}
+
+
+    /* ----------------------------
+       🌍 Return to live
+    ----------------------------- */
+    if (action === 'preview-live') {
+      console.log('[TimeMachine] PREVIEW-LIVE action triggered');
+
+      const url = new URL(location.href);
+      url.hash = '';
+
+      console.log('[TimeMachine] reloading live URL:', url.toString());
+      location.reload();
+      return;
+    }
+
+    /* ----------------------------
+       ⏪ Restore as draft (ignored for now)
+    ----------------------------- */
+    if (action === 'restore-draft') {
+      console.log('[TimeMachine] restore-draft clicked (ignored for preview debugging)');
+      return;
+    }
+
+    console.warn('[TimeMachine] unknown action:', action);
+  });
+})();
+</script>
+
 </body>
 </html>

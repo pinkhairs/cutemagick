@@ -1,5 +1,6 @@
 <div id="{{id}}" class="mt-4 lg:mt-0 lg:h-130 w-full lg:w-2xl relative window-wrapper window" data-window-kind="file"
 data-path="{{path}}"
+data-file-hash="{{fileHash}}"
  data-site-uuid="{{siteUUID}}">
   <div class="window-handle h-full">
     <div class="flex items-center justify-between">
@@ -10,9 +11,9 @@ data-path="{{path}}"
   >{{title}}</span>
   <span class="opacity-60"> - {{siteName}}</span>
 </h2>
-      <div class="flex items-center gap-2 text-lg">
-        <button type="button" class="minimize text-gray-400 py-1 -top-px pl-6 pr-2 font-bold relative">&ndash;</button>
-        <button type="button" class="hide text-rose-500 dark:text-pink py-1 pl-2 font-bold relative">&times;</button>
+      <div class="flex items-center gap-2 text-2xl">
+        <button type="button" class="minimize text-gray-400 py-1 -top-1 pl-6 pr-2 font-bold relative">&ndash;</button>
+        <button type="button" class="hide text-rose-500 dark:text-pink pb-1 pl-2 font-bold relative">&times;</button>
       </div>
     </div>
   </div>
@@ -20,7 +21,6 @@ data-path="{{path}}"
     <div class="flex flex-col overflow-hidden card p-0! shadow-none! border-gray-400! dark:border-gray-700! border!">
       <div class="">
         <div
-        id="site-toolbar"
         class="flex items-center gap-2 px-2 py-2 border-b border-gray-400 dark:border-gray-700 text-sm"
         >
         <div class="flex gap-1 items-center">
@@ -32,13 +32,12 @@ data-path="{{path}}"
         </div>
         <div class="flex items-center gap-4 ml-auto">
           <button
-          id="preview-btn"
-          class="btn-secondary opacity-50"
-          type="button"
-          data-tippy-content="Make changes to preview"
-          >
-          👁 Preview
-        </button>
+    id="preview-btn"
+    class="btn-secondary"
+    type="button"
+    >
+    👀 Preview
+  </button>
         <div
         id="save-draft-{{id}}"
         class="btn-primary cursor-pointer"

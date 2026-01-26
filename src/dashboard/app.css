@@ -160,3 +160,25 @@ pre, code, .font-monospace {
 iframe {
   @apply bg-white w-full h-full border-0;
 }
+#site-toolbar[data-dirty="false"] #commits-count,
+#site-toolbar[data-dirty="false"] #preview-btn,
+#site-toolbar[data-dirty="false"] #go-live-btn {
+  display: none;
+}
+
+#site-toolbar[data-dirty="false"] #live-indicator {
+  display: inline-flex;
+}
+/* Draft dots BEFORE live (default) */
+.timeline-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  border: 1.5px dashed rgb(156 163 175); /* gray-400 */
+}
+
+/* Draft dots AFTER live */
+li:has(.is-live) ~ li .timeline-dot {
+  background-color: rgb(229 231 235); /* gray-200 */
+  border: none;
+}
