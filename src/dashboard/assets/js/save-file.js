@@ -70,7 +70,25 @@
       btn.dataset.saveArmed = 'false';
       btn._saveTippy?.hide();
     }
+
+    updatePreviewButton(windowEl);
   }
+
+function updatePreviewButton(windowEl) {
+  const preview = windowEl.querySelector('[data-role="preview"]');
+  if (!preview) return;
+
+  if (isDirty(windowEl)) {
+    preview.disabled = true;
+    preview.classList.add('opacity-40');
+    preview.title = 'Save draft to preview changes';
+  } else {
+    preview.disabled = false;
+    preview.classList.remove('opacity-40');
+    preview.title = 'Preview latest saved version';
+  }
+}
+
 
   /* --------------------------------------------------
      Save logic
@@ -236,3 +254,19 @@
     updateSaveButton
   };
 })();
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-role="preview"]');
+  if (!btn || btn.disabled) return;
+
+  const windowEl = btn.closest('.window');
+  if (!windowEl) return;
+
+  const url = btn.dataset.previewHref;
+  if (!url) return;
+
+  window.open(url, '_blank');
+});

@@ -32,12 +32,14 @@ data-file-hash="{{fileHash}}"
         </div>
         <div class="flex items-center gap-4 ml-auto">
           <button
-    id="preview-btn"
-    class="btn-secondary"
-    type="button"
-    >
-    👀 Preview
-  </button>
+  type="button"
+  id="preview-btn"
+  data-role="preview"
+  data-preview-href="/preview/{{directory}}/{{path}}"
+>
+  👀 Preview
+</button>
+
         <div
         id="save-draft-{{id}}"
         class="btn-primary cursor-pointer"

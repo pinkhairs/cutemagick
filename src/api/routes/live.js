@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.all(/^\/([^/]+)(?:\/(.*))?$/, async (req, res) => {
   const site = req.params[0];
-  const relPath = req.params[1] || 'index.html';
+  const relPath = req.params[1] || '';
 
   const siteRow = db.prepare(`
     SELECT live_commit
@@ -28,7 +28,8 @@ router.all(/^\/([^/]+)(?:\/(.*))?$/, async (req, res) => {
     res,
     site,
     relPath,
-    commit: siteRow.live_commit
+    commit: siteRow.live_commit,
+    mode: 'live'
   });
 });
 
