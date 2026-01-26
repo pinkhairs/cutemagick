@@ -169,16 +169,44 @@ iframe {
 #site-toolbar[data-dirty="false"] #live-indicator {
   display: inline-flex;
 }
-/* Draft dots BEFORE live (default) */
-.timeline-dot {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 9999px;
-  border: 1.5px dashed rgb(156 163 175); /* gray-400 */
-}
 
 /* Draft dots AFTER live */
 li:has(.is-live) ~ li .timeline-dot {
-  background-color: rgb(229 231 235); /* gray-200 */
+  background-color: rgba(100,100,100,.5); /* gray-200 */
   border: none;
+}
+
+.pointer-events-none {
+  pointer-events: none;
+}
+/* Sync base */
+.sync-up,
+.sync-down,
+.sync-x {
+  @apply inline-flex items-center gap-1 font-medium;
+}
+
+/* Push */
+.sync-up {
+  @apply text-green-600 dark:text-green-400;
+}
+
+/* Pull */
+.sync-down {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Diverged */
+.sync-x {
+  @apply text-red-600 dark:text-red-400 cursor-not-allowed;
+}
+
+/* Badge */
+.badge {
+  @apply inline-flex items-center justify-center
+         min-w-[1.25rem] h-5 px-1
+         text-xs font-semibold
+         rounded-full
+         bg-gray-200 text-gray-800
+         dark:bg-gray-700 dark:text-gray-100;
 }

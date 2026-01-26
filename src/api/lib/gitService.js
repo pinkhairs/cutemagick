@@ -221,21 +221,6 @@ export async function commitFileDelete({ siteId, paths, message }) {
   });
 }
 
-export async function commitFileRename({
-  siteId,
-  oldPath,
-  newPath,
-  message
-}) {
-  await commitSiteChange({
-    siteId,
-    action: 'Renamed',
-    paths: [`${oldPath} → ${newPath}`],
-    stageAll: true,
-    message
-  });
-}
-
 /* ------------------------------------------------------------------
    Draft / semantic commits (repo-wide)
 ------------------------------------------------------------------- */
@@ -259,18 +244,7 @@ export async function saveDraft({
 
   const committed = await commitIfStaged(sitePath, finalMessage);
 
-  let pushed = false;
-  if (committed && repository) {
-    try {
-      await assertNoEnvStaged(sitePath);
-      await git(sitePath, ['push', 'origin', branch]);
-      pushed = true;
-    } catch (err) {
-      console.warn('Git push blocked:', err.message);
-    }
-  }
-
-  return { committed, pushed };
+  return { committed };
 }
 
 /* ------------------------------------------------------------------
@@ -426,3 +400,242 @@ export async function getFileAtCommit({
     return null;
   }
 }
+
+
+/* ------------------------------------------------------------------
+   Time Machine: restore commit as new HEAD (cherry-pick)
+------------------------------------------------------------------- */
+export async function restoreCommitAsNew({
+  siteId,
+  commit,           // hash to restore
+  message           // optional override message
+}) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+
+  await ensureRepo(sitePath, branch);
+  await ensureBranch(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  // Ensure commit exists
+  try {
+    await git(sitePath, ['cat-file', '-e', `${commit}^{commit}`]);
+  } catch {
+    throw new Error(`Commit not found: ${commit}`);
+  }
+
+  // Read original commit subject
+  let originalSubject = '';
+  try {
+    const { stdout } = await git(sitePath, [
+      'log',
+      '-1',
+      '--pretty=%s',
+      commit
+    ]);
+    originalSubject = stdout.trim();
+  } catch {
+    originalSubject = `snapshot ${commit.slice(0, 7)}`;
+  }
+
+  const fallbackMessage = `(Restored) ${originalSubject}`;
+
+  const finalMessage = resolveCommitMessage(
+    message,
+    fallbackMessage
+  );
+
+  // Restore working tree + index to exact snapshot
+  await git(sitePath, [
+    'restore',
+    '--source',
+    commit,
+    '--worktree',
+    '--staged',
+    '.'
+  ]);
+
+  // Commit only if something actually changed
+  const committed = await commitIfStaged(sitePath, finalMessage);
+
+  if (!committed) {
+    // Snapshot already matches HEAD
+    return null;
+  }
+
+  return committed;
+}
+
+
+export async function commitFileRename({
+  siteId,
+  oldPath,
+  newPath,
+  message
+}) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+
+  await ensureRepo(sitePath, branch);
+  await ensureBranch(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  await git(sitePath, ['mv', oldPath, newPath]);
+
+  const finalMessage = resolveCommitMessage(
+    message,
+    `Rename ${oldPath} → ${newPath}`
+  );
+
+  await git(sitePath, [
+    'commit',
+    '-m',
+    finalMessage
+  ]);
+}
+
+/* ------------------------------------------------------------------
+   Live site: checkout commit into working tree (no new commit)
+------------------------------------------------------------------- */
+export async function checkoutLiveCommit({ siteId, commit }) {
+  const { sitePath } = getSiteGitConfig(siteId);
+
+  // Ensure the commit exists
+  try {
+    await git(sitePath, ['cat-file', '-e', `${commit}^{commit}`]);
+  } catch {
+    throw new Error(`Commit not found: ${commit}`);
+  }
+
+  // Make working tree reflect the live commit
+  await git(sitePath, ['checkout', commit]);
+}
+
+
+export async function pruneGitWorktrees(repoDir) {
+  try {
+    // Fast exit if this is not a git repo
+    if (!fs.existsSync(path.join(repoDir, '.git'))) {
+      return;
+    }
+
+    await git(repoDir, ['worktree', 'prune']);
+  } catch (err) {
+    // Ignore common benign cases
+    const msg = err?.stderr || err?.message || '';
+
+    if (
+      msg.includes('No worktrees to prune') ||
+      msg.includes('not a git repository') ||
+      msg.includes('does not exist')
+    ) {
+      return;
+    }
+
+    // Log but DO NOT throw
+    console.warn(
+      '[maintenance] git worktree prune skipped:',
+      repoDir,
+      msg.trim()
+    );
+  }
+}
+
+async function hasUpstream(sitePath) {
+  try {
+    await git(sitePath, [
+      'rev-parse',
+      '--abbrev-ref',
+      '--symbolic-full-name',
+      '@{u}'
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function syncToRemote({ siteId }) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+
+  const site = db.prepare(`
+    SELECT remote_name
+    FROM sites WHERE uuid = ?
+  `).get(siteId);
+
+  if (!site?.remote_name) {
+    throw new Error('No remote configured');
+  }
+
+  await ensureRepo(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+  await assertNoEnvStaged(sitePath);
+
+  const remote = site.remote_name;
+
+  const args = (await hasUpstream(sitePath))
+    ? ['push', remote, branch]
+    : ['push', '-u', remote, branch];
+
+  await git(sitePath, args);
+
+  return { pushed: true };
+}
+
+export async function getUnpushedCommitCount({ siteId }) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+
+  await ensureRepo(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  try {
+    await git(sitePath, [
+      'rev-parse',
+      '--abbrev-ref',
+      '--symbolic-full-name',
+      '@{u}'
+    ]);
+  } catch {
+    // ⬇️ THIS IS THE KEY CHANGE
+    const { stdout } = await git(sitePath, [
+      'rev-list',
+      '--count',
+      'HEAD'
+    ]);
+    return Number(stdout.trim()) || 0;
+  }
+
+  const { stdout } = await git(sitePath, [
+    'rev-list',
+    '--count',
+    '@{u}..HEAD'
+  ]);
+
+  return Number(stdout.trim()) || 0;
+}
+
+
+export async function getRemoteAheadCount({ siteId }) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+
+  await ensureRepo(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  try {
+    await git(sitePath, [
+      'rev-parse',
+      '--abbrev-ref',
+      '--symbolic-full-name',
+      '@{u}'
+    ]);
+  } catch {
+    return null;
+  }
+
+  const { stdout } = await git(sitePath, [
+    'rev-list',
+    '--count',
+    'HEAD..@{u}'
+  ]);
+
+  return Number(stdout.trim()) || 0;
+}
+

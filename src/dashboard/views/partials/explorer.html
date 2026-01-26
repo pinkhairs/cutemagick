@@ -1,20 +1,30 @@
 <div>
   <div
-    id="site-toolbar"
-    class="flex items-center gap-2 px-2 py-2 border-b border-gray-400 dark:border-gray-700 text-sm"
+  id="site-toolbar"
+  class="flex items-center gap-2 px-2 py-2 border-b border-gray-400 dark:border-gray-700 text-sm"
   >
-    <div class="flex gap-3 items-center">
-      <a href="#" target="_blank">🌍</a>
-<div
-  id="commits-count"
-  hx-get="/sites/{{uuid}}/commits-count"
-  hx-trigger="load, commitsChanged from:body"
-  hx-swap="innerHTML"
-hx-on::after-swap="
+  <div class="flex flex-1 gap-3 justify-between items-center">
+    
+      <div class="flex-1 flex items-center gap-3">
+    
+    <a
+    href="/preview/{{directory}}"
+    class="btn-secondary"
+    target="_blank"
+    >
+    <span 
+    id="preview-btn" class="hidden">👀 Preview
+  
+        <span    id="commits-count"
+    hx-get="/sites/{{uuid}}/commits-count"
+    hx-trigger="load, commitsChanged from:body"
+    hx-swap="innerHTML"
+    hx-on::after-swap="
     const window = this.closest('.window');
     const previewBtn = window?.querySelector('#preview-btn');
     const goLiveBtn = window?.querySelector('#go-live-btn');
-    const hasCommits = !this.textContent.includes('No');
+    const syncBtn = window?.querySelector('#sync-btn');
+    const hasCommits = this.textContent.trim() !== '…' && this.textContent.trim() !== '';
     
     if (previewBtn) {
       if (hasCommits) {
@@ -31,53 +41,55 @@ hx-on::after-swap="
         goLiveBtn.classList.add('hidden');
       }
     }
-  "
-  hx-on:click="
-    const tab = this.closest('.window')?.querySelector('[data-tab=history]');
-    if (tab) tab.click();
-  "
-  class="text-sm opacity-80 hover:opacity-100 cursor-pointer"
->
-  <span class="commit-label">…</span>
-</div>
-    </div>
+    if (syncBtn) {
+      if (hasCommits) {
+        syncBtn.classList.remove('hidden');
+      } else {
+        syncBtn.classList.add('hidden');
+      }
+    }
+    "></span>
+    </span>
+  </a>
 
-    <div class="flex items-center gap-4 ml-auto">
-      <div
-        id="live-indicator"
-        class="hidden items-center gap-2 font-semibold"
-      >
-        <span class="inline-block size-2 rounded-full bg-green-500"></span>
-        LIVE
-      </div>
-
-      <button
-        id="preview-btn"
-        class="btn-secondary hidden"
-        type="button"
-      >
-        👀 Preview
-      </button>
-
-      <button
-  id="go-live-btn"
-  class="btn-primary hidden"
+  <button
+  class="btn-primary"
   type="button"
 
   hx-post="/sites/{{uuid}}/go-live"
   hx-confirm="This will make all your changes go live. Are you ready?"
   hx-swap="none"
+  >
+  <span  id="go-live-btn" class="hidden">🚀 Go Live</span>
+  </button>
+</div>
+
+    <div class="flex-1 justify-end flex gap-3">
+      <a href="#" target="_blank">🌍 Live</a>
+<button
+  id="sync-button"
+  class="items-center gap-1.5 text-sm
+         text-gray-700 dark:text-gray-300 hidden"
+  hx-get="/sites/{{uuid}}/sync-status"
+  hx-trigger="load, commitsChanged from:body"
+  hx-swap="innerHTML"
+  hx-on::after-swap="
+    const hasContent = this.innerHTML.trim() !== '';
+    this.classList.toggle('hidden', !hasContent);
+  "
 >
-  🚀 Go Live
 </button>
 
-    </div>
-  </div>
 
-  <div
-    id="explorer-mount-{{uuid}}"
-    data-site-uuid="{{uuid}}"
-    hx-boost="false"
-    class="file-explorer text-black h-101 w-full relative"
-  ></div>
+      </div>
+
+</div>
+</div>
+
+<div
+id="explorer-mount-{{uuid}}"
+data-site-uuid="{{uuid}}"
+hx-boost="false"
+class="file-explorer text-black h-101 w-full relative"
+></div>
 </div>

@@ -16,8 +16,13 @@ import {
   commitInitialScaffold,
   countCommitsSince,
   getCommitHistory,
-  getHeadCommit
+  getHeadCommit,
+  restoreCommitAsNew,
+  checkoutLiveCommit,
+  getUnpushedCommitCount,
+  getRemoteAheadCount,
 } from '../lib/gitService.js'; // adjust path as needed
+
 
 
 router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
@@ -140,13 +145,14 @@ router.get('/:uuid/files', (req, res) => {
   const { uuid } = req.params;
 
   const site = db
-    .prepare('SELECT name FROM sites WHERE uuid = ?')
+    .prepare('SELECT directory FROM sites WHERE uuid = ?')
     .get(uuid);
 
   if (!site) return res.sendStatus(404);
 
   res.render('partials/explorer', {
     uuid,
+    directory: site.directory,
     layout: false
   });
 });
@@ -244,6 +250,44 @@ router.post('/:uuid/files/list', upload.none(), async (req, res) => {
   res.json(filtered);
 });
 
+/* ------------------------------------------------------------------
+   Time Machine: restore commit as new HEAD
+------------------------------------------------------------------- */
+
+router.post('/:uuid/restore', express.urlencoded({ extended: false }), async (req, res) => {
+  const { uuid } = req.params;
+  const commit = req.body.commit;
+
+  if (!commit) {
+    return res.status(400).send('Commit hash required');
+  }
+
+  const site = db
+    .prepare('SELECT uuid FROM sites WHERE uuid = ?')
+    .get(uuid);
+
+  if (!site) {
+    return res.status(404).send('Site not found');
+  }
+
+  try {
+    newHead = await restoreCommitAsNew({
+      siteId: uuid,
+      commit
+    });
+  } catch (err) {
+    console.error('Time Machine restore failed:', err.message);
+    return res
+      .status(409)
+      .send(err.message || 'Restore failed');
+  }
+
+  res
+    .set('HX-Trigger', 'commitsChanged')
+    .sendStatus(204);
+});
+
+
 
 router.get('/:uuid/history', async (req, res) => {
   const { uuid } = req.params;
@@ -264,6 +308,7 @@ router.get('/:uuid/history', async (req, res) => {
 
   res.render('partials/history', {
     layout: false,
+    uuid,
     commits: enriched
   });
 });
@@ -284,7 +329,11 @@ router.post('/:uuid/go-live', async (req, res) => {
   const { uuid } = req.params;
 
   const site = db
-    .prepare('SELECT live_commit FROM sites WHERE uuid = ?')
+    .prepare(`
+      SELECT live_commit
+      FROM sites
+      WHERE uuid = ?
+    `)
     .get(uuid);
 
   if (!site) {
@@ -308,6 +357,18 @@ router.post('/:uuid/go-live', async (req, res) => {
     return res.sendStatus(204);
   }
 
+  try {
+    // 🔑 Canonical GitService entrypoint
+    await checkoutLiveCommit({
+      siteId: uuid,
+      commit: headCommit
+    });
+  } catch (err) {
+    console.error('Failed to checkout live commit:', err);
+    return res.status(500).send('Failed to switch live version');
+  }
+
+  // Persist pointer AFTER filesystem success
   db.prepare(`
     UPDATE sites
     SET live_commit = ?
@@ -318,6 +379,8 @@ router.post('/:uuid/go-live', async (req, res) => {
     .set('HX-Trigger', 'commitsChanged')
     .sendStatus(204);
 });
+
+
 
 
 router.post('/:uuid/editor', express.urlencoded({ extended: false }), async (req, res) => {
@@ -406,6 +469,7 @@ router.post('/:uuid/editor', express.urlencoded({ extended: false }), async (req
     siteName: site.name,
     title: filename,
     path: relPath,
+    directory: site.directory,
     content: content,
     language: language,
     fileHash: pathHash
@@ -477,17 +541,119 @@ router.get('/:uuid/commits-count', async (req, res) => {
 
   const label =
     count === 0
-      ? 'No changes'
-      : `${count} change${count === 1 ? '' : 's'}`;
+      ? ''
+      : count;
 
   return res
     .type('text/plain')
     .send(
-      `<span data-count="${count}">
+      `<span class="badge" data-count="${count}">
         ${label}
       </span>`
     );
 });
+
+router.get('/:uuid/sync-status', async (req, res) => {
+  const { uuid } = req.params;
+
+  res.set('Cache-Control', 'no-store');
+
+  const site = db.prepare(`
+    SELECT repository
+    FROM sites
+    WHERE uuid = ?
+  `).get(uuid);
+
+  // 1️⃣ No remote configured → hide sync entirely
+  if (!site?.repository) {
+    return res.type('text/plain').send('');
+  }
+
+  let ahead = 0;
+  let behind = 0;
+  let sshOk = true;
+
+  try {
+    // 🔐 Check SSH access (non-mutating)
+    await git(
+      path.resolve(SITES_DIR, site.directory),
+      ['ls-remote', 'origin']
+    );
+  } catch {
+    sshOk = false;
+  }
+
+  // ⚠️ SSH not authorized
+  if (!sshOk) {
+    return res.type('text/plain').send(`
+      <a
+        href="/docs/git-ssh"
+        target="_blank"
+        class="sync-warning"
+        title="SSH access required to use this remote"
+      >
+        ⚠️
+      </a>
+    `);
+  }
+
+  try {
+    ahead = await getUnpushedCommitCount({ siteId: uuid }) ?? 0;
+    behind = await getRemoteAheadCount({ siteId: uuid }) ?? 0;
+  } catch {
+    return res.type('text/plain').send('');
+  }
+
+  // 2️⃣ Fully synced → hide
+  if (ahead === 0 && behind === 0) {
+    return res.type('text/plain').send('');
+  }
+
+  // 3️⃣ Diverged → warning + badge
+  if (ahead > 0 && behind > 0) {
+    return res.type('text/plain').send(`
+      <span
+        class="sync-warning"
+        title="Local and remote histories have diverged"
+      >
+        ⚠️
+        <span class="badge">${ahead}/${behind}</span>
+      </span>
+    `);
+  }
+
+  // 4️⃣ Remote ahead → pull
+  if (behind > 0) {
+    return res.type('text/plain').send(`
+      <button
+        class="sync-action"
+        hx-post="/sites/${uuid}/sync/pull"
+        hx-swap="none"
+        title="Pull ${behind} commit${behind === 1 ? '' : 's'} from remote"
+      >
+        ⬇️
+        <span class="badge">${behind}</span>
+      </button>
+    `);
+  }
+
+  // 5️⃣ Local ahead (including empty remote) → push
+  return res.type('text/plain').send(`
+    <button
+      class="sync-action"
+      hx-post="/sites/${uuid}/sync/push"
+      hx-swap="none"
+      title="Push ${ahead} commit${ahead === 1 ? '' : 's'} to remote"
+    >
+      ⬆️
+      <span class="badge">${ahead}</span>
+    </button>
+  `);
+});
+
+
+
+
 
 router.get('/:uuid/:path', (req, res) => {
   const { uuid, path } = req.params;
@@ -547,6 +713,6 @@ router.get('/', (req, res) => {
 });
 
 
-
 export default router;
+
 
