@@ -28,26 +28,7 @@
       <nav class="inline-flex text-sm lg:text-base gap-4 lg:gap-6">
         <div
           class="cursor-pointer select-none"
-          data-tippy-content='
-            <div class="inline-block
-            rounded-2xl
-            text-white
-            shadow-lg">
-              <button
-                class="w-full text-left px-3 py-2"
-                data-action="copy-key">
-                📋 Copy public SSH key
-              </button>
-
-              <button
-                class="w-full text-left px-3 py-2"
-                data-action="rotate-key">
-                🔄 Rotate SSH key
-              </button>
-            </div>'
-          data-tippy-placement="bottom-start"
-          data-tippy-interactive="true"
-          data-tippy-trigger="click"
+          data-action="copy-key"
         >
           🔌 Connect
         </div>
@@ -128,6 +109,7 @@
 
     try {
       if (action === 'copy-key') {
+        if (!confirm('Copy your public SSH key to your clipboard?')) return;
         const res = await fetch('/connect/public-key', {
           method: 'POST',
         });
@@ -145,21 +127,6 @@
         }
 
         alert('Your public SSH key has been copied to your clipboard!');
-      }
-
-      if (action === 'rotate-key') {
-        const ok = confirm(
-          'Are you sure? This will disable your existing key.'
-        );
-        if (!ok) return;
-
-        const res = await fetch('/connect/rotate-key', {
-          method: 'POST',
-        });
-
-        if (!res.ok) throw new Error('Failed to rotate key');
-
-        alert('Your SSH key has been rotated.');
       }
     } catch (err) {
       console.error(err);

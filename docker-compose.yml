@@ -5,6 +5,38 @@ services:
     build: .
     ports:
       - "3000:3000"
+<<<<<<< HEAD
     environment:
       - PORT=3000
     restart: unless-stopped
+=======
+    env_file:
+      - .env
+    volumes:
+      - ./sites:/app/sites
+      - ./data:/app/data
+      - ssh-data:/app/.ssh
+    develop:
+      watch:
+        # Sync source files (no rebuild needed)
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore:
+            - node_modules/
+        
+        # Rebuild only when dependencies change
+        - action: rebuild
+          path: ./package.json
+        
+        # Sync other config files
+        - action: sync
+          path: ./tailwind.config.js
+          target: /app/tailwind.config.js
+        
+        - action: sync+restart
+          path: ./scripts
+          target: /app/scripts
+volumes:
+  ssh-data:
+>>>>>>> 6b0f933 (deploy key support)

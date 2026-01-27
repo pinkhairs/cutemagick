@@ -6,6 +6,16 @@ COPY package.json ./
 COPY index.js ./
 
 EXPOSE 3000
+
+RUN mkdir -p \
+    /app/dashboard/assets/css \
+    /app/.ssh \
+    /app/renders \
+ && chown -R node:node \
+    /app/dashboard \
+    /app/.ssh \
+    /app/renders
+
 USER node
 
 CMD ["node", "index.js"]
