@@ -3,6 +3,7 @@ ENV PATH="/usr/local/bin:/usr/bin:/bin"
 
 RUN apt-get update && apt-get install -y \
   tini \
+  openssh-client \
   php-cgi \
   ruby \
   php-cli \
@@ -21,6 +22,16 @@ RUN npm install --production
 COPY . .
 
 EXPOSE 3000
+
+RUN mkdir -p \
+    /app/dashboard/assets/css \
+    /app/.ssh \
+    /app/renders \
+ && chown -R node:node \
+    /app/dashboard \
+    /app/.ssh \
+    /app/renders
+
 USER node
 
 ENTRYPOINT ["/usr/bin/tini", "--"]

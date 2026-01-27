@@ -11,7 +11,6 @@ export default function ensureGitIdentity(sitePath) {
   } catch {
     // identity not set yet
   }
-
-  execSync(`git config user.name "${name}"`, { cwd: sitePath });
-  execSync(`git config user.email "${email}"`, { cwd: sitePath });
+  execSync('git config --global user.name "Cute Magick"');
+  execSync('git config --global user.email "cute@magick.local"');
 }

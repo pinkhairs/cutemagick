@@ -19,10 +19,13 @@ import {
   getHeadCommit,
   restoreCommitAsNew,
   checkoutLiveCommit,
-  getUnpushedCommitCount,
-  getRemoteAheadCount,
+  checkSSHAccess,
+  pushLiveCommits,
+  fetchRemote,
+  pullFromRemote,
+  countLiveCommitsToPush,
+  countRemoteCommitsToPull,
 } from '../lib/gitService.js'; // adjust path as needed
-
 
 
 router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
@@ -113,9 +116,10 @@ Happy creating!
     now
   );
 
-await commitInitialScaffold({
-  siteId: uuid
-});
+  const hash = await commitInitialScaffold({ siteId: uuid });
+  if (!hash) {
+  throw new Error('Failed to resolve initial scaffold commit');
+}
 
   res
   .set('HX-Trigger', 'refreshSites')
@@ -552,9 +556,10 @@ router.get('/:uuid/commits-count', async (req, res) => {
       </span>`
     );
 });
-
 router.get('/:uuid/sync-status', async (req, res) => {
   const { uuid } = req.params;
+
+  console.log('[SYNC] start', { uuid });
 
   res.set('Cache-Control', 'no-store');
 
@@ -564,27 +569,31 @@ router.get('/:uuid/sync-status', async (req, res) => {
     WHERE uuid = ?
   `).get(uuid);
 
+  console.log('[SYNC] site row', site);
+
   // 1️⃣ No remote configured → hide sync entirely
   if (!site?.repository) {
+    console.log('[SYNC] no repository configured → hide');
     return res.type('text/plain').send('');
   }
+  await fetchRemote({ siteId: uuid });
 
   let ahead = 0;
   let behind = 0;
   let sshOk = true;
 
   try {
-    // 🔐 Check SSH access (non-mutating)
-    await git(
-      path.resolve(SITES_DIR, site.directory),
-      ['ls-remote', 'origin']
-    );
-  } catch {
+    console.log('[SYNC] checking SSH access');
+    await checkSSHAccess({ siteId: uuid });
+    console.log('[SYNC] SSH OK');
+  } catch (err) {
     sshOk = false;
+    console.log('[SYNC] SSH FAILED', err?.message);
   }
 
   // ⚠️ SSH not authorized
   if (!sshOk) {
+    console.log('[SYNC] returning SSH warning');
     return res.type('text/plain').send(`
       <a
         href="/docs/git-ssh"
@@ -598,32 +607,38 @@ router.get('/:uuid/sync-status', async (req, res) => {
   }
 
   try {
-    ahead = await getUnpushedCommitCount({ siteId: uuid }) ?? 0;
-    behind = await getRemoteAheadCount({ siteId: uuid }) ?? 0;
-  } catch {
+    ahead = await countLiveCommitsToPush({ siteId: uuid });
+behind = await countRemoteCommitsToPull({ siteId: uuid });
+
+    console.log('[SYNC] counts resolved', { ahead, behind });
+  } catch (err) {
+    console.log('[SYNC] error computing sync counts', err?.message);
     return res.type('text/plain').send('');
   }
 
   // 2️⃣ Fully synced → hide
   if (ahead === 0 && behind === 0) {
+    console.log('[SYNC] fully synced → hide');
     return res.type('text/plain').send('');
   }
 
   // 3️⃣ Diverged → warning + badge
   if (ahead > 0 && behind > 0) {
+    console.log('[SYNC] diverged', { ahead, behind });
     return res.type('text/plain').send(`
       <span
         class="sync-warning"
         title="Local and remote histories have diverged"
       >
         ⚠️
-        <span class="badge">${ahead}/${behind}</span>
+        <span class="badge">&uarr;${ahead}&darr;${behind}</span>
       </span>
     `);
   }
 
   // 4️⃣ Remote ahead → pull
   if (behind > 0) {
+    console.log('[SYNC] remote ahead → pull', { behind });
     return res.type('text/plain').send(`
       <button
         class="sync-action"
@@ -637,13 +652,15 @@ router.get('/:uuid/sync-status', async (req, res) => {
     `);
   }
 
-  // 5️⃣ Local ahead (including empty remote) → push
+  // 5️⃣ Local ahead → push
+  console.log('[SYNC] local ahead → push', { ahead });
+
   return res.type('text/plain').send(`
     <button
       class="sync-action"
       hx-post="/sites/${uuid}/sync/push"
       hx-swap="none"
-      title="Push ${ahead} commit${ahead === 1 ? '' : 's'} to remote"
+      title="Sync ${ahead} live changes${ahead === 1 ? '' : 's'} to remote"
     >
       ⬆️
       <span class="badge">${ahead}</span>
@@ -651,7 +668,22 @@ router.get('/:uuid/sync-status', async (req, res) => {
   `);
 });
 
+router.post('/:uuid/sync/push', async (req, res) => {
+  const { uuid } = req.params;
 
+  console.log('[SYNC PUSH] start', { uuid });
+
+  try {
+    await pushLiveCommits({ siteId: uuid });
+  } catch (err) {
+    console.error('[SYNC PUSH] failed', err.message);
+    return res.status(409).send(err.message);
+  }
+
+  res
+    .set('HX-Trigger', 'commitsChanged')
+    .sendStatus(204);
+});
 
 
 
@@ -711,6 +743,24 @@ router.get('/', (req, res) => {
     layout: false,
   });
 });
+
+router.post('/:uuid/sync/pull', async (req, res) => {
+  const { uuid } = req.params;
+
+  console.log('[SYNC PULL] start', { uuid });
+
+  try {
+    await pullFromRemote({ siteId: uuid });
+  } catch (err) {
+    console.error('[SYNC PULL] failed', err.message);
+    return res.status(409).send(err.message);
+  }
+
+  res
+    .set('HX-Trigger', 'commitsChanged')
+    .sendStatus(204);
+});
+
 
 
 export default router;

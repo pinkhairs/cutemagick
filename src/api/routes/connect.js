@@ -1,18 +1,13 @@
 import express from 'express';
 import fs from 'fs';
-import path from 'path';
-import { rotateSSHKeypair } from '../lib/index.js';
-
 const router = express.Router();
 
-/* ----------------------------
-   Helpers
------------------------------ */
+import path from 'path';
 
-// Adjust if your key paths live elsewhere
 const SSH_DIR = '/app/.ssh';
-const PRIVATE_KEY_PATH = path.join(SSH_DIR, 'id_ed25519');
-const PUBLIC_KEY_PATH = `${PRIVATE_KEY_PATH}.pub`;
+const PUBLIC_KEY_PATH = path.join(SSH_DIR, 'id_ed25519.pub');
+
+
 
 function readPublicKey() {
   if (!fs.existsSync(PUBLIC_KEY_PATH)) {
@@ -35,19 +30,6 @@ router.post('/public-key', (req, res) => {
     res.type('text/plain').send(key);
   } catch (err) {
     res.status(500).send('Failed to read public SSH key');
-  }
-});
-
-/**
- * POST /connect/rotate-key
- * Regenerates the SSH keypair
- */
-router.post('/rotate-key', (req, res) => {
-  try {
-    rotateSSHKeypair();
-    res.sendStatus(200);
-  } catch (err) {
-    res.status(500).send('Failed to rotate SSH key');
   }
 });
 
