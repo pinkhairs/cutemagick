@@ -1,19 +1,65 @@
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-if (isDev) {
-  // Development: run Tailwind watch + app
-  const tailwind = spawn('npx', [
-    '@tailwindcss/cli',
-    '-i', 'src/dashboard/app.css',
-    '-o', 'src/dashboard/assets/css/style.css',
-    '--watch'
-  ], { 
-    stdio: 'pipe',
-    shell: true 
-  });
+/* -------------------------------------------------
+   Paths
+-------------------------------------------------- */
 
+const INPUT_CSS = path.join('src', 'dashboard', 'app.css');
+
+const OUTPUT_CSS = path.join(
+  'data',
+  'assets',
+  'style.css'
+);
+
+const OUTPUT_DIR = path.dirname(OUTPUT_CSS);
+
+/* -------------------------------------------------
+   Helpers
+-------------------------------------------------- */
+
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+function buildTailwindOnce() {
+  execSync(
+    `npx @tailwindcss/cli -i ${INPUT_CSS} -o ${OUTPUT_CSS}`,
+    { stdio: 'inherit' }
+  );
+}
+
+/* -------------------------------------------------
+   Startup
+-------------------------------------------------- */
+
+if (isDev) {
+  console.log('[dev] ensuring css output directory');
+  ensureDir(OUTPUT_DIR);
+
+  console.log('[dev] building tailwind (one-time)');
+  buildTailwindOnce();
+
+  console.log('[dev] starting tailwind watch');
+  const tailwind = spawn(
+    'npx',
+    [
+      '@tailwindcss/cli',
+      '-i', INPUT_CSS,
+      '-o', OUTPUT_CSS,
+      '--watch',
+      '--poll'
+    ],
+    { stdio: 'inherit', shell: true }
+  );
+
+  console.log('[dev] starting app');
   const app = spawn(
     'node',
     ['--watch', 'src/index.js'],
@@ -26,8 +72,8 @@ if (isDev) {
     app.kill();
     process.exit();
   });
+
 } else {
-  // Production: just run the app (CSS already built)
-  console.log('Running app (production mode)');
+  console.log('[prod] running app');
   spawn('node', ['src/index.js'], { stdio: 'inherit' });
 }
