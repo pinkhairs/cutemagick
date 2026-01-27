@@ -54,6 +54,36 @@ engine({
 
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'dashboard/views'));
+app.use('/assets', express.static(path.join(__dirname, '../data/assets')));
+app.use(express.static(path.join(__dirname, 'dashboard/assets')));
+
+const appRoutes = [
+  '/account',
+  '/sites',
+  '/files',
+  '/connect',
+  '/preview',
+  '/login'
+]
+
+app.use((req, res, next) => {
+  // Root = app
+  if (req.path === '/') {
+    return next();
+  }
+
+  // App-owned routes
+  for (const route of appRoutes) {
+    if (req.path.startsWith(route)) {
+      return next();
+    }
+  }
+
+  // Otherwise: treat as live site
+  return liveRuntime(req, res, next);
+});
+
+
 
 /* ----------------------------
   Page auth (AFTER static)
@@ -66,7 +96,6 @@ app.use(auth);
 validateEnv();
 ensureSSHKeypair();
 
-app.use(express.static(path.join(__dirname, 'dashboard/assets')));
 app.use('/sites', sitesRoutes);
 app.use('/files', filesRoutes);
 app.use('/connect', connectRoutes);
@@ -86,14 +115,6 @@ res.render('index', {
   title: 'Cute Magick'
 });
 });
-
-app.use((req, res, next) => {
-  if (req.path === '/' || req.path === '/login') {
-    return next();
-  }
-  return liveRuntime(req, res, next);
-});
-
 
 
 /* ----------------------------
