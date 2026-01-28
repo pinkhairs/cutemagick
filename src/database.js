@@ -1,7 +1,9 @@
 import fs from 'fs';
 import Database from 'better-sqlite3';
+import path from 'path';
 
-const db = new Database('./data/cutemagick.db');
+const DB_PATH = path.join('/app', 'data', 'cutemagick.db');
+const db = new Database(DB_PATH);
 
 // Load schema
 const schema = fs.readFileSync('./data/schema.sql', 'utf8');
