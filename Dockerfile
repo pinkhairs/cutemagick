@@ -24,12 +24,12 @@ RUN npm install
 # Copy source
 COPY . .
 
-# Ensure runtime directories exist
 RUN mkdir -p \
     /app/data/assets \
     /app/renders \
     /app/sites \
-    /app/.ssh
+    /app/.ssh \
+ && cp -r /app/src/dashboard/assets/* /app/data/assets/
 
 # ---- build Tailwind CSS (PRODUCTION SAFE) ----
 RUN npx @tailwindcss/cli \
