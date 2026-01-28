@@ -37,8 +37,8 @@ function buildTailwindOnce() {
    Startup
 -------------------------------------------------- */
 // ALWAYS ensure directories exist (dev AND prod)
-console.log('ensuring css output directory');
-ensureDir(OUTPUT_DIR);
+// console.log('ensuring css output directory');
+// ensureDir(OUTPUT_DIR);
 if (isDev) {
   console.log('[dev] building tailwind (one-time)');
   buildTailwindOnce();
