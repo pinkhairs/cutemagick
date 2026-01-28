@@ -1,5 +1,7 @@
 FROM node:20-bookworm
+
 ENV PATH="/usr/local/bin:/usr/bin:/bin"
+
 RUN apt-get update && apt-get install -y \
   tini \
   openssh-client \
@@ -11,20 +13,33 @@ RUN apt-get update && apt-get install -y \
   bash \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
+
 # ---- app ----
 WORKDIR /app
+
+# Install deps (needs dev deps for Tailwind build)
 COPY package*.json ./
-RUN npm install --production
+RUN npm install
+
+# Copy source
 COPY . .
 
-EXPOSE 3000
-
+# Ensure runtime directories exist
 RUN mkdir -p \
-    /app/dashboard/assets/css \
-    /app/renders \
     /app/data/assets \
+    /app/renders \
     /app/sites \
     /app/.ssh
+
+# ---- build Tailwind CSS (PRODUCTION SAFE) ----
+RUN npx @tailwindcss/cli \
+  -i /app/src/dashboard/app.css \
+  -o /app/data/assets/style.css
+
+# Optional: prune dev deps after build
+RUN npm prune --production
+
+EXPOSE 3000
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["npm", "start"]
