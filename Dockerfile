@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
   python3-venv \
   bash \
   ca-certificates \
-  su-exec \
+  gosu \
   && rm -rf /var/lib/apt/lists/*
 # ---- app ----
 WORKDIR /app
