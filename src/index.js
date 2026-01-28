@@ -65,32 +65,12 @@ const appRoutes = [
   '/preview',
   '/login'
 ]
-
-app.use((req, res, next) => {
-  // Root = app
-  if (req.path === '/') {
-    return next();
-  }
-
-  // App-owned routes
-  for (const route of appRoutes) {
-    if (req.path.startsWith(route)) {
-      return next();
-    }
-  }
-
-  // Otherwise: treat as live site
-  return liveRuntime(req, res, next);
-});
-
-
-
 /* ----------------------------
   Page auth (AFTER static)
 ----------------------------- */
 
 app.use('/account', accountRoutes);
-
+app.use('/site', liveRuntime);
 app.use(auth);
 
 validateEnv();

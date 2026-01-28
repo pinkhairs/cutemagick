@@ -1,22 +1,46 @@
 import express from 'express';
+import path from 'path';
+import fs from 'fs';
 import db from '../../database.js';
 import { renderSite } from '../lib/siteRenderer.js';
 import { getHeadCommit } from '../lib/gitService.js';
+
 const router = express.Router();
+const PREVIEW_ROOT = '/app/renders/preview';
 
 /* ----------------------------
-   Preview site router
-   URL shape: /preview/:site/:commit/:path?
+   Static files FIRST
 ----------------------------- */
+router.use(/^\/([^/]+)/, (req, res, next) => {
+  const site = req.params[0];
 
+  const sitePreviewRoot = path.join(PREVIEW_ROOT, site);
+  if (!fs.existsSync(sitePreviewRoot)) return next();
+
+  // Try all commit dirs under preview/site/*
+  for (const commit of fs.readdirSync(sitePreviewRoot)) {
+    const dir = path.join(sitePreviewRoot, commit);
+    if (!fs.statSync(dir).isDirectory()) continue;
+
+    express.static(dir, {
+      index: false,
+      fallthrough: true,
+    })(req, res, () => {});
+  }
+
+  next();
+});
+
+/* ----------------------------
+   /preview/:site/:commit/*
+----------------------------- */
 router.all(
   /^\/([^/]+)\/([a-f0-9]{7,40})(?:\/(.*))?$/,
   async (req, res) => {
-    const site = req.params[0];
-    const commit = req.params[1];
+    const site    = req.params[0];
+    const commit  = req.params[1];
     const relPath = req.params[2] || '';
 
-    // Optional: sanity-check that the site exists
     const siteRow = db.prepare(`
       SELECT uuid
       FROM sites
@@ -33,14 +57,15 @@ router.all(
       site,
       relPath,
       commit,
+      mode: 'preview',
     });
   }
 );
 
-/* -------------------------------------------------
+/* ----------------------------
    /preview/:site/*
    (defaults to HEAD)
--------------------------------------------------- */
+----------------------------- */
 router.all(
   /^\/([^/]+)(?:\/(.*))?$/,
   async (req, res) => {
@@ -58,7 +83,7 @@ router.all(
     }
 
     const headCommit = await getHeadCommit({
-      siteId: siteRow.uuid
+      siteId: siteRow.uuid,
     });
 
     if (!headCommit) {
@@ -70,10 +95,10 @@ router.all(
       res,
       site,
       relPath,
-      commit: headCommit
+      commit: headCommit,
+      mode: 'preview',
     });
   }
 );
-
 
 export default router;

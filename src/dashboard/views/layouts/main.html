@@ -16,10 +16,22 @@
       <nav class="inline-flex text-sm lg:text-base items-center gap-4 lg:gap-6">
         <button
         hx-on:click="
-          const name = prompt('Enter site name:');
-          if (!name) return;
+          let nameOrUrl = prompt('Enter site name (or Git repo URL):');
+          if (!nameOrUrl) return;
+
+          const gitUrlRegex = /^(git@[\w.-]+:[\w./~-]+\.git|https?:\/\/[\w.-]+\/[\w./~-]+\.git)$/;
+
+          if (nameOrUrl.startsWith('http://') || nameOrUrl.startsWith('https://')) {
+            nameOrUrl = prompt('Enter an SSH URL');
+            if (!gitUrlRegex.test(nameOrUrl)) {
+              alert('Invalid Git URL');
+              return;
+            }
+          }
+
+          if (!nameOrUrl) return;
           htmx.ajax('POST', '/sites', {
-            values: { name },
+            values: { nameOrUrl },
             swap: 'none'
           });
         "
@@ -43,6 +55,7 @@
   <main id="windows">
   </main>
   <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
+  <!-- <div class="opacity-10 bg-cover bg-center fixed w-full h-full inset-0 -z-1" style="background-image: url(https://bookmarks.magick.host/_next/image?url=%2Fapi%2Fassets%2F302a2116-a55c-4d66-8e16-48a6a2e35a9a&w=1920&q=75)"></div> -->
   <script src="/js/events.js"></script>
   <script src="https://unpkg.com/popper.js@1"></script>
   <script src="https://unpkg.com/tippy.js@5"></script>

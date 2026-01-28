@@ -29,7 +29,7 @@ const acceptableWordOrder = () => {
   return shuffleArray(wordOrders)[0];
 };
 
-export function generateRandomSubdomain() {
+export function generateRandomSubdomain(prefix = 'site') {
   const wordOrder = acceptableWordOrder();
 
   const randomName = uniqueNamesGenerator({
@@ -38,7 +38,7 @@ export function generateRandomSubdomain() {
     separator: '-'
   });
 
-  return randomName
+  return prefix + '-' + randomName
     .normalize('NFD')                  // split letters + accents
     .replace(/[\u0300-\u036f]/g, '')   // remove accents
     .toLowerCase()

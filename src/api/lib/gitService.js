@@ -966,3 +966,36 @@ export async function countRemoteCommitsToPull({ siteId }) {
 
   return Number(stdout.trim()) || 0;
 }
+
+/* ------------------------------------------------------------------
+   Repo import
+------------------------------------------------------------------- */
+export async function cloneRepo({
+  sitePath,
+  repository
+}) {
+  if (!repository) {
+    throw new Error('Repository URL required');
+  }
+
+  // Ensure parent exists
+  fs.mkdirSync(sitePath, { recursive: true });
+
+  // Clone directly into target dir
+  await exec('git', ['clone', repository, sitePath], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      GIT_SSH_COMMAND: [
+        'ssh',
+        '-i', SSH_KEY_PATH,
+        '-o', 'IdentitiesOnly=yes',
+        '-o', 'StrictHostKeyChecking=accept-new'
+      ].join(' ')
+    }
+  });
+
+  // Normalize repo state (identity, excludes, etc.)
+  ensureGitIdentity(sitePath);
+  ensureLocalGitExclude(sitePath);
+}
