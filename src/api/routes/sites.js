@@ -2,6 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import db from '../../database.js';
 import {
+  generateRandomSubdomain,
   getUniqueFolderNameSuffix,
   slugify
 } from '../lib/siteNaming.js';
@@ -24,107 +25,92 @@ import {
   fetchRemote,
   pullFromRemote,
   countLiveCommitsToPush,
+  cloneRepo,
   countRemoteCommitsToPull,
 } from '../lib/gitService.js'; // adjust path as needed
 
 
 router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
-  const name = req.body.name?.trim();
-  if (!name) {
-    return res.status(400).send('Name required');
-  }
+  const input = req.body.nameOrUrl?.trim();
+  if (!input) return;
+
+  const gitUrlRegex =
+  /^(git@[\w.-]+:[\w./~-]+(\.git)?|https?:\/\/[\w.-]+\/[\w./~-]+(\.git)?)$/;
+
+  const isGitRepo = gitUrlRegex.test(input);
 
   const uuid = crypto.randomUUID();
-  const slug = slugify(name);
-  const suffix = await getUniqueFolderNameSuffix(SITES_DIR, slug);
-
-  const domain = ``;
-  const directory = `${slug}${suffix}`;
   const now = new Date().toISOString();
 
+  const name = isGitRepo
+    ? path.basename(input, '.git')
+    : input;
+    console.log('[CREATE SITE]', {
+  input,
+  isGitRepo
+});
+
+
+  const slug = slugify(name);
+  const siteDirsuffix = await getUniqueFolderNameSuffix(SITES_DIR, slug);
+  const directory = `${slug}${siteDirsuffix}`;
   const sitePath = path.join(SITES_DIR, directory);
-
-  const readmeContent = `Welcome to your site!
-
-This is your site’s home.
-
-🔮 First steps:
-1. Edit **index.html**
-2. Add images or new files
-3. Click **Preview**
-
-May your code be clear.
-
-Happy creating!
-  `;
-
-  const indexHtmlContent = `<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Welcome to Cute Magick</title>
-  </head>
-  <body>
-    <h1>Hello 🌈</h1>
-    <p>Your site is live!</p>
-  </body>
-</html>
-  `;
+  const uniqueSubdomain = generateRandomSubdomain(slug) + '.' + process.env.WILDCARD_DOMAIN;
 
   try {
-    await fs.mkdir(sitePath, { recursive: true });
-
-    await fs.writeFile(
-      path.join(sitePath, 'README.md'),
-      readmeContent,
-      'utf8'
-    );
-
-    await fs.writeFile(
-      path.join(sitePath, 'index.html'),
-      indexHtmlContent,
-      'utf8'
-    );
-
-  } catch (err) {
-    console.error('Failed to scaffold site:', err);
-    return res.status(500).send('Failed to create site files');
-  }
-
-  db.prepare(`
-    INSERT INTO sites (
+    db.prepare(`
+      INSERT INTO sites (
+        uuid,
+        name,
+        icon,
+        domain,
+        directory,
+        repository,
+        branch,
+        live_commit,
+        created_at,
+        last_viewed
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
       uuid,
       name,
-      icon,
-      domain,
+      null,
+      uniqueSubdomain,
       directory,
-      repository,
-      live_commit,
-      created_at,
-      last_viewed
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    uuid,
-    name,
-    '/img/default-icon.png',
-    domain,
-    directory,
-    null,
-    null,
-    now,
-    now
-  );
+      isGitRepo ? input : null,
+      isGitRepo ? 'main' : null,
+      null,
+      now,
+      now
+    );
 
-  const hash = await commitInitialScaffold({ siteId: uuid });
-  if (!hash) {
-  throw new Error('Failed to resolve initial scaffold commit');
-}
+    if (isGitRepo) {
+      // 🧲 Import repo (delegated)
+      await cloneRepo({
+        sitePath,
+        repository: input
+      });
+    } else {
+      // 📁 Empty site
+      await fs.mkdir(sitePath, { recursive: true });
+    }
 
-  res
-  .set('HX-Trigger', 'refreshSites')
-  .sendStatus(204);
+    res
+      .set('HX-Trigger', 'refreshSites')
+      .sendStatus(204);
+
+  } catch (err) {
+    console.error('Failed to create site:', err);
+
+    try {
+      await fs.rm(sitePath, { recursive: true, force: true });
+    } catch {}
+
+    return res.status(500).send('Be sure to connect your deploy key first (top right button)');
+  }
 });
+
 
 
 router.get('/:uuid/iframe', (req, res) => {
@@ -140,7 +126,7 @@ router.get('/:uuid/iframe', (req, res) => {
 
   res.send(`
   <iframe
-    src="/${site.directory}/"
+    src="/site/${site.directory}/"
   ></iframe>
   `);
 });
@@ -686,6 +672,23 @@ router.post('/:uuid/sync/push', async (req, res) => {
 });
 
 
+router.post('/:uuid/sync/pull', async (req, res) => {
+  const { uuid } = req.params;
+
+  console.log('[SYNC PULL] start', { uuid });
+
+  try {
+    await pullFromRemote({ siteId: uuid });
+  } catch (err) {
+    console.error('[SYNC PULL] failed', err.message);
+    return res.status(409).send(err.message);
+  }
+
+  res
+    .set('HX-Trigger', 'commitsChanged')
+    .sendStatus(204);
+});
+
 
 router.get('/:uuid/:path', (req, res) => {
   const { uuid, path } = req.params;
@@ -742,23 +745,6 @@ router.get('/', (req, res) => {
     sites,
     layout: false,
   });
-});
-
-router.post('/:uuid/sync/pull', async (req, res) => {
-  const { uuid } = req.params;
-
-  console.log('[SYNC PULL] start', { uuid });
-
-  try {
-    await pullFromRemote({ siteId: uuid });
-  } catch (err) {
-    console.error('[SYNC PULL] failed', err.message);
-    return res.status(409).send(err.message);
-  }
-
-  res
-    .set('HX-Trigger', 'commitsChanged')
-    .sendStatus(204);
 });
 
 

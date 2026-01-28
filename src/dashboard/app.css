@@ -12,6 +12,10 @@ html, body, #app {
   @apply grid;
 }
 
+.window {
+  cursor: move;
+}
+
 
 /* Your theme tokens live here in v4 */
 @theme {

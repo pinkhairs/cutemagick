@@ -297,34 +297,56 @@ await addDetachedWorktree({
     return previewDir;
   }
   
-  export async function resolveLiveSiteDir(site, liveCommit) {
-    const liveDir = path.join(LIVE_ROOT, site);
-    const repoDir = path.join(SITES_ROOT, site);
-    
-    if (!liveCommit) {
-      throw new Error(`No live commit set for site: ${site}`);
-    }
-    
-    if (!fs.existsSync(path.join(repoDir, '.git'))) {
-      throw new Error(`Site repo not initialized yet: ${site}`);
-    }
-    
-    fs.mkdirSync(LIVE_ROOT, { recursive: true });
-    
-    if (fs.existsSync(liveDir)) {
+export async function resolveLiveSiteDir(site, liveCommit) {
+  const liveDir = path.join(LIVE_ROOT, site);
+  const repoDir = path.join(SITES_ROOT, site);
+
+  if (!liveCommit) {
+    throw new Error(`No live commit set for site: ${site}`);
+  }
+
+  if (!fs.existsSync(path.join(repoDir, '.git'))) {
+    throw new Error(`Site repo not initialized yet: ${site}`);
+  }
+
+  fs.mkdirSync(LIVE_ROOT, { recursive: true });
+
+  // ✅ Case 1: worktree already exists
+  if (fs.existsSync(liveDir)) {
+    try {
+      const { stdout } = await runProcess({
+        cmd: 'git',
+        args: ['rev-parse', 'HEAD'],
+        cwd: liveDir
+      });
+
+      if (stdout.trim() === liveCommit) {
+        // Correct commit → reuse
+        return liveDir;
+      }
+
+      // Wrong commit → remove properly
+      await runProcess({
+        cmd: 'git',
+        args: ['worktree', 'remove', '--force', liveDir],
+        cwd: repoDir
+      });
+    } catch {
+      // If git metadata is broken, nuke dir as last resort
       fs.rmSync(liveDir, { recursive: true, force: true });
     }
-    
-    await addDetachedWorktree({
-      repoDir,
-      targetDir: liveDir,
-      commit: liveCommit
-    });
-    
-    return liveDir;
   }
-  
-  
+
+  // ✅ Case 2: add fresh worktree
+  await addDetachedWorktree({
+    repoDir,
+    targetDir: liveDir,
+    commit: liveCommit
+  });
+
+  return liveDir;
+}
+
   export function cleanupOldPreviews() {
     if (!fs.existsSync(PREVIEW_ROOT)) return;
     
