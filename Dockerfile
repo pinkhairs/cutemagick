@@ -10,7 +10,6 @@ RUN apt-get update && apt-get install -y \
   python3-venv \
   bash \
   ca-certificates \
-  gosu \
   && rm -rf /var/lib/apt/lists/*
 # ---- app ----
 WORKDIR /app
@@ -18,16 +17,14 @@ COPY package*.json ./
 RUN npm install --production
 COPY . .
 
-# Copy and set up entrypoint
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
 EXPOSE 3000
 
 RUN mkdir -p \
     /app/dashboard/assets/css \
-    /app/renders
+    /app/renders \
+    /app/data/assets \
+    /app/sites \
+    /app/.ssh
 
-# Don't set USER node here - entrypoint handles it
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["npm", "start"]
