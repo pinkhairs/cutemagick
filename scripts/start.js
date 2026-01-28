@@ -8,13 +8,22 @@ const isDev = process.env.NODE_ENV === 'development';
    Paths
 -------------------------------------------------- */
 
-const INPUT_CSS = path.join('src', 'dashboard', 'app.css');
+const APP_ROOT = '/app';
+
+const INPUT_CSS = path.join(
+  APP_ROOT,
+  'src',
+  'dashboard',
+  'app.css'
+);
 
 const OUTPUT_CSS = path.join(
+  APP_ROOT,
   'data',
   'assets',
   'style.css'
 );
+
 
 const OUTPUT_DIR = path.dirname(OUTPUT_CSS);
 
