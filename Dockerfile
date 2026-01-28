@@ -1,6 +1,5 @@
 FROM node:20-bookworm
 ENV PATH="/usr/local/bin:/usr/bin:/bin"
-
 RUN apt-get update && apt-get install -y \
   tini \
   openssh-client \
@@ -12,27 +11,24 @@ RUN apt-get update && apt-get install -y \
   bash \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
-
 # ---- app ----
 WORKDIR /app
-
 COPY package*.json ./
 RUN npm install --production
-
 COPY . .
-
 EXPOSE 3000
-
 RUN mkdir -p \
     /app/dashboard/assets/css \
     /app/.ssh \
     /app/renders \
+    /app/data \
+    /app/sites \
  && chown -R node:node \
     /app/dashboard \
     /app/.ssh \
-    /app/renders
-
+    /app/renders \
+    /app/data \
+    /app/sites
 USER node
-
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["npm", "start"]
