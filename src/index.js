@@ -67,29 +67,12 @@ app.use(
   )
 );
 
-const appRoutes = [
-  '/account',
-  '/sites',
-  '/files',
-  '/connect',
-  '/preview',
-  '/login'
-]
 /* ----------------------------
   Page auth (AFTER static)
 ----------------------------- */
 
 app.use('/account', accountRoutes);
 app.use('/site', liveRuntime);
-app.use(auth);
-
-validateEnv();
-ensureSSHKeypair();
-
-app.use('/sites', sitesRoutes);
-app.use('/files', filesRoutes);
-app.use('/connect', connectRoutes);
-app.use('/preview', previewRuntime);
 /* ----------------------------
   Routes
 ----------------------------- */
@@ -99,6 +82,15 @@ res.render('login', {
   layout: false, // usually you want no chrome here
 });
 });
+app.use(auth);
+
+validateEnv();
+ensureSSHKeypair();
+
+app.use('/sites', sitesRoutes);
+app.use('/files', filesRoutes);
+app.use('/connect', connectRoutes);
+app.use('/preview', previewRuntime);
 
 app.get('/', (req, res) => {
 res.render('index', {
