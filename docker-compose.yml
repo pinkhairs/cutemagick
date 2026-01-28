@@ -3,14 +3,11 @@ services:
     environment:
       - NODE_ENV=development
     build: .
-    ports:
-      - "${HOST_PORT:-3000}:3000"
     env_file:
       - .env
     volumes:
       - ./sites:/app/sites
       - ./data:/app/data
       - ssh-data:/app/.ssh
-    develop:
 volumes:
   ssh-data:
