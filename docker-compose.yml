@@ -1,7 +1,7 @@
 services:
   app:
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
     build: .
     env_file:
       - .env
