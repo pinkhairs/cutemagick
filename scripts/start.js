@@ -36,11 +36,9 @@ function buildTailwindOnce() {
 /* -------------------------------------------------
    Startup
 -------------------------------------------------- */
-
 // ALWAYS ensure directories exist (dev AND prod)
 console.log('ensuring css output directory');
 ensureDir(OUTPUT_DIR);
-
 if (isDev) {
   console.log('[dev] building tailwind (one-time)');
   buildTailwindOnce();
@@ -72,5 +70,16 @@ if (isDev) {
   console.log('[prod] building tailwind (one-time)');
   buildTailwindOnce();
   console.log('[prod] running app');
-  spawn('node', ['src/index.js'], { stdio: 'inherit' });
+  const app = spawn('node', ['src/index.js'], { stdio: 'inherit' });
+  
+  // Keep the process alive and handle exit
+  app.on('exit', (code) => {
+    console.log(`App exited with code ${code}`);
+    process.exit(code);
+  });
+  
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down...');
+    app.kill('SIGTERM');
+  });
 }
