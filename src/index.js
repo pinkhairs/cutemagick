@@ -54,8 +54,16 @@ engine({
 
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'dashboard/views'));
-app.use('/assets', express.static(path.join(__dirname, '../data/assets')));
-app.use(express.static(path.join(__dirname, 'dashboard/assets')));
+app.use(
+  '/assets',
+  express.static(path.join(DATA_ROOT, 'assets'))
+);
+
+app.use(
+  express.static(
+    path.join(APP_ROOT, 'src', 'dashboard', 'assets')
+  )
+);
 
 const appRoutes = [
   '/account',
