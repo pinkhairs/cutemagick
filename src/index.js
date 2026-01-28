@@ -56,10 +56,7 @@ engine({
 
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'dashboard/views'));
-app.use(
-  '/assets',
-  express.static(path.join(DATA_ROOT, 'assets'))
-);
+app.use('/assets', express.static(path.join(DATA_ROOT, 'assets')));
 
 app.use(
   express.static(
