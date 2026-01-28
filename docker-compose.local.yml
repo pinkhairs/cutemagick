@@ -8,10 +8,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ./sites:/app/sites          # bind mount to local directory
-      - ./data:/app/data             # bind mount to local directory
-      - ./ssh:/app/.ssh              # bind mount to local directory
+      - ./sites:/app/sites
+      - ./ssh-data:/app/.ssh
       - ./src:/app/src               # live reload your source code
       - /app/node_modules            # prevent overwriting node_modules
-
-# Remove the volumes section entirely for local dev
+      # REMOVED ./data:/app/data - let it use image files

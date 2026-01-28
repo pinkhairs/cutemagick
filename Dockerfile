@@ -1,7 +1,5 @@
 FROM node:20-bookworm
-
 ENV PATH="/usr/local/bin:/usr/bin:/bin"
-
 RUN apt-get update && apt-get install -y \
   tini \
   openssh-client \
@@ -24,6 +22,7 @@ RUN npm install
 # Copy source
 COPY . .
 
+# Create directories and copy assets
 RUN mkdir -p \
     /app/data/assets \
     /app/renders \
@@ -36,10 +35,15 @@ RUN npx @tailwindcss/cli \
   -i /app/src/dashboard/app.css \
   -o /app/data/assets/style.css
 
-# Optional: prune dev deps after build
+# Prune dev deps after build
 RUN npm prune --production
 
-EXPOSE 3000
+# CRITICAL: Give node user ownership of everything AFTER all file operations
+RUN chown -R node:node /app
 
+# Switch to node user
+USER node
+
+EXPOSE 3000
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["npm", "start"]

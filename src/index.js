@@ -15,7 +15,6 @@ import { ensureSSHKeypair, validateEnv } from './api/lib/index.js';
 import { startMaintenanceScheduler } from './api/lib/maintenance.js';
 const DATA_ROOT = path.join('/app', 'data');
 const APP_ROOT = path.join('/app', 'src');
-
 startMaintenanceScheduler();
 
 
@@ -56,13 +55,28 @@ engine({
 
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'dashboard/views'));
-app.use('/assets', express.static(path.join(DATA_ROOT, 'assets')));
 
-app.use(
-  express.static(
-    path.join(APP_ROOT, 'src', 'dashboard', 'assets')
-  )
-);
+// ... other code ...
+
+// Serve static assets with correct MIME types
+app.use('/assets', express.static(path.join(DATA_ROOT, 'assets'), {
+  setHeaders: (res, filepath) => {
+    if (filepath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (filepath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    } else if (filepath.endsWith('.svg')) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+    }
+  }
+}));
+
+// REMOVE THIS BROKEN LINE:
+// app.use(
+//   express.static(
+//     path.join(APP_ROOT, 'src', 'dashboard', 'assets')
+//   )
+// );
 
 /* ----------------------------
   Page auth (AFTER static)

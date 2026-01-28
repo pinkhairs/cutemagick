@@ -7,10 +7,10 @@ services:
       - .env
     volumes:
       - sites:/app/sites
-      - app-data:/app/data
       - ssh-data:/app/.ssh
+      # REMOVED app-data volume - let /app/data use image files
 
 volumes:
   ssh-data:
-  app-data:
   sites:
+  # REMOVED app-data
