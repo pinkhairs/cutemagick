@@ -1,0 +1,85 @@
+# -----------------------------
+# Dependencies (NEVER copy host deps)
+# -----------------------------
+node_modules/
+npm-cache/
+.pnpm-store/
+
+# -----------------------------
+# Build artifacts (rebuilt in container or unused)
+# -----------------------------
+dist/
+build/
+.tmp/
+sites/
+
+# -----------------------------
+# User data & runtime state (must come from volumes)
+# -----------------------------
+sites/*
+!sites/.gitkeep
+
+data/*
+!data/.gitkeep
+
+*.db
+*.sqlite
+*.sqlite3
+
+.ssh/
+
+# -----------------------------
+# Environment & secrets (never bake into image)
+# -----------------------------
+.env
+.env.*
+.env.local
+.env.*.local
+
+# -----------------------------
+# Logs & debug output
+# -----------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# -----------------------------
+# OS cruft
+# -----------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# Editor / IDE
+# -----------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.orig
+
+# -----------------------------
+# Git & meta (not needed inside image)
+# -----------------------------
+.git/
+.gitignore
+.gitattributes
+
+# -----------------------------
+# Docker / compose files (optional but recommended)
+# -----------------------------
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile.dev
+
+# -----------------------------
+# Tests & docs (unless explicitly needed)
+# -----------------------------
+tests/
+test/
+__tests__/
+docs/
+*.md

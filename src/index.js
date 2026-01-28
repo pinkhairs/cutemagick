@@ -13,6 +13,8 @@ import liveRuntime from './api/routes/live.js';
 import previewRuntime from './api/routes/preview.js';
 import { ensureSSHKeypair, validateEnv } from './api/lib/index.js';
 import { startMaintenanceScheduler } from './api/lib/maintenance.js';
+const DATA_ROOT = path.join('/app', 'data');
+const APP_ROOT = path.join('/app', 'src');
 
 startMaintenanceScheduler();
 
