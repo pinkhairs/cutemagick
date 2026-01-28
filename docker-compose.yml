@@ -14,6 +14,5 @@ services:
       - ./sites:/app/sites
       - ./data:/app/data
       - ssh-data:/app/.ssh
-    develop:
 volumes:
   ssh-data:
