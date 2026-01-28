@@ -6,10 +6,6 @@ services:
     env_file:
       - .env
     volumes:
-      - sites:/app/sites
-      - app-data:/app/data
-      - ssh-data:/app/.ssh
-volumes:
-  ssh-data:
-  app-data:
-  sites:
+      - ./sites:/app/sites
+      - ./data:/app/data
+      - ./ssh-data:/app/.ssh

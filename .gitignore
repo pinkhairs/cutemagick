@@ -12,7 +12,6 @@ sites/*
 *.sqlite3
 data/*
 !data/.gitkeep
-!data/schema.sql
 .ssh/
 
 # Environment
@@ -34,3 +33,11 @@ Thumbs.db
 *.swp
 *.swo
 *~
+data/*
+!data/.gitkeep
+
+sites/*
+!sites/.gitkeep
+
+ssh-data/*
+!ssh-data/.gitkeep

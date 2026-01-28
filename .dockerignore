@@ -21,7 +21,6 @@ sites/*
 
 data/*
 !data/.gitkeep
-!data/schema.sql
 
 *.db
 *.sqlite
