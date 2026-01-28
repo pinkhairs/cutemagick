@@ -6,7 +6,7 @@ const DB_PATH = path.join('/app', 'data', 'cutemagick.db');
 const db = new Database(DB_PATH);
 
 // Load schema
-const schema = fs.readFileSync('./data/schema.sql', 'utf8');
+const schema = path.join('/app', 'data', 'schema.sql', 'utf8');
 
 // Run schema (safe to re-run)
 db.exec(schema);
