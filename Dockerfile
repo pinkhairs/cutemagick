@@ -5,8 +5,7 @@ WORKDIR /app
 COPY package.json ./
 COPY index.js ./
 
-EXPOSE 3000
-
+# Ensure runtime directories exist
 RUN mkdir -p \
     /app/dashboard/assets/css \
     /app/renders
