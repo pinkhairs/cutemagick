@@ -39,7 +39,10 @@ function buildTailwindOnce() {
 // ALWAYS ensure directories exist (dev AND prod)
 // console.log('ensuring css output directory');
 // ensureDir(OUTPUT_DIR);
+// Remove the production Tailwind build - it's already built in Dockerfile
 if (isDev) {
+  console.log('[dev] ensuring css output directory');
+  ensureDir(OUTPUT_DIR);
   console.log('[dev] building tailwind (one-time)');
   buildTailwindOnce();
   console.log('[dev] starting tailwind watch');
@@ -67,12 +70,10 @@ if (isDev) {
     process.exit();
   });
 } else {
-  console.log('[prod] building tailwind (one-time)');
-  buildTailwindOnce();
-  console.log('[prod] running app');
+  // Production: CSS is already built in Dockerfile, just run the app
+  console.log('[prod] starting app');
   const app = spawn('node', ['src/index.js'], { stdio: 'inherit' });
   
-  // Keep the process alive and handle exit
   app.on('exit', (code) => {
     console.log(`App exited with code ${code}`);
     process.exit(code);
