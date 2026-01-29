@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/assets/style.css" />
+  <link rel="stylesheet" href="/assets/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=SUSE:wght@100..800&display=swap" rel="stylesheet" />
@@ -18,7 +18,7 @@
   <link rel="manifest" href="/assets/img/site.webmanifest">
 </head>
 <body class="flex-col lg:h-svh justify-between flex text-gray-900 dark:text-white">
-  <header class="w-full bottom-0">
+  <header class="z-10 px-4 relative">
     <div class="font-semibold p-4 w-full inline-flex large:text-lg gap-4 lg:gap-6 justify-between items-center">
       <nav class="inline-flex text-sm lg:text-base items-center gap-4 lg:gap-6">
         <button
@@ -40,6 +40,11 @@
           htmx.ajax('POST', '/sites', {
             values: { nameOrUrl },
             swap: 'none'
+          }).then(res => {
+            htmx.trigger(document.body, 'refreshSites');
+          })
+          .catch(err => {
+            alert('Sorry that didn\'t work. Make sure you\'ve added the Cute Magick key to your Git server (top right button) and try again.');
           });
         "
         class="btn py-1! rainbow-tiler border-0! lg:px-4! text-black!">New Site</button>
@@ -59,15 +64,15 @@
     </div>
   </header>
   {{{body}}}
-  <main id="windows">
+  <main class="z-10 lg:fixed lg:right-0" id="windows">
   </main>
   <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
-  <!-- <div class="opacity-10 bg-cover bg-center fixed w-full h-full inset-0 -z-1" style="background-image: url(https://bookmarks.magick.host/_next/image?url=%2Fapi%2Fassets%2F302a2116-a55c-4d66-8e16-48a6a2e35a9a&w=1920&q=75)"></div> -->
+  <div class="fixed w-full inset-0 h-full bg-cover bg-bottom bg-no-repeat -z-1 opacity-30" style="background-image: url()"></div>
   <script src="/assets/js/events.js"></script>
   <script src="https://unpkg.com/popper.js@1"></script>
   <script src="https://unpkg.com/tippy.js@5"></script>
   <script src="/assets/js/htmx.min.js"></script>
-  <script src="/assets/js/DraggableWindows.js" defer></script>
+  <!-- <script src="/assets/js/DraggableWindows.js" defer></script> -->
   <script src="/assets/js/file-explorer.js" defer></script>
   <script src="/assets/js/mount-file-explorer.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js"></script>
@@ -171,99 +176,35 @@ document.addEventListener('click', function(e) {
 });
 </script>
 <script>
-(function () {
-  console.log('[TimeMachine] script loaded');
+  window.openSiteWindow = function ({ uuid }) {
+  const existing = document.getElementById(`site-window-${uuid}`);
+  if (existing) {
+    window.DraggableWindows?.focusWindow(existing);
+    return;
+  }
 
-  document.addEventListener('click', async (e) => {
-    console.log('[TimeMachine] click event', e.target);
+  const key = `win-path-site-${uuid}`;
+  const currentPath = localStorage.getItem(key) || '';
 
-    const btn = e.target.closest('button[data-history-action]');
-    console.log('[TimeMachine] closest button[data-history-action]:', btn);
+  const url = currentPath
+    ? `/site-window/${uuid}/${currentPath}`
+    : `/site-window/${uuid}`;
 
-    if (!btn) return;
-
-    const action = btn.dataset.historyAction;
-    const commit = btn.dataset.commit;
-
-    console.log('[TimeMachine] action:', action);
-    console.log('[TimeMachine] commit:', commit);
-
-    // 🔒 Resolve site from the nearest owner that declares it
-    const windowEl = btn.closest('.window');
-    console.log('[TimeMachine] closest .window:', windowEl);
-
-    const siteUuid = windowEl?.id;
-    console.log('[TimeMachine] resolved siteUuid:', siteUuid);
-
-    const siteDir = windowEl?.dataset.siteDirectory;
-    console.log('[TimeMachine] resolved siteUuid:', siteDir);
-
-    if (!siteUuid) {
-      console.warn('[TimeMachine] abort: no site UUID found');
-      return;
-    }
-
-    /* ----------------------------
-       👀 Preview arbitrary commit
-    ----------------------------- */
-if (action === 'preview') {
-  console.log('[TimeMachine] PREVIEW → POST in new tab');
-
-  const site = siteDir;        // window.id
-  const path = 'index.html';    // default
-  const previewUrl = `/preview/${site}/${commit}`;
-
-  console.log('[TimeMachine] previewUrl:', previewUrl);
-  console.log('[TimeMachine] commit:', commit);
-
-  // Create a temporary form
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = previewUrl;
-  form.target = '_blank';
-
-  // Commit input
-  const input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = 'commit';
-  input.value = commit;
-
-  form.appendChild(input);
-  document.body.appendChild(form);
-
-  form.submit();
-  document.body.removeChild(form);
-
-  return;
-}
-
-
-    /* ----------------------------
-       🌍 Return to live
-    ----------------------------- */
-    if (action === 'preview-live') {
-      console.log('[TimeMachine] PREVIEW-LIVE action triggered');
-
-      const url = new URL(location.href);
-      url.hash = '';
-
-      console.log('[TimeMachine] reloading live URL:', url.toString());
-      location.reload();
-      return;
-    }
-
-    /* ----------------------------
-       ⏪ Restore as draft (ignored for now)
-    ----------------------------- */
-    if (action === 'restore-draft') {
-      console.log('[TimeMachine] restore-draft clicked (ignored for preview debugging)');
-      return;
-    }
-
-    console.warn('[TimeMachine] unknown action:', action);
+  window.htmx.ajax('GET', url, {
+    target: '#windows',
+    swap: 'afterbegin',
+    pushUrl: false,
   });
-})();
+};
 </script>
+<script>
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action="open-history"]');
+  if (!el) return;
 
+  const win = el.closest('.window');
+  win?.querySelector('[data-tab="history"]')?.click();
+});
+</script>
 </body>
 </html>

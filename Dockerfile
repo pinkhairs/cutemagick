@@ -1,49 +1,37 @@
+# ---- base ----
 FROM node:20-bookworm
-ENV PATH="/usr/local/bin:/usr/bin:/bin"
+
+# System deps (keep minimal)
 RUN apt-get update && apt-get install -y \
-  tini \
-  openssh-client \
-  php-cgi \
-  ruby \
-  php-cli \
-  python3 \
-  python3-venv \
-  bash \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# ---- app ----
+# App dir
 WORKDIR /app
 
-# Install deps (needs dev deps for Tailwind build)
+# Install deps first (better layer caching)
 COPY package*.json ./
 RUN npm install
 
 # Copy source
 COPY . .
 
-# Create directories and copy assets
+# Create data dirs inside image (ownership matters)
 RUN mkdir -p \
+    /app/data/assets/css \
     /app/data/assets \
-    /app/renders \
-    /app/sites \
-    /app/.ssh \
- && cp -r /app/src/dashboard/assets/* /app/data/assets/
+ && chown -R node:node /app
 
-# ---- build Tailwind CSS (PRODUCTION SAFE) ----
-RUN npx @tailwindcss/cli \
-  -i /app/src/dashboard/app.css \
-  -o /app/data/assets/style.css
+# Build assets at image build time
+RUN npm run assets:sync \
+ && npm run css:build
 
-# Prune dev deps after build
+# Drop dev deps (optional but recommended)
 RUN npm prune --production
 
-# CRITICAL: Give node user ownership of everything AFTER all file operations
-RUN chown -R node:node /app
-
-# Switch to node user
+# Runtime user
 USER node
 
 EXPOSE 3000
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["npm", "start"]
+
+CMD ["node", "src/index.js"]

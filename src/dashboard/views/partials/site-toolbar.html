@@ -1,0 +1,19 @@
+<div
+  class="site-toolbar shrink-0 flex items-center px-2 pt-2 pb-3
+         border-t border-gray-400 dark:border-gray-700 text-sm"
+>
+  <div class="flex flex-1 justify-between items-center gap-4">
+
+    {{!-- Left: Live identity + draft state --}}
+    {{> site-identity
+        siteId=siteId
+        siteAddress=siteAddress
+    }}
+
+    {{!-- Right: Actions (Preview / Go Live) --}}
+    {{> site-actions
+        siteId=siteId
+    }}
+
+  </div>
+</div>

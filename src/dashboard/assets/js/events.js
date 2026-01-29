@@ -17,7 +17,7 @@
     filesChanged(siteId) {
       emit('filesChanged', { siteId });
     },
-    sitesChanged() {
+    refreshedSites() {
       emit('refreshSites');
     }
   };

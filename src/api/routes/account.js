@@ -6,7 +6,8 @@ import auth from '../middleware/auth.js'
 const router = express.Router();
 
 router.post('/login', (req, res) => {
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
 
   if (!email || !password) {
     return res.redirect('/login');
@@ -25,14 +26,12 @@ router.post('/login', (req, res) => {
     return res.redirect('/login');
   }
 
-  // 🔐 ISSUE JWT
   const token = jwt.sign(
     { email },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 
-  // 🍪 Store JWT in cookie
   res.cookie('token', token, {
     httpOnly: true,
     sameSite: 'strict',
