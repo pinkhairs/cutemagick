@@ -104,7 +104,6 @@
   hx-vals='{"commit":"{{hash}}"}'
 hx-on::after-request="
   const status = event.detail.xhr.status;
-  console.log({status})
 
   if (status < 200 || status >= 300) {
     alert('That didn\'t work...');
@@ -141,7 +140,6 @@ hx-on::after-request="
   hx-vals='{"commit":"{{hash}}"}'
 hx-on::after-request="
   const status = event.detail.xhr.status;
-  console.log({status})
 
   if (status < 200 || status >= 300) {
     alert('That didn\'t work...');

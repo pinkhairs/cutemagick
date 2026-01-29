@@ -1,0 +1,37 @@
+<div class="flex items-center gap-4">
+
+  {{!-- Preview HEAD --}}
+  <a
+    href="/preview/{{siteId}}"
+    target="_blank"
+    class="preview-btn btn-secondary hidden"
+    hx-get="/sites/{{siteId}}/draft-count"
+    hx-trigger="revealed, commitsChanged from:body"
+    hx-swap="none"
+    hx-on::after-request="
+      const n = Number(event.detail.xhr.responseText.trim());
+      this.classList.toggle('hidden', !(Number.isFinite(n) && n > 0));
+    "
+  >
+    👀 Preview
+    {{> site-draft-badge siteId=siteId }}
+  </a>
+
+  {{!-- Go Live --}}
+  <button
+    type="button"
+    class="go-live-btn btn-primary hidden"
+    hx-post="/sites/{{siteId}}/go-live"
+    hx-confirm="This will publish all drafts. Are you ready?"
+    hx-swap="none"
+    hx-trigger="click, commitsChanged from:body"
+    hx-get="/sites/{{siteId}}/draft-count"
+    hx-on::after-request="
+      const n = Number(event.detail.xhr.responseText.trim());
+      this.classList.toggle('hidden', !(Number.isFinite(n) && n > 0));
+    "
+  >
+    🚀 Go Live
+  </button>
+
+</div>

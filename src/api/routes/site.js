@@ -1,44 +1,42 @@
 import express from 'express';
 import db from '../../../infra/db/index.js';
 import { renderSite } from '../siteRenderer.js';
-
 const router = express.Router();
 
 /* -------------------------------------------------
-   Preview site renderer
-   Mounted at: /preview
-   URL shape:
-     /preview/:site/:commit
-     /preview/:site/:commit/*
+   Public site renderer
 -------------------------------------------------- */
 
 router.use(async (req, res) => {
-  // Strip leading slash and split
   const parts = req.path.replace(/^\/+/, '').split('/');
-
   const site = parts.shift();
-  const commit = parts.shift();
   const relPath = parts.join('/');
 
-  if (!site || !commit) {
-    return res.status(404).send('Preview not found');
+  if (!site) {
+    return res.status(404).send('Site not found');
   }
 
   const siteRow = db
-    .prepare('SELECT uuid FROM sites WHERE directory = ?')
+    .prepare('SELECT live_commit FROM sites WHERE directory = ?')
     .get(site);
 
   if (!siteRow) {
     return res.status(404).send('Site not found');
   }
 
+  if (!siteRow.live_commit) {
+    res.status(200).type('html').send(`
+    `);
+    return;
+  }
+
   return renderSite({
     req,
     res,
     site,
-    commit,
+    commit: siteRow.live_commit,
     relPath,
-    mode: 'preview',
+    mode: 'live'
   });
 });
 

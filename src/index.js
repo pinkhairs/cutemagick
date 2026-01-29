@@ -1,38 +1,70 @@
 import 'dotenv/config';
-import express from 'express';
-import { engine } from 'express-handlebars';
+
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+import express from 'express';
+import { engine } from 'express-handlebars';
 import cookieParser from 'cookie-parser';
+
 import auth from './api/middleware/auth.js';
+
 import accountRoutes from './api/routes/account.js';
 import connectRoutes from './api/routes/connect.js';
 import sitesRoutes from './api/routes/sites.js';
-import filesRoutes from './api/routes/files.js';
-import liveRuntime from './api/routes/live.js';
-import previewRuntime from './api/routes/preview.js';
-import { ensureSSHKeypair, validateEnv } from './api/lib/index.js';
-import { startMaintenanceScheduler } from './api/lib/maintenance.js';
-const DATA_ROOT = path.join('/app', 'data');
-const APP_ROOT = path.join('/app', 'src');
-startMaintenanceScheduler();
+import fsRoutes from './api/routes/fs.js';
+import siteRoutes from './api/routes/site.js';
+import siteWindowRoutes from './api/routes/site-window.js';
+import previewRouter from './api/routes/preview.js';
+import gitRoutes from './api/routes/git.js';
 
+import log from '../infra/logs/index.js';
+import {
+  ensureSSHKeypair,
+  validateEnv,
+  startMaintenanceScheduler,
+} from '../infra/index.js';
+
+import { DATA_ROOT } from '../config/index.js';
+
+/* ----------------------------
+   Paths
+----------------------------- */
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
-// app.use((req, res, next) => {
-//   console.log(`➡️  ${req.method} ${req.originalUrl}`);
-//   next();
-// });
+/* ----------------------------
+   Startup checks
+----------------------------- */
+
+validateEnv();
+
+// Ensure DATA_ROOT exists explicitly
+if (!fs.existsSync(DATA_ROOT)) {
+  log.info('[init]', 'creating data root', DATA_ROOT);
+  fs.mkdirSync(DATA_ROOT, { recursive: true });
+}
+
+ensureSSHKeypair();
+startMaintenanceScheduler();
 
 /* ----------------------------
-  Middleware
+   App setup
 ----------------------------- */
+
+const app = express();
+
+/* ----------------------------
+   Middleware
+----------------------------- */
+
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// HTMX: disable caching for fragment responses
 app.use((req, res, next) => {
   if (req.headers['hx-request']) {
     res.set('Cache-Control', 'no-store');
@@ -41,80 +73,74 @@ app.use((req, res, next) => {
 });
 
 /* ----------------------------
-  Handlebars (.html templates)
+   Handlebars (.html templates)
 ----------------------------- */
+
 app.engine(
-'html',
-engine({
-  extname: '.html',
-  layoutsExtname: '.html',
-  layoutsDir: path.join(__dirname, 'dashboard/views/layouts'),
-  partialsDir: path.join(__dirname, 'dashboard/views/partials'),
-})
+  'html',
+  engine({
+    extname: '.html',
+    layoutsExtname: '.html',
+    layoutsDir: path.join(__dirname, 'dashboard/views/layouts'),
+    partialsDir: path.join(__dirname, 'dashboard/views/partials'),
+  })
 );
 
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'dashboard/views'));
 
-// ... other code ...
-
-// Serve static assets with correct MIME types
-app.use('/assets', express.static(path.join(DATA_ROOT, 'assets'), {
-  setHeaders: (res, filepath) => {
-    if (filepath.endsWith('.js')) {
-      res.setHeader('Content-Type', 'application/javascript');
-    } else if (filepath.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
-    } else if (filepath.endsWith('.svg')) {
-      res.setHeader('Content-Type', 'image/svg+xml');
-    }
-  }
-}));
-
-// REMOVE THIS BROKEN LINE:
-// app.use(
-//   express.static(
-//     path.join(APP_ROOT, 'src', 'dashboard', 'assets')
-//   )
-// );
-
 /* ----------------------------
-  Page auth (AFTER static)
+   Static assets
 ----------------------------- */
 
-app.use('/account', accountRoutes);
-app.use('/site', liveRuntime);
+app.use(
+  '/assets',
+  express.static(path.join(DATA_ROOT, 'assets'))
+);
+
 /* ----------------------------
-  Routes
+   Public routes
 ----------------------------- */
+
 app.get('/login', (req, res) => {
-res.render('login', {
-  title: 'Log in · Cute Magick',
-  layout: false, // usually you want no chrome here
+  res.render('login', {
+    title: 'Log in · Cute Magick',
+    layout: false,
+  });
 });
+
+// Public hosted sites
+app.use('/account', accountRoutes);
+app.use('/site', (req, res, next) => {
+  next();
 });
+
+app.use('/site', siteRoutes);
+
+/* ----------------------------
+   Authenticated routes
+----------------------------- */
+
 app.use(auth);
-
-validateEnv();
-ensureSSHKeypair();
-
 app.use('/sites', sitesRoutes);
-app.use('/files', filesRoutes);
+app.use('/site-window', siteWindowRoutes);
+app.use('/fs', fsRoutes);
 app.use('/connect', connectRoutes);
-app.use('/preview', previewRuntime);
+app.use('/git', gitRoutes);
+app.use('/preview', previewRouter);
 
 app.get('/', (req, res) => {
-res.render('index', {
-  title: 'Cute Magick'
+  res.render('index', {
+    title: 'Cute Magick',
+  });
 });
-});
-
 
 /* ----------------------------
-  Server
+   Server
 ----------------------------- */
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-console.log(`\n🌙 Cute Magick running on http://localhost:${PORT}\n`);
+  log.info('app', `Cute Magick running on http://localhost:${PORT}`);
 });

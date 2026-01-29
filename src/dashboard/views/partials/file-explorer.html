@@ -1,0 +1,14 @@
+<div class="flex flex-col h-full">
+  <div
+    hx-get="/git/{{siteId}}/status"
+    hx-trigger="revealed, commitsChanged from:body"
+    hx-swap="outerHTML"
+  ></div>
+
+  <div
+    class="file-explorer text-black h-101 w-full relative flex-1"
+    data-site-id="{{siteId}}"
+    hx-boost="false"
+  ></div>
+
+</div>
