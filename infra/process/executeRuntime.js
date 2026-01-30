@@ -3,7 +3,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import log from '../logs/index.js';
-import { SITES_ROOT, RENDERS_ROOT } from '../config/index.js';
+import { SITES_ROOT, RENDERS_ROOT } from '../../config/index.js';
 
 /* ----------------------------
    Policy / Configuration
@@ -21,8 +21,8 @@ export const EXEC_ROOTS = [
 export const RUNTIMES = {
   php: {
     env: 'RUNTIME_PHP',
-    cmd: '/usr/bin/php-cgi',
-    args: [],
+    cmd: 'php',
+    args: ['-d', 'cgi.force_redirect=0'],
   },
   node: {
     env: 'RUNTIME_NODE',
@@ -46,12 +46,12 @@ export const RUNTIMES = {
   },
   go: {
     env: 'RUNTIME_GO',
-    cmd: null, // compiled binary
+    cmd: null,
     args: [],
   },
   rust: {
     env: 'RUNTIME_RUST',
-    cmd: null, // compiled binary
+    cmd: null,
     args: [],
   },
 };
@@ -62,6 +62,26 @@ export const RUNTIMES = {
 
 function isRuntimeEnabled(envKey) {
   return process.env[envKey] === '1';
+}
+
+function isNodeExecutable(scriptPath) {
+  try {
+    const fd = fs.openSync(scriptPath, 'r');
+    const buffer = Buffer.alloc(64);
+    const bytesRead = fs.readSync(fd, buffer, 0, buffer.length, 0);
+    fs.closeSync(fd);
+
+    if (bytesRead === 0) return false;
+
+    const firstLine = buffer
+      .toString('utf8', 0, bytesRead)
+      .split('\n')[0]
+      .trim();
+
+    return firstLine.startsWith('#!');
+  } catch {
+    return false;
+  }
 }
 
 function assertExecutablePathAllowed(target) {
@@ -103,13 +123,33 @@ export function executeRuntime({
   const resolvedCwd = path.resolve(cwd);
   assertExecutablePathAllowed(resolvedCwd);
 
+  if (typeof scriptPath !== 'string') {
+    if (scriptPath && typeof scriptPath === 'object') {
+      const maybe =
+        scriptPath.scriptPath ??
+        scriptPath.path ??
+        scriptPath.file ??
+        scriptPath.name;
+
+      if (typeof maybe === 'string') {
+        scriptPath = maybe;
+      } else {
+        log.debug('[runtime]', 'Invalid scriptPath (object)', { scriptPath });
+        throw new Error('scriptPath must be a string');
+      }
+    } else {
+      log.debug('[runtime]', 'Invalid scriptPath (non-string)', { scriptPath });
+      throw new Error('scriptPath must be a string');
+    }
+  }
+
   if (!fs.existsSync(resolvedCwd)) {
     throw new Error(`Invalid cwd: ${resolvedCwd}`);
   }
 
   const resolvedScript = path.resolve(resolvedCwd, scriptPath);
   assertExecutablePathAllowed(resolvedScript);
-
+  
   if (!fs.existsSync(resolvedScript)) {
     throw new Error(`Script not found: ${resolvedScript}`);
   }

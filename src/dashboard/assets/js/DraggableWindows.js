@@ -122,7 +122,7 @@ initWindow(windowEl) {
   if (kind === 'folder') {
     this.addOpenWindow(uuid);
     const openTab = localStorage.getItem(this.key('win-tab', uuid));
-    setTimeout(() => this.openTab(windowEl, openTab ?? 'view'), 222);
+    setTimeout(() => this.openTab(windowEl, openTab ?? 'home'), 222);
   }
   
   // Save file path separately for file windows
@@ -166,9 +166,9 @@ if (!isDuplicate) {
   // Tab restore for NEW folder windows only
   if (kind === 'folder') {
     const savedTab = localStorage.getItem(this.key('win-tab', uuid));
-    const tabToOpen = savedTab || 'view';
+    const tabToOpen = savedTab || 'home';
     if (!savedTab) {
-      localStorage.setItem(this.key('win-tab', uuid), 'view');
+      localStorage.setItem(this.key('win-tab', uuid), 'home');
     }
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -354,7 +354,7 @@ if (kind === 'file') {
     placeholder.style.display = 'none';
     container.appendChild(placeholder);
     
-    window.htmx.ajax('GET', `/sites/${uuid}`, {
+    window.htmx.ajax('GET', `/site-window/${uuid}`, {
       source: placeholder,
       target: container,
       swap: 'afterbegin'
@@ -365,7 +365,7 @@ if (kind === 'file') {
 // RESTORE FILE WINDOWS
 // ============================================
 openFiles.forEach(({ site, path }) => {
-  window.htmx.ajax('POST', `/sites/${site}/editor`, {
+  window.htmx.ajax('POST', `/site-window/${site}/editor`, {
     target: '#windows',
     swap: 'afterbegin',
     values: { path: path }

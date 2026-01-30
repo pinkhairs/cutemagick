@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json ./
 COPY index.js ./
 
-# Create data dirs inside image (ownership matters)
+# Create data dirs inside image
 RUN mkdir -p \
     /app/dashboard/assets/css \
     /app/renders

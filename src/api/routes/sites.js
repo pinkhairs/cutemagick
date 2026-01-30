@@ -8,6 +8,15 @@ import db from '../../../infra/db/index.js';
 import log from '../../../infra/logs/index.js';
 
 import {
+  pullFromRemote,
+  syncToRemote
+} from '../../../infra/git/sync.js';
+
+import {
+  restoreCommitAsNew
+} from '../../../infra/git/porcelain.js';
+
+import {
   generateRandomSubdomain,
   nextAvailableDirectorySuffix,
   slugify,
@@ -72,7 +81,12 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
     );
 
     if (isGitRepo) {
-      await cloneRepo({ sitePath, repository: input });
+      const { head } = await cloneRepo({ sitePath, repository: input });
+      db.prepare(`
+        UPDATE sites
+        SET live_commit = ?
+        WHERE uuid = ?
+      `).run(head, uuid);
     } else {
       await fs.mkdir(sitePath, { recursive: true });
       await ensureRepo(sitePath, 'main');
@@ -199,6 +213,75 @@ router.post('/:siteId/delete', async (req, res) => {
   res
     .set('HX-Trigger', 'refreshedSites')
     .sendStatus(204);
+});
+
+router.post('/:siteId/pull', async (req, res) => {
+  const { siteId } = req.params;
+
+  try {
+    await pullFromRemote({ siteId });
+    res.sendStatus(204);
+  } catch (err) {
+    log.error('[site:pull]', { siteId, err: err.message });
+    res.status(409).send(err.message);
+  }
+});
+
+
+router.post('/:siteId/push', async (req, res) => {
+  const { siteId } = req.params;
+
+  try {
+    await syncToRemote({ siteId });
+    res.sendStatus(204);
+  } catch (err) {
+    log.error('[site:push]', { siteId, err: err.message });
+    res.status(409).send(err.message);
+  }
+});
+
+router.post('/:siteId/make-live', async (req, res) => {
+  const { siteId } = req.params;
+
+  try {
+    const head = await getHeadCommit({ siteId });
+
+    if (!head) {
+      return res.status(400).send('Nothing to publish');
+    }
+
+    db.prepare(`
+      UPDATE sites
+      SET live_commit = ?
+      WHERE uuid = ?
+    `).run(head, siteId);
+
+    log.info('[site:make-live]', { siteId, head });
+    res.sendStatus(204);
+  } catch (err) {
+    log.error('[site:make-live]', { siteId, err: err.message });
+    res.status(500).send('Failed to make site live');
+  }
+});
+
+router.post('/:siteId/restore', express.urlencoded({ extended: false }), async (req, res) => {
+  const { siteId } = req.params;
+  const { commit } = req.body;
+
+  if (!commit) return res.sendStatus(400);
+
+  try {
+    await restoreCommitAsNew({
+      siteId,
+      commit
+    });
+
+    log.info('[site:restore]', { siteId, commit });
+    res.sendStatus(204);
+  } catch (err) {
+    log.error('[site:restore]', { siteId, commit, err: err.message });
+    res.status(409).send(err.message);
+  }
 });
 
 export default router;

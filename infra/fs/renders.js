@@ -29,6 +29,10 @@ export async function ensureRender({ site, commit }) {
       targetDir: renderDir,
       commit
     });
+    console.log(
+    '[ensureRender] renderDir contents:',
+      fs.readdirSync(renderDir)
+    );
   } catch (err) {
     // clean partial materialization
     try {

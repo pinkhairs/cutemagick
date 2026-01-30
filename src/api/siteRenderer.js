@@ -3,7 +3,7 @@ import fs from 'fs';
 import mime from 'mime-types';
 
 import db from '../../infra/db/index.js';
-import { runProcess } from '../../infra/index.js';
+import { runProcess, executeRuntime } from '../../infra/index.js';
 import { ensureRender } from '../../infra/fs/renders.js';
 import { assertRealPathInside } from '../../infra/fs/assertInsideRoot.js';
 
@@ -96,12 +96,26 @@ export async function renderSite({
      Static files
      --------------------------------- */
 
-  if (!['.php', '.js', '.py', '.sh'].includes(ext)) {
+  const EXECUTABLE_INDEXES = new Set([
+    'index.php',
+    'index.js',
+    'index.py',
+    'index.sh',
+  ]);
+
+  const isExecutable =
+    EXECUTABLE_INDEXES.has(path.basename(effectivePath));
+
+  if (!isExecutable) {
     if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) {
       return res.status(404).send('Not found');
     }
 
-    res.type(mime.lookup(effectivePath) || 'application/octet-stream');
+    const type =
+      mime.lookup(effectivePath) ||
+      (ext === '.js' ? 'application/javascript' : 'application/octet-stream');
+
+    res.type(type);
     return res.send(fs.readFileSync(absPath));
   }
 
@@ -134,7 +148,7 @@ async function executeScript({
   ext
 }) {
   if (ext === '.php') {
-    const { stdout } = await runProcess({
+    const { stdout } = await executeRuntime({
       lang: 'php',
       cwd: runtimeDir,
       scriptPath,
@@ -146,6 +160,7 @@ async function executeScript({
         CONTENT_LENGTH: req.headers['content-length'] || ''
       }
     });
+
 
     const { headers, body } = parseCgiOutput(stdout);
 
@@ -165,13 +180,21 @@ async function executeScript({
   }
 
   if (ext === '.js') {
-    const { stdout } = await runProcess({
+    // Node execution is handled by executeRuntime, not runProcess
+    const { stdout } = await executeRuntime({
       lang: 'node',
       cwd: runtimeDir,
-      scriptPath
+      scriptPath,
+      env: {
+        REQUEST_METHOD: req.method,
+        REQUEST_URI: req.originalUrl,
+        QUERY_STRING: req.originalUrl.split('?')[1] || '',
+        CONTENT_TYPE: req.headers['content-type'] || '',
+        CONTENT_LENGTH: req.headers['content-length'] || '',
+      },
     });
 
-    res.type('text/plain');
+    res.type('text/html');
     return res.send(stdout);
   }
 

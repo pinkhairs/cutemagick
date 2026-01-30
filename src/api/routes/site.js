@@ -30,6 +30,10 @@ router.use(async (req, res) => {
     return;
   }
 
+  if (!req.path.endsWith('/') && relPath === '') {
+    return res.redirect(301, req.baseUrl + req.path + '/');
+  }
+
   return renderSite({
     req,
     res,
