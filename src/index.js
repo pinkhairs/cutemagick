@@ -3,6 +3,7 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 import express from 'express';
 import { engine } from 'express-handlebars';
@@ -18,6 +19,8 @@ import siteRoutes from './api/routes/site.js';
 import siteWindowRoutes from './api/routes/site-window.js';
 import previewRouter from './api/routes/preview.js';
 import timeRoutes from './api/routes/time.js';
+
+import { db } from '../infra/index.js';
 
 import log from '../infra/logs/index.js';
 import {
@@ -128,6 +131,38 @@ app.use('/fs', fsRoutes);
 app.use('/connect', connectRoutes);
 app.use('/time', timeRoutes);
 app.use('/preview', previewRouter);
+app.get(/^\/editor\/([^/]+)\/(.+)$/, async (req, res) => {
+  const siteId = req.params[0];
+  const relPath = req.params[1];
+  const filename = path.basename(relPath);
+  const hash = crypto.createHash('sha256').update(relPath).digest('hex');
+  const windowId = `editor-${siteId}-${hash}`;
+
+  if (!siteId || !relPath) {
+    return res.status(400).send('Missing parameters');
+  }
+
+  const site = db.prepare(`
+    SELECT uuid, name
+    FROM sites
+    WHERE uuid = ?
+  `).get(siteId);
+
+  if (!site) {
+    return res.sendStatus(404);
+  }
+
+  return res.render('partials/editor', {
+    id: windowId,
+    layout: false,
+    siteId,
+    siteName: site.name,
+    path: relPath,
+    fileHash: hash,
+    filename: filename,
+  });
+});
+
 
 app.get('/', (req, res) => {
   res.render('index', {

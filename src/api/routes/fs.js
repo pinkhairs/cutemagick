@@ -266,7 +266,7 @@ router.post('/:siteId/upload', upload.any(), async (req, res) => {
 
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
       await fs.writeFile(targetPath, file.buffer);
-      
+
       await commitFileUpload({
         siteId,
         filePath: relPath,

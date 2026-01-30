@@ -16,7 +16,6 @@ ace.define("ace/theme/custom-pastel", ["require", "exports", "module", "ace/lib/
   
 .ace-custom-pastel {
     background-color: #232f41;
-    line-height: 1.65 !important;
     color: #FFF1E7;
 }
   
@@ -129,8 +128,6 @@ ace.define("ace/theme/custom-pastel", ["require", "exports", "module", "ace/lib/
 }
   
 .ace-custom-pastel .ace_scroller {
-    font-family: 'Space Mono', monospace !important;
-    font-size: 16px !important;
 }
 `;
   
@@ -138,91 +135,62 @@ ace.define("ace/theme/custom-pastel", ["require", "exports", "module", "ace/lib/
   dom.importCssString(exports.cssText, exports.cssClass, false);
 });
 
-// Listen for HTMX afterSwap event for dynamically loaded editors
-document.body.addEventListener('htmx:afterSwap', function(evt) {
-  const target = evt.detail.target;
+document.body.addEventListener('htmx:beforeSwap', (e) => {
+  const el = e.target;
+  if (!el.classList?.contains('editor')) return;
+
+  e.detail.shouldSwap = false;
+
+  const content = e.detail.xhr.responseText;
   
-  // Check if the target itself is an editor
-  if (target.classList && target.classList.contains('editor')) {
-    if (!target.classList.contains('ace-initialized')) {
-      initializeEditor(target);
-    }
-    return;
-  }
-  
-  // Otherwise, look for editors in the swapped content
-  const editors = target.querySelectorAll('.editor:not(.ace-initialized)');
-  
-  editors.forEach((editorEl, index) => {
-    initializeEditor(editorEl);
-  });
+  initializeEditor(el, content);
 });
 
-function initializeEditor(editorEl) {
+function initializeEditor(editorEl, content = '') {
+  if (editorEl._ace) return;
+
   if (!editorEl.id) {
-    editorEl.id = `editor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    editorEl.id = `editor-${crypto.randomUUID()}`;
   }
 
-  const windowEl = editorEl.closest('.window');
-  
-  try {
-    const editor = ace.edit(editorEl.id);
-    editor.setTheme("ace/theme/custom-pastel");
-    
-    // Get language from data attribute, or detect from file path
-    let lang = editorEl.dataset.language;
-    
-    if (!lang || lang === '') {
-      // Fallback: detect from file path
-      const filePath = editorEl.dataset.filePath || '';
-      const ext = filePath.split('.').pop().toLowerCase();
-      
-      const extMap = {
-        'md': 'markdown',
-        'js': 'javascript',
-        'ts': 'typescript',
-        'py': 'python',
-        'php': 'php',
-        'rb': 'ruby',
-        'go': 'golang',
-        'rs': 'rust',
-        'html': 'html',
-        'css': 'css',
-        'json': 'json',
-        'xml': 'xml',
-        'sh': 'sh',
-        'yaml': 'yaml',
-        'yml': 'yaml'
-      };
-      
-      lang = extMap[ext] || 'text';
-    }
-    
-    editor.session.setMode(`ace/mode/${lang}`);
-    
-    editor.setOptions({
-      fontSize: "16px",
-      showPrintMargin: false,
-      wrap: true
-    });
-    
-    editorEl.classList.add('ace-initialized');
-    // 🔹 Mark editor as clean on init
-if (windowEl && window.CuteMagickSaveState) {
-  window.CuteMagickSaveState.markClean(windowEl);
-}
+  const editor = ace.edit(editorEl.id);
 
+  // ✅ Apply your custom theme ONCE
+  editor.setTheme("ace/theme/custom-pastel");
 
-// 🔹 Track changes → mark dirty
-if (windowEl && window.CuteMagickSaveState && !editor._dirtyTrackingAttached) {
-  editor._dirtyTrackingAttached = true;
+  // Language detection
+  let lang = editorEl.dataset.language;
+  if (!lang) {
+    const ext = (editorEl.dataset.filePath || '').split('.').pop().toLowerCase();
+    const extMap = {
+      md: 'markdown',
+      js: 'javascript',
+      ts: 'typescript',
+      py: 'python',
+      php: 'php',
+      rb: 'ruby',
+      go: 'golang',
+      rs: 'rust',
+      html: 'html',
+      css: 'css',
+      json: 'json',
+      xml: 'xml',
+      sh: 'sh',
+      yaml: 'yaml',
+      yml: 'yaml'
+    };
+    lang = extMap[ext] || 'text';
+  }
 
-  editor.session.on('change', () => {
-    window.CuteMagickSaveState.markDirty(windowEl);
+  editor.session.setMode(`ace/mode/${lang}`);
+
+  editor.setOptions({
+    fontSize: "16px",
+    showPrintMargin: false,
+    wrap: true
   });
-}
+  editor.container.style.lineHeight = 1.4;
 
-  } catch (error) {
-    console.error('❌ Error initializing ACE editor:', error);
-  }
+  editor.setValue(content, -1);
+  editorEl._ace = editor;
 }

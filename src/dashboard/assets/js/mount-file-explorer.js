@@ -11,9 +11,55 @@ function isBinaryLikeFile(name) {
   ].includes(ext);
 }
 
-function openCodeWindow(siteId, path) {
-  alert(`File opened:\n${path}\n${siteId}`);
+function openCodeWindow(siteUUID, path) {
+  // Ensure path is always relative (no leading slash)
+  const cleanPath = String(path).replace(/^\/+/, '');
+
+  // Human-readable, stable window id
+  const treatedPath = cleanPath
+    .replace(/\//g, '-')
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-zA-Z0-9-]/g, '')
+    .toLowerCase();
+
+  const windowId = `editor-${siteUUID}-${treatedPath}`;
+
+  // If already open, bring to front
+  const existing = document.getElementById(windowId);
+  if (existing) {
+    DraggableWindows.bringToFront(existing);
+    return;
+  }
+
+  const container = document.querySelector('#windows');
+  if (!container || !window.htmx) return;
+
+  // Encode path segments (not slashes)
+  const encodedPath = cleanPath
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/');
+
+  const url = `/editor/${siteUUID}/${encodedPath}`;
+
+  const placeholder = document.createElement('div');
+  placeholder.style.display = 'none';
+  container.prepend(placeholder);
+
+  window.htmx.ajax(
+    'GET',
+    url,
+    {
+      source: placeholder,
+      target: '#windows',
+      swap: 'afterbegin',
+      headers: {
+        'X-Window-Id': windowId
+      }
+    }
+  );
 }
+
 
 /* -------------------------------------------------
    Robust mount handler
