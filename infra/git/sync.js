@@ -10,6 +10,8 @@ import {
   assertNoEnvStaged
 } from './plumbing.js';
 
+import { SITES_ROOT } from '../../config/index.js';
+
 /* -------------------------------------------------
    Helpers
 -------------------------------------------------- */
@@ -238,7 +240,15 @@ export async function cloneRepo({ sitePath, repository }) {
     sitePath
   ]);
 
-  return { cloned: true };
+  const { stdout } = await git(sitePath, [
+    'rev-parse',
+    'HEAD'
+  ]);
+
+  return {
+    cloned: true,
+    head: stdout.trim()
+  };
 }
 
 export async function pushLiveCommits({ siteId }) {
@@ -296,4 +306,101 @@ export async function pushLiveCommits({ siteId }) {
   await git(sitePath, ['push', 'origin', branch]);
 
   return { pushed: true };
+}
+
+/* -------------------------------------------------
+   Helpers
+-------------------------------------------------- */
+
+function getSitePath(siteId) {
+  const site = db.prepare(`
+    SELECT directory
+    FROM sites
+    WHERE uuid = ?
+  `).get(siteId);
+
+  if (!site) {
+    throw new Error(`Site not found: ${siteId}`);
+  }
+
+  return path.join(SITES_ROOT, site.directory);
+}
+
+/* -------------------------------------------------
+   Read: HEAD commit
+-------------------------------------------------- */
+
+/**
+ * Returns the current HEAD commit hash for the site.
+ * This is the tip of the working timeline.
+ */
+export async function getHeadCommit({ siteId }) {
+  const sitePath = getSitePath(siteId);
+
+  const { stdout } = await git(sitePath, [
+    'rev-parse',
+    'HEAD'
+  ]);
+
+  return stdout.trim();
+}
+
+/* -------------------------------------------------
+   Read: live commit
+-------------------------------------------------- */
+
+/**
+ * Returns the commit hash currently marked as live.
+ * This is the public-facing pointer.
+ */
+export async function getLiveCommit({ siteId }) {
+  const row = db.prepare(`
+    SELECT live_commit
+    FROM sites
+    WHERE uuid = ?
+  `).get(siteId);
+
+  if (!row) {
+    throw new Error(`Site not found: ${siteId}`);
+  }
+
+  return row.live_commit;
+}
+
+export async function getLocalAheadCount({ siteId }) {
+  const { sitePath, branch, repository } = getSiteGitConfig(siteId);
+
+  await ensureRepo(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  // Ensure origin exists if we have a repository configured
+  if (repository) {
+    try {
+      await git(sitePath, ['remote', 'get-url', 'origin']);
+    } catch {
+      await git(sitePath, ['remote', 'add', 'origin', repository]);
+    }
+
+    // Keep refs fresh (don't assume anything)
+    await git(sitePath, ['fetch', 'origin']);
+  }
+
+  // If no upstream, treat "ahead" as "all local commits"
+  if (!(await hasUpstream(sitePath))) {
+    const { stdout } = await git(sitePath, [
+      'rev-list',
+      '--count',
+      'HEAD'
+    ]);
+    return Number(stdout.trim()) || 0;
+  }
+
+  // Standard "ahead of upstream"
+  const { stdout } = await git(sitePath, [
+    'rev-list',
+    '--count',
+    '@{u}..HEAD'
+  ]);
+
+  return Number(stdout.trim()) || 0;
 }

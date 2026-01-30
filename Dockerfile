@@ -1,9 +1,11 @@
 # ---- base ----
 FROM node:20-bookworm
 
-# System deps (keep minimal)
+# System deps
 RUN apt-get update && apt-get install -y \
   ca-certificates \
+  php-cgi \
+  php-cli \
   && rm -rf /var/lib/apt/lists/*
 
 # App dir
@@ -16,7 +18,7 @@ RUN npm install
 # Copy source
 COPY . .
 
-# Create data dirs inside image (ownership matters)
+# Create data dirs inside image
 RUN mkdir -p \
     /app/data/assets/css \
     /app/data/assets \
@@ -26,7 +28,7 @@ RUN mkdir -p \
 RUN npm run assets:sync \
  && npm run css:build
 
-# Drop dev deps (optional but recommended)
+# Drop dev deps
 RUN npm prune --production
 
 # Runtime user

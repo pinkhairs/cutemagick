@@ -11,3 +11,5 @@ export { runProcess } from './process/runProcess.js';
 export { startMaintenanceScheduler } from './maintenance.js';
 
 export { validateEnv } from './validateEnv.js';
+
+export { executeRuntime } from './process/executeRuntime.js';

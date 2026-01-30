@@ -12,8 +12,9 @@ export const DATA_ROOT = path.resolve(
 
 export const ASSETS_ROOT = path.join(DATA_ROOT, 'assets');
 export const SITES_ROOT = path.join(DATA_ROOT, 'sites');
+export const RENDERS_ROOT = path.join(DATA_ROOT, 'renders');
 
-export const BLOCKED_NAMES = new Set(['.env', '.git']);
+export const BLOCKED_NAMES = new Set(['.env']);
 export const HIDDEN_NAMES = new Set(['.env', '.git']);
 
 export const SSH_DIR = path.join(DATA_ROOT, '.ssh');

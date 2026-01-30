@@ -17,7 +17,7 @@ import fsRoutes from './api/routes/fs.js';
 import siteRoutes from './api/routes/site.js';
 import siteWindowRoutes from './api/routes/site-window.js';
 import previewRouter from './api/routes/preview.js';
-import gitRoutes from './api/routes/git.js';
+import timeRoutes from './api/routes/time.js';
 
 import log from '../infra/logs/index.js';
 import {
@@ -126,7 +126,7 @@ app.use('/sites', sitesRoutes);
 app.use('/site-window', siteWindowRoutes);
 app.use('/fs', fsRoutes);
 app.use('/connect', connectRoutes);
-app.use('/git', gitRoutes);
+app.use('/time', timeRoutes);
 app.use('/preview', previewRouter);
 
 app.get('/', (req, res) => {

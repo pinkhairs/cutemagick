@@ -20,7 +20,7 @@ data-site-uuid="{{id}}"
       
       <button
       class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center"
-      data-tab="view"
+      data-tab="home"
       data-active="true"
       hx-get="/site-window/{{id}}/home"
       hx-target="#site-{{id}}-content"
@@ -75,7 +75,7 @@ class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-c
     <div id="site-{{id}}-content" class="flex-1 overflow-auto transition-opacity">
       {{{body}}}
     </div>
-    {{> site-toolbar siteId=siteId }}
+    {{> site-toolbar siteId=id siteAddress=siteAddress }}
   </div>
 </div>
 </div>

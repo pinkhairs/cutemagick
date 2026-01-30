@@ -2,18 +2,30 @@
   class="site-toolbar shrink-0 flex items-center px-2 pt-2 pb-3
          border-t border-gray-400 dark:border-gray-700 text-sm"
 >
-  <div class="flex flex-1 justify-between items-center gap-4">
+  <div class="flex flex-1 items-center justify-between gap-4">
 
-    {{!-- Left: Live identity + draft state --}}
-    {{> site-identity
-        siteId=siteId
-        siteAddress=siteAddress
-    }}
+    <!-- Left: identity (always static) -->
+    <div class="flex items-center gap-2">
+      <a
+        href="{{siteAddress}}"
+        target="_blank"
+        class="flex items-center gap-2"
+        data-tippy-content="View live site"
+      >
+        <span>🌍</span>
+        <span>{{siteAddressDisplay}}</span>
+      </a>
+    </div>
 
-    {{!-- Right: Actions (Preview / Go Live) --}}
-    {{> site-actions
-        siteId=siteId
-    }}
+    <!-- Right: actions (single HTMX island) -->
+    <div
+      class="flex items-center gap-3"
+      hx-get="/sites/{{siteId}}/site-actions"
+      hx-trigger="revealed, commitsChanged from:body"
+      hx-swap="innerHTML"
+    >
+      <!-- empty by default -->
+    </div>
 
   </div>
 </div>

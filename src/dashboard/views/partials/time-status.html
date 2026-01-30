@@ -1,0 +1,54 @@
+<div
+  class="git-status flex items-center justify-between p-2 text-sm border-b border-gray-400 dark:border-gray-700"
+  hx-get="/time/{{siteId}}/status"
+  hx-trigger="commitsChanged from:body"
+  hx-swap="outerHTML"            
+>
+
+  <!-- Status (informational, non-clickable) -->
+  <div class="flex items-center gap-2">
+    {{#if remoteToPull}}
+      <button class="btn-secondary" disabled>
+        {{remoteToPull}} to pull
+      </button>
+    {{/if}}
+
+    {{#if unpushed}}
+      <button class="btn-secondary" disabled>
+        {{unpushed}} to push
+      </button>
+    {{/if}}
+
+    {{#unless remoteToPull}}
+      {{#unless unpushed}}
+        <button class="btn-secondary" disabled>
+          In sync
+        </button>
+      {{/unless}}
+    {{/unless}}
+  </div>
+
+  <!-- Actions (only when valid) -->
+  <div class="flex items-center gap-2">
+    {{#if remoteToPull}}
+      <button
+        class="btn-primary"
+        hx-post="/time/{{siteId}}/pull"
+        hx-swap="none"
+      >
+        Pull
+      </button>
+    {{/if}}
+
+    {{#if unpushed}}
+      <button
+        class="btn-primary"
+        hx-post="/time/{{siteId}}/push"
+        hx-swap="none"
+      >
+        Push
+      </button>
+    {{/if}}
+  </div>
+
+</div>
