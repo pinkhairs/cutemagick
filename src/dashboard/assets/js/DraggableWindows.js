@@ -8,31 +8,36 @@
     offset: { x: 0, y: 0 },
     zCounter: 100,
     isLargeScreen: false,
-    getOpenWindows() {
-      try {
-        return JSON.parse(localStorage.getItem('open-site-windows')) || [];
-      } catch {
-        return [];
-      }
-    },
+getOpenWindows() {
+  try {
+    const arr = JSON.parse(localStorage.getItem('open-site-windows')) || [];
+    // Ensure it's a list of raw UUIDs (no "site-window-" prefix)
+    return arr.map(id => String(id).replace(/^site-window-/, '')).filter(Boolean);
+  } catch {
+    return [];
+  }
+},
 
+addOpenWindow(siteUuid) {
+  if (!siteUuid) return;
+  const open = this.getOpenWindows();
+  if (!open.includes(siteUuid)) {
+    open.push(siteUuid);
+    localStorage.setItem('open-site-windows', JSON.stringify(open));
+  }
+},
 
-    addOpenWindow(uuid) {
-      const open = this.getOpenWindows();
-      if (!open.includes(uuid)) {
-        open.push(uuid);
-        localStorage.setItem('open-site-windows', JSON.stringify(open));
-      }
-    },
-    
-    removeOpenWindow(uuid) {
-      const open = this.getOpenWindows().filter(id => id !== uuid);
-      localStorage.setItem('open-site-windows', JSON.stringify(open));
-    },
-    
+removeOpenWindow(siteUuid) {
+  if (!siteUuid) return;
+  const open = this.getOpenWindows().filter(id => id !== siteUuid);
+  localStorage.setItem('open-site-windows', JSON.stringify(open));
+},
+
     init() {
       this.checkScreenSize();
-      this.restoreOpenWindows();
+      document.body.addEventListener('htmx:load', () => {
+  DraggableWindows.restoreOpenWindows();
+}, { once: true });
       this.initAllWindows();
       this.setupControls();
       this.observeNewWindows();
@@ -97,93 +102,105 @@ setupDeleteListener() {
 },
 initWindow(windowEl) {
   if (windowEl.dataset.draggableInit) return;
-  
+
   const kind = this.getWindowKind(windowEl);
   if (!kind) return;
-  
-  const uuid = windowEl.id;
-  
-  // Check for duplicate windows (both files and folders)
+
+  const winId = windowEl.id; // e.g. "site-window-<uuid>"
+  const siteUuid = this.siteUuidFromWindow(windowEl); // raw <uuid>
+
+  // ---------------------------------------------
+  // Duplicate window guard (DOM-id based)
+  // ---------------------------------------------
   const existingWindow = document.querySelector(
-    `.window-wrapper[id="${CSS.escape(uuid)}"][data-draggable-init="true"]`
+    `.window-wrapper[id="${CSS.escape(winId)}"][data-draggable-init="true"]`
   );
-  
+
   if (existingWindow && existingWindow !== windowEl) {
-    // A window with this ID already exists - focus it and remove this duplicate
-    console.warn('[windows] Duplicate window detected, focusing existing:', uuid);
+    console.warn('[windows] Duplicate window detected, focusing existing:', winId);
     this.focusWindow(existingWindow);
     windowEl.remove();
     return;
   }
-  
+
   windowEl.dataset.draggableInit = 'true';
-  
-  // Track open windows (separate lists)
+
+  // ---------------------------------------------
+  // Folder windows: track OPEN by SITE UUID
+  // ---------------------------------------------
   if (kind === 'folder') {
-    this.addOpenWindow(uuid);
-    const openTab = localStorage.getItem(this.key('win-tab', uuid));
-    setTimeout(() => this.openTab(windowEl, openTab ?? 'home'), 222);
+    this.addOpenWindow(siteUuid);
+
+    const openTab = localStorage.getItem(this.key('win-tab', winId));
+    setTimeout(() => this.openTab(windowEl, openTab ?? 'home'), 333);
   }
-  
-  // Save file path separately for file windows
-  if (kind === 'file') {
-    const siteUUID =
-      windowEl.dataset.siteUuid ||
-      windowEl.closest('[data-site-uuid]')?.dataset.siteUuid ||
-      null;
-    const filePath =
-      windowEl.dataset.path ||
-      windowEl.querySelector('[data-file-path]')?.dataset.filePath ||
-      null;
-    if (!siteUUID || !filePath) {
+
+  // ---------------------------------------------
+  // File windows: track by site + path
+  // ---------------------------------------------
+if (kind === 'file') {
+  const site =
+    windowEl.dataset.siteUuid ||
+    windowEl.getAttribute('data-site-uuid');
+
+  const path =
+    windowEl.dataset.path ||
+    windowEl.getAttribute('data-path') ||
+    windowEl.querySelector('[data-file-path]')?.dataset.filePath;
+
+    if (!site || !path) {
       console.warn('[windows] file window missing site or path, not stored', {
-        siteUUID,
-        filePath,
+        site,
+        path,
         windowEl
       });
       return;
     }
-    // Ensure datasets are authoritative
-    windowEl.dataset.siteUuid = siteUUID;
-    windowEl.dataset.path = filePath;
+
+    windowEl.dataset.siteUuid = site;
+    windowEl.dataset.path = path;
+
     const openFiles = JSON.parse(
-  localStorage.getItem('open-file-windows') || '[]'
-  
+      localStorage.getItem('open-file-windows') || '[]'
+    );
 
-);
+    const isDuplicate = openFiles.some(
+      entry => entry.site === site && entry.path === path
+    );
 
-// Check for duplicates before adding
-const isDuplicate = openFiles.some(
-  entry => entry.site === siteUUID && entry.path === filePath
-);
-
-if (!isDuplicate) {
-  openFiles.push({ site: siteUUID, path: filePath });
-  localStorage.setItem('open-file-windows', JSON.stringify(openFiles));
-}
-  }
-  
-  // Tab restore for NEW folder windows only
-  if (kind === 'folder') {
-    const savedTab = localStorage.getItem(this.key('win-tab', uuid));
-    const tabToOpen = savedTab || 'home';
-    if (!savedTab) {
-      localStorage.setItem(this.key('win-tab', uuid), 'home');
+    if (!isDuplicate) {
+      openFiles.push({ site, path });
+      localStorage.setItem('open-file-windows', JSON.stringify(openFiles));
     }
+  }
+
+  // ---------------------------------------------
+  // Restore tab for NEW folder windows
+  // ---------------------------------------------
+  if (kind === 'folder') {
+    const savedTab = localStorage.getItem(this.key('win-tab', winId));
+    const tabToOpen = savedTab || 'home';
+
+    if (!savedTab) {
+      localStorage.setItem(this.key('win-tab', winId), 'home');
+    }
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         this.openTab(windowEl, tabToOpen);
       });
     });
   }
-  
-  // ----- MOBILE: STOP HERE -----
-  if (!this.isLargeScreen) {
-    return;
-  }
-  
-  // Load saved position
-  const savedPos = this.loadPosition(uuid, kind);
+
+  // ---------------------------------------------
+  // Mobile: stop here
+  // ---------------------------------------------
+  if (!this.isLargeScreen) return;
+
+  // ---------------------------------------------
+  // Position restore (DOM id–keyed)
+  // ---------------------------------------------
+  const savedPos = this.loadPosition(winId, kind);
   if (savedPos) {
     windowEl.style.left = savedPos.x + 'px';
     windowEl.style.top  = savedPos.y + 'px';
@@ -194,32 +211,41 @@ if (!isDuplicate) {
     windowEl.style.left = offset + 'px';
     windowEl.style.top  = offset + 'px';
   }
+
   windowEl.style.position = 'fixed';
-  
-  // Load / assign z-index
-  const savedZ = this.loadZ(uuid, kind);
+
+  // ---------------------------------------------
+  // Z-index restore (DOM id–keyed)
+  // ---------------------------------------------
+  const savedZ = this.loadZ(winId, kind);
   if (savedZ !== null) {
     windowEl.style.zIndex = savedZ;
     this.zCounter = Math.max(this.zCounter, savedZ);
   } else {
     const z = ++this.zCounter;
     windowEl.style.zIndex = z;
-    this.saveZ(uuid, z, kind);
+    this.saveZ(winId, z, kind);
   }
-  
-  // Draggable behavior
+
+  // ---------------------------------------------
+  // Drag + focus
+  // ---------------------------------------------
   this.makeDraggable(windowEl);
   windowEl.addEventListener('mousedown', () => {
     this.bringToFront(windowEl);
   });
-  
+
+  // ---------------------------------------------
   // Restore minimized / hidden state
-  this.loadState(windowEl, uuid, kind);
-  
+  // ---------------------------------------------
+  this.loadState(windowEl, winId, kind);
+
+  // ---------------------------------------------
   // Persist initial position if none existed
+  // ---------------------------------------------
   if (!savedPos) {
     const rect = windowEl.getBoundingClientRect();
-    this.savePosition(uuid, rect.left, rect.top, kind);
+    this.savePosition(winId, rect.left, rect.top, kind);
   }
 },
 
@@ -258,12 +284,11 @@ observeNewWindows() {
 
 restoreOpenWindows() {
   // ============================================
-  // 1. SETUP FOR BOTH FILE AND FOLDER WINDOWS
-  // ============================================
-  
-  // Get folder windows to restore
   const folderUUIDs = this.getOpenWindows();
-  const foldersToRestore = folderUUIDs.filter(uuid => !document.getElementById(uuid));
+  const foldersToRestore = folderUUIDs.filter(siteUuid => {
+    const winId = this.folderWindowId(siteUuid);
+    return !document.getElementById(winId);
+  });
   
   // Get file windows to restore
   let openFiles = [];
@@ -316,7 +341,7 @@ restoreOpenWindows() {
       if (savedTab) {
         setTimeout(() => {
           this.openTab(windowEl, savedTab);
-        }, 100);
+        }, 333);
       }
     }
 // ============================================
@@ -333,7 +358,7 @@ if (kind === 'file') {
     // Focus the file window
     setTimeout(() => {
       this.focusWindow(windowEl);
-    }, 100);
+    }, 333);
   }
 }
     
@@ -348,30 +373,53 @@ if (kind === 'file') {
   // ============================================
   // RESTORE FOLDER WINDOWS
   // ============================================
-  foldersToRestore.forEach(uuid => {
-    const placeholder = document.createElement('div');
-    placeholder.id = `${uuid}-placeholder`;
-    placeholder.style.display = 'none';
-    container.appendChild(placeholder);
-    
-    window.htmx.ajax('GET', `/site-window/${uuid}`, {
-      source: placeholder,
-      target: container,
-      swap: 'afterbegin'
-    });
+foldersToRestore.forEach(siteUuid => {
+  const placeholder = document.createElement('div');
+  placeholder.id = `${siteUuid}-placeholder`;
+  placeholder.style.display = 'none';
+  container.appendChild(placeholder);
+
+  window.htmx.ajax('GET', `/site-window/${siteUuid}`, {
+    source: placeholder,
+    target: container,
+    swap: 'afterbegin'
   });
+});
+
   
   // ============================================
 // RESTORE FILE WINDOWS
 // ============================================
 openFiles.forEach(({ site, path }) => {
-  window.htmx.ajax('POST', `/site-window/${site}/editor`, {
-    target: '#windows',
+  const encodedPath = encodeURIComponent(path);
+
+  const placeholder = document.createElement('div');
+  placeholder.style.display = 'none';
+  container.appendChild(placeholder);
+
+  window.htmx.ajax('GET', `/editor/${site}/${encodedPath}`, {
+    source: placeholder,
+    target: container,
     swap: 'afterbegin',
-    values: { path: path }
   });
 });
+
 },
+siteUuidFromWindow(windowEl) {
+  // Prefer explicit dataset
+  const ds = windowEl?.dataset?.siteUuid;
+  if (ds) return ds;
+
+  // Fallback: parse folder window DOM ids like "site-window-<uuid>"
+  const id = windowEl?.id || '';
+  const m = id.match(/^site-window-(.+)$/);
+  return m ? m[1] : null;
+},
+
+folderWindowId(siteUuid) {
+  return `site-window-${siteUuid}`;
+},
+
 initAllWindows() {
   document.querySelectorAll('.window-wrapper').forEach(win => this.initWindow(win));
 },
@@ -448,29 +496,6 @@ bringToFront(windowEl) {
   this.saveZ(windowEl.id, newZ, kind);
 },
 
-  
-  observeNewWindows() {
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (node.nodeType !== 1) continue; // elements only
-          
-          // Case A: node itself is a window
-          if (node.classList.contains('window-wrapper')) {
-            this.initWindow(node);
-          }
-          
-          // Case B: node contains windows (common with HTMX fragments/wrappers)
-          node.querySelectorAll?.('.window-wrapper').forEach((win) => {
-            this.initWindow(win);
-          });
-        }
-      }
-    });
-    
-    const windowsContainer = document.querySelector('#windows') || document.body;
-    observer.observe(windowsContainer, { childList: true, subtree: true });
-  },
   hashPath(siteId, relPath) {
   // Must match backend: sha256(path).slice(0, 12)
   // Requires crypto.subtle (browser). We'll implement sync-ish via subtle+promise.
@@ -478,9 +503,7 @@ bringToFront(windowEl) {
 },
 getFileWindowEl(siteUUID, filePath) {
   return document.querySelector(
-    `.window-wrapper[data-window-kind="file"]
-     [data-site-uuid="${CSS.escape(siteUUID)}"]
-     [data-path="${CSS.escape(filePath)}"]`
+    `.window-wrapper[data-window-kind="file"][data-site-uuid="${CSS.escape(siteUUID)}"][data-path="${CSS.escape(filePath)}"]`
   );
 },
 // migrate all localStorage keys + open-site-windows id list + DOM id
@@ -503,13 +526,16 @@ migrateWindowId(oldId, newId) {
     }
   });
 
-  // 3) open-site-windows (folder list, but we defensively migrate anyway)
-  const open = this.getOpenWindows();
-  const idx = open.indexOf(oldId);
-  if (idx !== -1) {
-    open[idx] = newId;
-    localStorage.setItem('open-site-windows', JSON.stringify(Array.from(new Set(open))));
-  }
+const open = this.getOpenWindows();
+const oldSite = oldId.replace(/^site-window-/, '');
+const newSite = newId.replace(/^site-window-/, '');
+
+const idx = open.indexOf(oldSite);
+if (idx !== -1) {
+  open[idx] = newSite;
+  localStorage.setItem('open-site-windows', JSON.stringify([...new Set(open)]));
+}
+
 },
 
 closeWindow(windowEl) {
@@ -537,10 +563,14 @@ closeWindow(windowEl) {
       JSON.stringify(openFiles)
     );
 
-    // Also defensively remove hashed ID
-    this.removeOpenWindow(id);
+    const id = windowEl.id;
+['win-pos','win-size','win-state','win-path','win-z','win-tab'].forEach(prefix => {
+  localStorage.removeItem(this.key(prefix, id));
+});
+
   } else {
-    this.removeOpenWindow(id);
+    const siteUuid = this.siteUuidFromWindow(windowEl);
+this.removeOpenWindow(siteUuid);
   }
 
   /* ---------------------------------

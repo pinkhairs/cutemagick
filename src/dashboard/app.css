@@ -214,3 +214,8 @@ li:has(.is-live) ~ li .timeline-dot {
          bg-gray-200 text-gray-800
          dark:bg-gray-700 dark:text-gray-100;
 }
+
+
+.editor-container {
+  line-height: 1.65;
+}
