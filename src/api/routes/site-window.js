@@ -1,24 +1,17 @@
 import express from 'express';
 import db from '../../../infra/db/index.js';
 import { resolveSiteAddress } from '../../../infra/resolveSiteAddress.js';
+import { getCommitHistory } from '../../../infra/git/read.js';
 
 const router = express.Router();
 
-/* -------------------------------------------------
-   Helpers
--------------------------------------------------- */
-
 function getSite(siteId) {
   return db.prepare(`
-    SELECT uuid, name, directory
+    SELECT uuid, name, directory, live_commit
     FROM sites
     WHERE uuid = ?
   `).get(siteId);
 }
-
-/* -------------------------------------------------
-   Routes
--------------------------------------------------- */
 
 router.get('/:siteId', async (req, res) => {
   const site = getSite(req.params.siteId);
@@ -82,9 +75,17 @@ router.get('/:siteId/:tab', async (req, res) => {
           layout: false
         });
 
-      case 'history':
-        return res.render('partials/history', {
+      case 'time-machine':
+        const commits = await getCommitHistory({ siteId });
+
+        const annotatedCommits = commits.map(c => ({
+          ...c,
+          isLive: c.hash === site.live_commit
+        }));
+        
+        return res.render('partials/time-machine', {
           siteAddress,
+          commits: annotatedCommits,
           siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
           uuid: site.uuid,
           layout: false

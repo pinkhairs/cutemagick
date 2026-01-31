@@ -40,8 +40,8 @@ data-site-uuid="{{id}}"
   </button>
   
   <button
-  data-tab="history"
-  hx-get="/site-window/{{id}}/history"
+  data-tab="time-machine"
+  hx-get="/site-window/{{id}}/time-machine"
   hx-target="#site-{{id}}-content"
   hx-swap="innerHTML"
   class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center">
@@ -70,9 +70,9 @@ class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-c
 </button>
 
 </div>
-<div class="flex-1 flex-col h-80 lg:h-111">
+<div class="flex-1 flex-col">
   
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col overflow-auto h-111">
     <div id="site-{{id}}-content" class="flex-1 overflow-auto transition-opacity">
       {{{body}}}
     </div>
