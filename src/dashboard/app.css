@@ -186,7 +186,7 @@ iframe {
 
 /* Draft dots AFTER live */
 li:has(.is-live) ~ li .timeline-dot {
-  background-color: rgba(100,100,100,.5); /* gray-200 */
+  @apply bg-gray-300 dark:bg-white/10;
   border: none;
 }
 

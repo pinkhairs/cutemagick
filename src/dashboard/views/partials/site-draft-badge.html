@@ -4,7 +4,7 @@
          rounded-full text-[10px] leading-[1.1rem]
          text-white bg-blue-600 dark:bg-blue-500
          text-center font-semibold select-none cursor-pointer"
-  data-action="open-history"
+  data-action="open-time-machine"
   hx-get="/time/{{siteId}}/draft-count"
   hx-trigger="revealed, commitsChanged from:body"
   hx-swap="innerHTML"
@@ -19,5 +19,4 @@
       this.classList.remove('hidden');
     }
   "
-  data-tippy-content="Unpublished changes (view history)"
 ></span>

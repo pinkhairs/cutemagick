@@ -71,25 +71,6 @@
 </button>
 
           {{/unless}}
-          {{#unless isLive}}
-            {{#if @first}}
-                <button
-  type="button"
->
-  🚀
-</button>
-
-            {{#if isLive}}
-<button
-  aria-label="Preview live version"
-  data-history-action="preview-live"
->
-  🌍
-</button>
-{{/if}}
-
-            {{/if}}
-          {{/unless}}
 
           {{#unless isLive}}
             {{#unless @first}}
@@ -128,7 +109,6 @@ hx-on::after-request="
 
 
           {{#if isLive}}
-            <button aria-label="Preview live version">🌍</button>
             <button
   aria-label="Restore as draft"
   data-history-action="restore-draft"

@@ -108,31 +108,6 @@ router.get('/:siteId/status', async (req, res) => {
   }
 });
 
-router.get('/:siteId/history', async (req, res) => {
-  const { siteId } = req.params;
-  if (!siteId) return res.sendStatus(400);
-
-  try {
-    const commits = await getCommitHistory({ siteId });
-    const liveCommit = await getLiveCommit({ siteId });
-
-    const enriched = commits.map((c, i) => ({
-      ...c,
-      isLive: c.hash === liveCommit,
-      isHead: i === 0
-    }));
-
-    return res.render('partials/time-history', {
-      layout: false,
-      uuid: siteId,
-      commits: enriched
-    });
-  } catch (err) {
-    log.error('[time:history]', { siteId, err: err.message });
-    res.status(500).send('Failed to load history');
-  }
-});
-
 router.get('/:siteId/commit/:commit', async (req, res) => {
   const { siteId, commit } = req.params;
   if (!siteId || !commit) return res.sendStatus(400);

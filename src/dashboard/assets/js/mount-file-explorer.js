@@ -121,29 +121,31 @@ function mountFileExplorers(root) {
         download: true
       },
       
-      onrefresh(folder, required) {
-        const relPath = folder.GetPathIDs().filter(Boolean).join('/');
-        
-        const xhr = new this.PrepareXHR({
-          method: 'GET',
-          url: `/fs/${siteId}/list`,
-          params: { path: relPath },
-          onsuccess(e) {
-            folder.SetEntries(JSON.parse(e.target.response));
-          },
-          onerror() {
-            if (required) {
-              this.SetNamedStatusBarText(
-                'folder',
-                'Failed to load folder'
-              );
-            }
-          }
-        });
-        
-        xhr.Send();
-      },
-      
+onrefresh(folder, required) {
+  const explorer = this;
+  const relPath = folder.GetPathIDs().filter(Boolean).join('/');
+
+  const url = `/fs/${siteId}/list?path=${encodeURIComponent(relPath)}`;
+
+  console.log('[FileExplorer:onrefresh] GET', url);
+
+  const xhr = new explorer.PrepareXHR({
+    method: 'GET',
+    url,
+    onsuccess(e) {
+      const raw = e.target.responseText || e.target.response || '';
+      folder.SetEntries(JSON.parse(raw));
+    },
+    onerror() {
+      if (required) explorer.SetNamedStatusBarText('folder', 'Failed to load folder');
+    }
+  });
+
+  xhr.Send();
+},
+
+
+
       onnewfolder(created, folder) {
         const parent = folder.GetPathIDs().slice(1).join('/');
         const name = prompt('New folder name:');
@@ -163,7 +165,7 @@ function mountFileExplorers(root) {
         .catch(err => created(err.message));
       },
       
-      onnewfile(created, folder) {
+      onnewfile(entry, folder) {
         const parent = folder.GetPathIDs().slice(1).join('/');
         const name = prompt('New file name:');
         if (!name) return created(false);
@@ -256,18 +258,38 @@ function mountFileExplorers(root) {
         );
       },
       
-      oninitupload(startupload, fileinfo) {
-        console.log({startupload, fileinfo});
-        if (fileinfo.type === 'dir') return startupload(false);
-        
-        fileinfo.url = `/fs/${siteId}/upload`;
-        fileinfo.fileparam = 'file';
-        fileinfo.params = {
-          path: fileinfo.folder.GetPathIDs().slice(1).join('/')
-        };
-        
-        startupload(true);
-      },
+oninitupload(startupload, fileinfo) {
+  console.log('[upload:init]', fileinfo);
+
+  // Allow directory drops
+  if (fileinfo.type === 'dir') {
+    // Let FileExplorer descend into it
+    return startupload(true);
+  }
+
+  const basePath = fileinfo.folder.GetPathIDs().slice(1).join('/');
+
+  // Preserve folder structure if present
+  const rel =
+    fileinfo.file?.webkitRelativePath
+      ? fileinfo.file.webkitRelativePath
+      : fileinfo.name;
+
+  const fullPath = basePath
+    ? `${basePath}/${rel}`
+    : rel;
+
+  fileinfo.url = `/fs/${siteId}/upload`;
+  fileinfo.fileparam = 'file';
+  fileinfo.params = {
+    path: fullPath
+  };
+
+  console.log('[upload:file]', { fullPath });
+
+  startupload(true);
+},
+
       
       onfinishedupload(finalize, fileinfo) {
         console.log({finalize, fileinfo});

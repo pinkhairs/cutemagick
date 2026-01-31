@@ -199,11 +199,11 @@ document.addEventListener('click', function(e) {
 </script>
 <script>
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-action="open-history"]');
+  const el = e.target.closest('[data-action="open-time-machine"]');
   if (!el) return;
 
   const win = el.closest('.window');
-  win?.querySelector('[data-tab="history"]')?.click();
+  win?.querySelector('[data-tab="time-machine"]')?.click();
 });
 </script>
 <script>

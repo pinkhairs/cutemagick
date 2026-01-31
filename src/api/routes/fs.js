@@ -95,19 +95,14 @@ router.get('/:siteId/list', async (req, res) => {
           const relPath = relBase ? `${relBase}/${e.name}` : e.name;
 
           return {
-            id: e.name, // ✅ FileExplorer uses this for navigation/path
+            id: e.name,
             name: e.name,
             type: e.isDirectory() ? 'folder' : 'file',
             canmodify: true,
-            hash: fileId(siteId, relPath) // ✅ your stable id (NOT used for paths)
+            hash: fileId(siteId, relPath)
           };
         })
     );
-    console.log({
-      relBase,
-      dirPath,
-      entries: entries.map(e => e.name),
-    })
   } catch (err) {
     log.error('[fs:list]', err.message);
     res.status(400).send(err.message);
