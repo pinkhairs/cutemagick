@@ -1,14 +1,11 @@
-<div class="flex flex-col h-full">
-  <div
-    hx-get="/time/{{siteId}}/status"
-    hx-trigger="revealed, commitsChanged from:body"
-    hx-swap="outerHTML"
-  ></div>
+<div class="flex-1 h-full overflow-hidden flex flex-col">
+<div class="flex flex-1 flex-col">
 
   <div
-    class="file-explorer text-black h-101 w-full relative flex-1"
+    class="file-explorer text-black h-full flex-1 w-full relative"
     data-site-id="{{siteId}}"
     hx-boost="false"
   ></div>
 
+</div>
 </div>

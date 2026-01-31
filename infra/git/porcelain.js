@@ -39,6 +39,7 @@ function resolveCommitMessage(userMessage, fallback) {
 -------------------------------------------------- */
 
 async function commitIfStaged(sitePath, message) {
+  console.log('[COMMIT CHECK]', sitePath, message);
   await assertNoEnvStaged(sitePath);
 
   const { stdout } = await git(sitePath, [
@@ -46,9 +47,16 @@ async function commitIfStaged(sitePath, message) {
     '--porcelain'
   ]);
 
+  console.log('[COMMIT PORCELAIN]', JSON.stringify(stdout));
+
   if (!stdout.trim()) return null;
 
-  await git(sitePath, ['commit', '-m', message]);
+  try {
+    await git(sitePath, ['commit', '-m', message]);
+  } catch (err) {
+    console.error('[GIT COMMIT FAILED]', err.stderr || err);
+    throw err;
+  }
 
   const { stdout: hashOut } = await git(sitePath, [
     'rev-parse',
@@ -106,6 +114,10 @@ export async function commitFileDelete({ siteId, paths, message }) {
 
   await ensureRepo(sitePath, branch);
   await safeCheckout(sitePath, branch);
+
+  console.log('[DEBUG] fs siteRoot:', siteRoot);
+  console.log('[DEBUG] git sitePath:', sitePath);
+
 
   await git(sitePath, ['add', '-A']);
 
