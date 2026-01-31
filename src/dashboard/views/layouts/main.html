@@ -206,5 +206,21 @@ document.addEventListener('click', (e) => {
   win?.querySelector('[data-tab="history"]')?.click();
 });
 </script>
+<script>
+  document.body.addEventListener('htmx:responseError', function (evt) {
+    const xhr = evt.detail.xhr;
+
+    if (xhr.status === 409) {
+      alert(
+        "We tried to combine the two copies of your site, but some changes overlap and need your help.\n\n" +
+        "Search “How to deal with merge conflicts” in the documentation to continue."
+      );
+
+      // Re-enable any busy buttons and refresh status
+      document.body.dispatchEvent(new Event('commitsChanged'));
+    }
+  });
+</script>
+
 </body>
 </html>

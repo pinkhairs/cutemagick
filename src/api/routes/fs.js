@@ -98,10 +98,16 @@ router.get('/:siteId/list', async (req, res) => {
             id: e.name, // ✅ FileExplorer uses this for navigation/path
             name: e.name,
             type: e.isDirectory() ? 'folder' : 'file',
+            canmodify: true,
             hash: fileId(siteId, relPath) // ✅ your stable id (NOT used for paths)
           };
         })
     );
+    console.log({
+      relBase,
+      dirPath,
+      entries: entries.map(e => e.name),
+    })
   } catch (err) {
     log.error('[fs:list]', err.message);
     res.status(400).send(err.message);
@@ -231,9 +237,8 @@ router.post('/:siteId/delete', express.urlencoded({ extended: false }), async (r
   const { path: relPath, message } = req.body;
 
   try {
-    const target = resolveSafePath(siteRoot, relPath);
-
-    await fs.rm(target, { recursive: true, force: true });
+    // Validate path only (do NOT mutate FS)
+    resolveSafePath(siteRoot, relPath);
 
     await commitFileDelete({
       siteId,
@@ -247,6 +252,7 @@ router.post('/:siteId/delete', express.urlencoded({ extended: false }), async (r
     res.status(400).send(err.message);
   }
 });
+
 
 /* -------------------------------------------------
    POST /fs/:siteId/upload
@@ -266,12 +272,6 @@ router.post('/:siteId/upload', upload.any(), async (req, res) => {
 
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
       await fs.writeFile(targetPath, file.buffer);
-      console.log('[UPLOAD]', {
-        siteId,
-        siteRoot,
-        relPath,
-        targetPath
-      });
 
       await commitFileUpload({
         siteId,
@@ -280,7 +280,9 @@ router.post('/:siteId/upload', upload.any(), async (req, res) => {
       });
     }
 
-    res.sendStatus(204);
+    res
+    .status(200)
+    .json({ "success": true });
   } catch (err) {
     log.error('[fs:upload]', err.message);
     res.status(400).send(err.message);

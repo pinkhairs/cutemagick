@@ -1,24 +1,11 @@
-{{!-- partials/site-actions.html --}}
-
-<div class="flex items-center gap-3">
+<div class="flex items-center gap-6">
 
   <a
     href="/preview/{{siteId}}"
     target="_blank"
-    class="btn-secondary flex items-center gap-2"
+    class="btn-secondary pr-3 relative flex items-center gap-2"
   >
-    👀 Preview
+    👀 Review Changes
     {{> site-draft-badge siteId=siteId }}
   </a>
-
-  <button
-    type="button"
-    class="btn-primary"
-    hx-post="/sites/{{siteId}}/make-live"
-    hx-confirm="This will publish all drafts. Are you ready?"
-    hx-swap="none"
-  >
-    🚀 Go Live
-  </button>
-
 </div>

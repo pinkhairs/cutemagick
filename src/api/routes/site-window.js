@@ -41,6 +41,22 @@ router.get('/:siteId', async (req, res) => {
   });
 });
 
+router.get('/:siteId/actions', async (req, res) => {
+  const site = getSite(req.params.siteId);
+  if (!site) return res.sendStatus(404);
+
+  const siteAddress = resolveSiteAddress(site);
+
+  return res.render('partials/site-actions', {
+    layout: false,
+    siteId: site.uuid,
+    siteAddress,
+    siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
+    directory: site.directory,
+    name: site.name
+  });
+});
+
 router.get('/:siteId/:tab', async (req, res) => {
   const { siteId, tab } = req.params;
 

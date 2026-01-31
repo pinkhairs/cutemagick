@@ -7,45 +7,46 @@ function isBinaryLikeFile(name) {
     'mp4','webm','mov','avi','mkv',
     'woff','woff2','ttf','otf',
     'zip','tar','gz','tgz','rar','7z',
-    'pdf','exe','bin','dmg','dmg','iso'
+    'pdf','exe','bin','dmg','dmg','iso',
+    'db',
   ].includes(ext);
 }
 
 function openCodeWindow(siteUUID, path) {
   // Ensure path is always relative (no leading slash)
   const cleanPath = String(path).replace(/^\/+/, '');
-
+  
   // Human-readable, stable window id
   const treatedPath = cleanPath
-    .replace(/\//g, '-')
-    .replace(/\.[^.]+$/, '')
-    .replace(/[^a-zA-Z0-9-]/g, '')
-    .toLowerCase();
-
+  .replace(/\//g, '-')
+  .replace(/\.[^.]+$/, '')
+  .replace(/[^a-zA-Z0-9-]/g, '')
+  .toLowerCase();
+  
   const windowId = `editor-${siteUUID}-${treatedPath}`;
-
+  
   // If already open, bring to front
   const existing = document.getElementById(windowId);
   if (existing) {
     DraggableWindows.bringToFront(existing);
     return;
   }
-
+  
   const container = document.querySelector('#windows');
   if (!container || !window.htmx) return;
-
+  
   // Encode path segments (not slashes)
   const encodedPath = cleanPath
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/');
-
+  .split('/')
+  .map(encodeURIComponent)
+  .join('/');
+  
   const url = `/editor/${siteUUID}/${encodedPath}`;
-
+  
   const placeholder = document.createElement('div');
   placeholder.style.display = 'none';
   container.prepend(placeholder);
-
+  
   window.htmx.ajax(
     'GET',
     url,
@@ -62,12 +63,12 @@ function openCodeWindow(siteUUID, path) {
 
 
 /* -------------------------------------------------
-   Robust mount handler
+Robust mount handler
 -------------------------------------------------- */
 
 function mountFileExplorers(root) {
   const mounts = [];
-
+  
   // Case 1: root *is* the mount
   if (
     root.classList?.contains('file-explorer') &&
@@ -75,43 +76,43 @@ function mountFileExplorers(root) {
   ) {
     mounts.push(root);
   }
-
+  
   // Case 2: mount exists inside root
   root.querySelectorAll?.('.file-explorer[data-site-id]')
-    .forEach(el => mounts.push(el));
-
+  .forEach(el => mounts.push(el));
+  
   mounts.forEach(mount => {
     if (mount.dataset.initialized === 'true') return;
     mount.dataset.initialized = 'true';
-
+    
     const siteId = mount.dataset.siteId;
     if (!siteId) {
       console.warn('[FileExplorer] Missing siteId', mount);
       return;
     }
-
+    
     new FileExplorer(mount, {
       group: `site-${siteId}`, // 🔑 enable intra-site drag/drop
-      initpath: [['/', '/', { canmodify: true }]],
+      initpath: [[ '', '', { canmodify: true } ]],
       rename: true,
-
+      
       onopenfile(folder, entry) {
         const pathIDs = folder.GetPathIDs().filter(Boolean);
         const filename = entry.name || entry.id;
         const fullPath = pathIDs.length
-          ? `${pathIDs.join('/')}/${filename}`
-          : filename;
-
+        ? `${pathIDs.join('/')}/${filename}`
+        : filename;
+        
         if (isBinaryLikeFile(filename)) {
           window.location.href =
-            `/fs/${siteId}/download?path=${encodeURIComponent(fullPath)}`;
+          `/fs/${siteId}/download?path=${encodeURIComponent(fullPath)}`;
           return false;
         }
-
+        
         openCodeWindow(siteId, fullPath);
         return false;
       },
-
+      
       tools: {
         new_folder: true,
         new_file: true,
@@ -119,10 +120,10 @@ function mountFileExplorers(root) {
         upload: true,
         download: true
       },
-
+      
       onrefresh(folder, required) {
         const relPath = folder.GetPathIDs().filter(Boolean).join('/');
-
+        
         const xhr = new this.PrepareXHR({
           method: 'GET',
           url: `/fs/${siteId}/list`,
@@ -139,15 +140,15 @@ function mountFileExplorers(root) {
             }
           }
         });
-
+        
         xhr.Send();
       },
-
+      
       onnewfolder(created, folder) {
         const parent = folder.GetPathIDs().slice(1).join('/');
         const name = prompt('New folder name:');
         if (!name) return created(false);
-
+        
         fetch(`/fs/${siteId}/folder`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -155,18 +156,18 @@ function mountFileExplorers(root) {
             path: parent ? `${parent}/${name}` : name
           })
         })
-          .then(() => {
-            created({ id: name, name, type: 'folder' });
-            CuteMagickEvents.commitsChanged(siteId);
-          })
-          .catch(err => created(err.message));
+        .then(() => {
+          created({ id: name, name, type: 'folder' });
+          htmx.trigger(document.body, 'commitsChanged');
+        })
+        .catch(err => created(err.message));
       },
-
+      
       onnewfile(created, folder) {
         const parent = folder.GetPathIDs().slice(1).join('/');
         const name = prompt('New file name:');
         if (!name) return created(false);
-
+        
         fetch(`/fs/${siteId}/file`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -175,37 +176,37 @@ function mountFileExplorers(root) {
             content: ''
           })
         })
-          .then(() => {
-            created({ id: name, name, type: 'file' });
-            CuteMagickEvents.commitsChanged(siteId);
-          })
-          .catch(err => created(err.message));
+        .then(() => {
+          created({ id: name, name, type: 'file' });
+          htmx.trigger(document.body, 'commitsChanged');
+        })
+        .catch(err => created(err.message));
       },
-
+      
       onrename(renamed, folder, entry, newname) {
         const parent = folder.GetPathIDs().slice(1).join('/');
         const from = parent ? `${parent}/${entry.name}` : entry.name;
         const to = parent ? `${parent}/${newname}` : newname;
-
+        
         renamed({ ...entry, id: newname, name: newname });
-
+        
         fetch(`/fs/${siteId}/rename`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ from, to })
         })
-          .then(() => CuteMagickEvents.commitsChanged(siteId))
-          .catch(console.error);
+        .then(() => htmx.trigger(document.body, 'commitsChanged'))
+        .catch(console.error);
       },
-
+      
       ondelete(deleted, folder, ids, entries) {
         if (!confirm('Delete selected items?')) return;
-
+        
         const parent = folder.GetPathIDs().slice(1).join('/');
         const paths = entries.map(e =>
           parent ? `${parent}/${e.name}` : e.name
         );
-
+        
         Promise.all(
           paths.map(p =>
             fetch(`/fs/${siteId}/delete`, {
@@ -215,68 +216,71 @@ function mountFileExplorers(root) {
             })
           )
         )
-          .then(() => {
-            deleted(true);
-            CuteMagickEvents.commitsChanged(siteId);
-          })
-          .catch(console.error);
+        .then(() => {
+          deleted(true);
+          htmx.trigger(document.body, 'commitsChanged');
+        })
+        .catch(console.error);
       },
-
+      
       oninitdownload(startdownload, folder, ids, entries) {
         const siteId = mount.dataset.siteId;
         const parentPath = folder.GetPathIDs().slice(1).join('/');
-
+        
         // single file
         if (ids.length === 1 && entries[0].type === 'file') {
           const filePath = parentPath
-            ? `${parentPath}/${entries[0].name}`
-            : entries[0].name;
-
+          ? `${parentPath}/${entries[0].name}`
+          : entries[0].name;
+          
           window.open(
             `/fs/${siteId}/download?path=${encodeURIComponent(filePath)}`,
             '_blank'
           );
-
+          
           return;
         }
-
+        
         // multiple → zip
         const paths = entries.map(e =>
           parentPath ? `${parentPath}/${e.name}` : e.name
         );
-
+        
         const query = paths
-          .map(p => `paths=${encodeURIComponent(p)}`)
-          .join('&');
-
+        .map(p => `paths=${encodeURIComponent(p)}`)
+        .join('&');
+        
         window.open(
           `/fs/${siteId}/download-zip?${query}`,
           '_blank'
         );
       },
-
+      
       oninitupload(startupload, fileinfo) {
+        console.log({startupload, fileinfo});
         if (fileinfo.type === 'dir') return startupload(false);
-
+        
         fileinfo.url = `/fs/${siteId}/upload`;
         fileinfo.fileparam = 'file';
         fileinfo.params = {
           path: fileinfo.folder.GetPathIDs().slice(1).join('/')
         };
-
+        
         startupload(true);
       },
-
-      onfinishedupload(finalize) {
+      
+      onfinishedupload(finalize, fileinfo) {
+        console.log({finalize, fileinfo});
+        htmx.trigger(document.body, 'commitsChanged');
         finalize(true);
-        CuteMagickEvents.commitsChanged(siteId);
-      }
+      },
+      
     });
   });
 }
 
 /* -------------------------------------------------
-   HTMX hook
+HTMX hook
 -------------------------------------------------- */
 
 document.body.addEventListener('htmx:afterSwap', (e) => {

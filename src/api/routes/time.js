@@ -13,10 +13,13 @@ import {
   countRemoteCommitsToPull,
   getUnpushedCommitCount,
   getRemoteAheadCount,
-  getLiveCommit
+  getLiveCommit,
+  fetchRemote,
+  countDraftCommits,
 } from '../../../infra/git/sync.js';
 
 import { git } from '../../../infra/git/plumbing.js';
+import { SITES_ROOT } from '../../../config/index.js';
 
 const router = express.Router();
 
@@ -35,35 +38,48 @@ function getSitePath(siteId) {
   return path.resolve(process.cwd(), 'data', 'sites', row.directory);
 }
 
+function getLocalPlaceName() {
+  return process.env.WILDCARD_DOMAIN?.trim() || 'My site';
+}
+
+function getExternalPlaceName(repository) {
+  if (!repository) return null;
+
+  try {
+    // git@github.com:user/repo.git
+    // https://github.com/user/repo.git
+    let cleaned = repository
+      .replace(/^git@/, '')
+      .replace(/^https?:\/\//, '')
+      .replace(/\.git$/, '');
+
+    // git@github.com:user/repo → github.com/user/repo
+    cleaned = cleaned.replace(':', '/');
+
+    // keep host only
+    return cleaned.split('/')[0];
+  } catch {
+    return 'External copy';
+  }
+}
+
 router.get('/:siteId/status', async (req, res) => {
   const { siteId } = req.params;
-  console.log('[TIME:STATUS] request start', { siteId });
 
   if (!siteId) {
-    console.log('[TIME:STATUS] missing siteId');
     return res.sendStatus(400);
   }
 
   try {
-    console.log('[TIME:STATUS] loading site record');
     const site = db
-      .prepare('SELECT repository, branch, live_commit FROM sites WHERE uuid = ?')
+      .prepare('SELECT repository FROM sites WHERE uuid = ?')
       .get(siteId);
 
-    console.log('[TIME:STATUS] site record', site);
-
-    // No remote → hide sync UI entirely
     if (!site || !site.repository) {
-      console.log('[TIME:STATUS] no repository configured, returning 204');
       return res.sendStatus(204);
     }
 
-    console.log('[TIME:STATUS] computing counts…');
-
-    const localAheadPromise = getUnpushedCommitCount({ siteId });
-    const remoteAheadPromise = getRemoteAheadCount({ siteId });
-    const liveToPushPromise = countLiveCommitsToPush({ siteId });
-    const remoteToPullPromise = countRemoteCommitsToPull({ siteId });
+    await fetchRemote({ siteId });
 
     const [
       localAhead,
@@ -71,45 +87,23 @@ router.get('/:siteId/status', async (req, res) => {
       liveToPush,
       remoteToPull
     ] = await Promise.all([
-      localAheadPromise,
-      remoteAheadPromise,
-      liveToPushPromise,
-      remoteToPullPromise
+      getUnpushedCommitCount({ siteId }),
+      getRemoteAheadCount({ siteId }),
+      countLiveCommitsToPush({ siteId }),
+      countRemoteCommitsToPull({ siteId })
     ]);
-
-    console.log('[TIME:STATUS] computed values', {
-      localAhead,
-      remoteAhead,
-      liveToPush,
-      remoteToPull
-    });
-
-    console.log('[TIME:STATUS] interpretation', {
-      hasLocalChanges: localAhead > 0 || liveToPush > 0,
-      hasRemoteChanges: remoteAhead > 0 || remoteToPull > 0,
-      wouldShowInSync:
-        localAhead === 0 &&
-        remoteAhead === 0 &&
-        liveToPush === 0 &&
-        remoteToPull === 0
-    });
-
-    console.log('[TIME:STATUS] rendering partial');
 
     return res.render('partials/time-status', {
       layout: false,
       siteId,
+      localPlace: getLocalPlaceName(),
+      externalPlace: getExternalPlaceName(site.repository),
       localAhead,
       remoteAhead,
       liveToPush,
       remoteToPull
     });
   } catch (err) {
-    console.error('[TIME:STATUS] ERROR', {
-      siteId,
-      message: err.message,
-      stack: err.stack
-    });
     res.status(500).send('Failed to compute time status');
   }
 });
@@ -165,5 +159,42 @@ router.get('/:siteId/commit/:commit', async (req, res) => {
     res.status(500).send('Failed to load commit');
   }
 });
+
+/* -------------------------------------------------
+   Helpers
+-------------------------------------------------- */
+
+function getSite(siteId) {
+  return db.prepare(`
+    SELECT uuid, directory, live_commit
+    FROM sites
+    WHERE uuid = ?
+  `).get(siteId);
+}
+
+/* -------------------------------------------------
+   Routes
+-------------------------------------------------- */
+
+router.get('/:siteId/draft-count', async (req, res) => {
+  const site = getSite(req.params.siteId);
+  if (!site) return res.sendStatus(404);
+
+  if (!site.live_commit) {
+    return res.send('0');
+  }
+
+  try {
+    const count = await countDraftCommits({
+      siteId: site.uuid,
+      liveCommit: site.live_commit
+    });
+    return res.send(count);
+  } catch (err) {
+    console.error('[draft-count]', err.message);
+    return res.status(500).send('0');
+  }
+});
+
 
 export default router;

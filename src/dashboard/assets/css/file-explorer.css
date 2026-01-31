@@ -78,9 +78,9 @@
 .fe_fileexplorer_wrap .fe_fileexplorer_folder_tool_item_checkboxes::before { background-image: url('fileexplorer_sprites.png'); background-position: -72px -144px; }
 .fe_fileexplorer_wrap .fe_fileexplorer_show_item_checkboxes .fe_fileexplorer_folder_tool_item_checkboxes::before { background-image: url('fileexplorer_sprites.png'); background-position: -0px -120px; }
 
-.fe_fileexplorer_wrap .fe_fileexplorer_items_scroll_wrap { flex: 1; overflow-y: auto; box-sizing: border-box; outline: none; position: relative; }
+.fe_fileexplorer_wrap .fe_fileexplorer_items_scroll_wrap { max-height: 100%; flex: 1; overflow-y: auto; box-sizing: border-box; outline: none; position: relative; }
 .fe_fileexplorer_wrap .fe_fileexplorer_items_scroll_wrap::-moz-focus-inner { border: 0; }
-.fe_fileexplorer_wrap .fe_fileexplorer_items_scroll_wrap_inner { position: relative; min-height: 100%; }
+.fe_fileexplorer_wrap .fe_fileexplorer_items_scroll_wrap_inner { position: relative; overflow: auto;  }
 .fe_fileexplorer_wrap .fe_fileexplorer_items_message_wrap { padding: 1.5em 1em 1em 1em; color: #6D6D6D; font-size: 0.75em; text-align: center; }
 .fe_fileexplorer_wrap .fe_fileexplorer_items_wrap { display: flex; flex-wrap: wrap; padding: 0.3em 12px 0.2em 4px; }
 .fe_fileexplorer_wrap .fe_fileexplorer_item_wrap { margin-left: 0.56em; margin-bottom: 1px; width: 4.7em; box-sizing: border-box; text-align: center; overflow: hidden; }
