@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import express from 'express';
 import { engine } from 'express-handlebars';
 import cookieParser from 'cookie-parser';
+import Handlebars from 'handlebars';
 
 import auth from './api/middleware/auth.js';
 
@@ -91,6 +92,9 @@ app.engine(
 
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'dashboard/views'));
+
+Handlebars.registerHelper('eq', (a, b) => a === b);
+
 
 /* ----------------------------
    Static assets

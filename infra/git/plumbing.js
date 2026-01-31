@@ -52,12 +52,9 @@ export async function hasCommits(sitePath) {
 }
 
 export async function safeCheckout(sitePath, branch) {
-  if (!branch) {
-    throw new Error('[BUG] safeCheckout called without branch');
-  }
-
+  if (!branch) throw new Error('[BUG] safeCheckout called without branch');
   if (!(await hasCommits(sitePath))) return;
-  await git(sitePath, ['checkout', branch]);
+  await checkoutIfNeeded(sitePath, branch);
 }
 
 export async function hasUpstream(sitePath) {
@@ -110,7 +107,7 @@ export async function ensureRepo(sitePath, branch = 'main') {
     isNewRepo = true;
   }
 
-  ensureGitIdentity(sitePath);
+  await ensureGitIdentity(sitePath);
   ensureLocalGitExclude(sitePath);
 
   // 🔑 Explicit branch existence check
@@ -120,10 +117,19 @@ export async function ensureRepo(sitePath, branch = 'main') {
     await git(sitePath, ['checkout', '-b', branch]);
     return { isNewRepo };
   }
-
-  await git(sitePath, ['checkout', branch]);
+  
+  if (!isNewRepo) {
+    await checkoutIfNeeded(sitePath, branch);
+  }
 
   return { isNewRepo };
+}
+
+async function checkoutIfNeeded(sitePath, branch) {
+  const { stdout } = await git(sitePath, ['branch', '--show-current']);
+  if (stdout.trim() !== branch) {
+    await git(sitePath, ['checkout', branch]);
+  }
 }
 
 export async function ensureBranch(sitePath, branch) {

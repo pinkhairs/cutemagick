@@ -1,54 +1,85 @@
 <div
-  class="git-status flex items-center justify-between p-2 text-sm border-b border-gray-400 dark:border-gray-700"
+  class="p-2 text-sm border-b border-gray-400 dark:border-gray-700 git-status flex items-center justify-between"
   hx-get="/time/{{siteId}}/status"
   hx-trigger="commitsChanged from:body"
-  hx-swap="outerHTML"            
+  hx-swap="outerHTML"
 >
 
-  <!-- Status (informational, non-clickable) -->
-  <div class="flex items-center gap-2">
-    {{#if remoteToPull}}
-      <button class="btn-secondary" disabled>
-        {{remoteToPull}} to pull
-      </button>
+  <!-- Status indicators -->
+  <div class="flex items-center gap-3">
+
+    {{#if localAhead}}
+      <div
+        class="flex items-center gap-1"
+        title="{{localAhead}} commit{{#unless (eq localAhead 1)}}s{{/unless}} ahead locally"
+      >
+        <span aria-hidden="true">↑</span>
+        <span>{{localAhead}}</span>
+      </div>
     {{/if}}
 
-    {{#if unpushed}}
-      <button class="btn-secondary" disabled>
-        {{unpushed}} to push
-      </button>
+    {{#if remoteAhead}}
+      <div
+        class="flex items-center gap-1"
+        title="{{remoteAhead}} commit{{#unless (eq remoteAhead 1)}}s{{/unless}} ahead on remote"
+      >
+        <span aria-hidden="true">↓</span>
+        <span>{{remoteAhead}}</span>
+      </div>
     {{/if}}
 
-    {{#unless remoteToPull}}
-      {{#unless unpushed}}
-        <button class="btn-secondary" disabled>
+    {{#unless localAhead}}
+      {{#unless remoteAhead}}
+        <div title="Local and remote are in sync">
           In sync
-        </button>
+        </div>
       {{/unless}}
     {{/unless}}
+
   </div>
 
-  <!-- Actions (only when valid) -->
+  <!-- Action -->
   <div class="flex items-center gap-2">
-    {{#if remoteToPull}}
-      <button
-        class="btn-primary"
-        hx-post="/time/{{siteId}}/pull"
-        hx-swap="none"
+
+    {{#if hasConflict}}
+      <div
+        class="flex items-center gap-2"
+        title="Cannot sync automatically: local ({{localAhead}}) and remote ({{remoteAhead}}) have diverged"
       >
-        Pull
-      </button>
+        <span aria-hidden="true">⚠️</span>
+        <span>
+          {{localAhead}} / {{remoteAhead}}
+        </span>
+
+        <button
+          disabled
+          title="Resolve the merge conflict before syncing"
+        >
+          Sync
+        </button>
+      </div>
+    {{else}}
+      {{#if localAhead}}
+        <button
+          hx-post="/time/{{siteId}}/push"
+          hx-swap="none"
+          title="Push {{localAhead}} commit{{#unless (eq localAhead 1)}}s{{/unless}} to remote"
+        >
+          Sync
+        </button>
+      {{/if}}
+
+      {{#if remoteAhead}}
+        <button
+          hx-post="/time/{{siteId}}/pull"
+          hx-swap="none"
+          title="Pull {{remoteAhead}} commit{{#unless (eq remoteAhead 1)}}s{{/unless}} from remote"
+        >
+          Sync
+        </button>
+      {{/if}}
     {{/if}}
 
-    {{#if unpushed}}
-      <button
-        class="btn-primary"
-        hx-post="/time/{{siteId}}/push"
-        hx-swap="none"
-      >
-        Push
-      </button>
-    {{/if}}
   </div>
 
 </div>

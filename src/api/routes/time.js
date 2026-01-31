@@ -37,40 +37,79 @@ function getSitePath(siteId) {
 
 router.get('/:siteId/status', async (req, res) => {
   const { siteId } = req.params;
-  if (!siteId) return res.sendStatus(400);
+  console.log('[TIME:STATUS] request start', { siteId });
+
+  if (!siteId) {
+    console.log('[TIME:STATUS] missing siteId');
+    return res.sendStatus(400);
+  }
 
   try {
+    console.log('[TIME:STATUS] loading site record');
     const site = db
-      .prepare('SELECT repository FROM sites WHERE uuid = ?')
+      .prepare('SELECT repository, branch, live_commit FROM sites WHERE uuid = ?')
       .get(siteId);
+
+    console.log('[TIME:STATUS] site record', site);
 
     // No remote → hide sync UI entirely
     if (!site || !site.repository) {
+      console.log('[TIME:STATUS] no repository configured, returning 204');
       return res.sendStatus(204);
     }
 
+    console.log('[TIME:STATUS] computing counts…');
+
+    const localAheadPromise = getUnpushedCommitCount({ siteId });
+    const remoteAheadPromise = getRemoteAheadCount({ siteId });
+    const liveToPushPromise = countLiveCommitsToPush({ siteId });
+    const remoteToPullPromise = countRemoteCommitsToPull({ siteId });
+
     const [
-      unpushed,
+      localAhead,
       remoteAhead,
       liveToPush,
       remoteToPull
     ] = await Promise.all([
-      getUnpushedCommitCount({ siteId }),
-      getRemoteAheadCount({ siteId }),
-      countLiveCommitsToPush({ siteId }),
-      countRemoteCommitsToPull({ siteId })
+      localAheadPromise,
+      remoteAheadPromise,
+      liveToPushPromise,
+      remoteToPullPromise
     ]);
+
+    console.log('[TIME:STATUS] computed values', {
+      localAhead,
+      remoteAhead,
+      liveToPush,
+      remoteToPull
+    });
+
+    console.log('[TIME:STATUS] interpretation', {
+      hasLocalChanges: localAhead > 0 || liveToPush > 0,
+      hasRemoteChanges: remoteAhead > 0 || remoteToPull > 0,
+      wouldShowInSync:
+        localAhead === 0 &&
+        remoteAhead === 0 &&
+        liveToPush === 0 &&
+        remoteToPull === 0
+    });
+
+    console.log('[TIME:STATUS] rendering partial');
 
     return res.render('partials/time-status', {
       layout: false,
       siteId,
-      unpushed,
+      localAhead,
       remoteAhead,
       liveToPush,
       remoteToPull
     });
   } catch (err) {
-    log.error('[time:status]', { siteId, err: err.message });
+    console.error('[TIME:STATUS] ERROR', {
+      siteId,
+      message: err.message,
+      stack: err.stack
+    });
     res.status(500).send('Failed to compute time status');
   }
 });
