@@ -1,11 +1,11 @@
 <span
-  class="draft-badge hidden absolute -top-1 -right-2
+  class="draft-badge hidden absolute -top-1 -right-1
          min-w-[1.1rem] h-[1.1rem] px-1
          rounded-full text-[10px] leading-[1.1rem]
          text-white bg-blue-600 dark:bg-blue-500
          text-center font-semibold select-none cursor-pointer"
   data-action="open-history"
-  hx-get="/sites/{{siteId}}/draft-count"
+  hx-get="/time/{{siteId}}/draft-count"
   hx-trigger="revealed, commitsChanged from:body"
   hx-swap="innerHTML"
   hx-on::after-swap="
@@ -15,9 +15,9 @@
     if (!raw || !Number.isFinite(n) || n <= 0) {
       this.classList.add('hidden');
     } else {
-      this.textContent = n > 11 ? '11+' : n;
+      this.textContent = n > 99 ? '99+' : n;
       this.classList.remove('hidden');
     }
   "
-  title="Unpublished changes (view history)"
+  data-tippy-content="Unpublished changes (view history)"
 ></span>

@@ -115,17 +115,28 @@ export async function commitFileDelete({ siteId, paths, message }) {
   await ensureRepo(sitePath, branch);
   await safeCheckout(sitePath, branch);
 
-  console.log('[DEBUG] fs siteRoot:', siteRoot);
-  console.log('[DEBUG] git sitePath:', sitePath);
+  await git(sitePath, [
+    'rm',
+    '-r',
+    '--force',
+    '--ignore-unmatch',
+    '--',
+    ...paths
+  ]);
 
-
-  await git(sitePath, ['add', '-A']);
-
-  await commitIfStaged(
+  const result = await commitIfStaged(
     sitePath,
-    resolveCommitMessage(message, `Deleted ${paths.length} items`)
+    resolveCommitMessage(message, `Deleted ${paths.length} item(s)`)
   );
+
+  // Nothing to commit = already deleted / no-op
+  if (!result) {
+    return null;
+  }
+
+  return result;
 }
+
 
 export async function commitFileRename({
   siteId,

@@ -61,7 +61,7 @@ export async function fetchRemote({ siteId }) {
   await ensureRepo(sitePath, branch);
   await safeCheckout(sitePath, branch);
 
-  await git(sitePath, ['fetch', repository]);
+  await git(sitePath, ['fetch', 'origin']);
 }
 
 export async function pullFromRemote({ siteId }) {
@@ -82,8 +82,6 @@ export async function pullFromRemote({ siteId }) {
   } catch {
     await git(sitePath, ['remote', 'add', 'origin', repository]);
   }
-
-  await git(sitePath, ['fetch', 'origin']);
 
   // establish upstream if missing
   if (!(await hasUpstream(sitePath))) {
@@ -382,7 +380,6 @@ export async function getLocalAheadCount({ siteId }) {
     }
 
     // Keep refs fresh (don't assume anything)
-    await git(sitePath, ['fetch', 'origin']);
   }
 
   // If no upstream, treat "ahead" as "all local commits"
@@ -403,4 +400,22 @@ export async function getLocalAheadCount({ siteId }) {
   ]);
 
   return Number(stdout.trim()) || 0;
+}
+
+export async function countDraftCommits({ siteId, liveCommit }) {
+  if (!liveCommit) return 0;
+
+  const { sitePath } = getSiteGitConfig(siteId);
+
+  try {
+    const { stdout } = await git(sitePath, [
+      'rev-list',
+      '--count',
+      `${liveCommit}..HEAD`
+    ]);
+
+    return Number(stdout.trim()) || 0;
+  } catch {
+    return 0;
+  }
 }

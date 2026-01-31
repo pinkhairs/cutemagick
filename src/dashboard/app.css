@@ -16,6 +16,16 @@ html, body, #app {
   cursor: move;
 }
 
+:root {
+  --aria-busy-spinner-color: #1f2937; /* slate-800 */
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --aria-busy-spinner-color: #e5e7eb; /* slate-200 */
+  }
+}
 
 /* Your theme tokens live here in v4 */
 @theme {
@@ -215,7 +225,49 @@ li:has(.is-live) ~ li .timeline-dot {
          dark:bg-gray-700 dark:text-gray-100;
 }
 
-
 .editor-container {
   line-height: 1.65;
+}
+
+/* Light mode */
+:root {
+  --aria-busy-spinner-color: #6b7280; /* gray-500 */
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --aria-busy-spinner-color: #d1d5db; /* gray-300 */
+  }
+}
+
+[aria-busy="true"]:not(input, select, textarea, html, form)::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-inline-end: 0.5em;
+  vertical-align: -0.125em;
+
+  /* Spinner shape */
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cstyle%3E.spinner_rXNP%7Banimation:spinner_YeBj .8s infinite%7D@keyframes spinner_YeBj%7B0%25%7Banimation-timing-function:cubic-bezier(0.33,0,.66,.33);cy:5px%7D46.875%25%7Bcy:20px;rx:4px;ry:4px%7D50%25%7Banimation-timing-function:cubic-bezier(0.33,.66,.66,1);cy:20.5px;rx:4.8px;ry:3px%7D53.125%25%7Brx:4px;ry:4px%7D100%25%7Bcy:5px%7D%7D%3C/style%3E%3Cellipse class='spinner_rXNP' cx='12' cy='5' rx='4' ry='4'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cstyle%3E.spinner_rXNP%7Banimation:spinner_YeBj .8s infinite%7D@keyframes spinner_YeBj%7B0%25%7Banimation-timing-function:cubic-bezier(0.33,0,.66,.33);cy:5px%7D46.875%25%7Bcy:20px;rx:4px;ry:4px%7D50%25%7Banimation-timing-function:cubic-bezier(0.33,.66,.66,1);cy:20.5px;rx:4.8px;ry:3px%7D53.125%25%7Brx:4px;ry:4px%7D100%25%7Bcy:5px%7D%7D%3C/style%3E%3Cellipse class='spinner_rXNP' cx='12' cy='5' rx='4' ry='4'/%3E%3C/svg%3E");
+
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+
+  /* THIS is the visible color */
+  background-color: var(--aria-busy-spinner-color);
+}
+
+.file-explorer {
+  @apply lg:max-h-101;
+}
+
+.git-status + div .file-explorer .fe_fileexplorer_items_scroll_wrap {
+  @apply lg:h-75!;
 }

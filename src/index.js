@@ -94,7 +94,7 @@ app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'dashboard/views'));
 
 Handlebars.registerHelper('eq', (a, b) => a === b);
-
+Handlebars.registerHelper('or', (a, b) => Boolean(a || b));
 
 /* ----------------------------
    Static assets

@@ -220,7 +220,7 @@ router.post('/:siteId/pull', async (req, res) => {
 
   try {
     await pullFromRemote({ siteId });
-    res.sendStatus(204);
+    res.set('HX-Trigger', 'commitsChanged').sendStatus(204);
   } catch (err) {
     log.error('[site:pull]', { siteId, err: err.message });
     res.status(409).send(err.message);
@@ -233,7 +233,7 @@ router.post('/:siteId/push', async (req, res) => {
 
   try {
     await syncToRemote({ siteId });
-    res.sendStatus(204);
+    res.set('HX-Trigger', 'commitsChanged').sendStatus(204);
   } catch (err) {
     log.error('[site:push]', { siteId, err: err.message });
     res.status(409).send(err.message);

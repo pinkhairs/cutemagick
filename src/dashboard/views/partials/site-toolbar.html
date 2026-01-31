@@ -16,16 +16,8 @@
         <span>{{siteAddressDisplay}}</span>
       </a>
     </div>
-
-    <!-- Right: actions (single HTMX island) -->
-    <div
-      class="flex items-center gap-3"
-      hx-get="/sites/{{siteId}}/site-actions"
-      hx-trigger="revealed, commitsChanged from:body"
-      hx-swap="innerHTML"
-    >
-      <!-- empty by default -->
-    </div>
+    
+    {{> site-actions siteId=siteId }}
 
   </div>
 </div>
