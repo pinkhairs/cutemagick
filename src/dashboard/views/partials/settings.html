@@ -1,118 +1,120 @@
-<div class="p-4">
+<div
+  class="settings-editor p-4"
+  data-site-uuid="{{siteId}}"
+>
   <div class="history-notices space-y-3 mb-6">
     <h2 class="font-bold text-xl">
       Settings
     </h2>
-    
-    <!-- Notice 2: Read-only -->
+
     <div class="flex gap-3 rounded-md border border-gray-400 dark:border-gray-700
                 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
-
       <div class="text-lg">🎲</div>
-
-      <p>Try <span class="font-mono text-sm bg-yellow-50 dark:bg-yellow-300/20">http://<strong class="italic highlight">anything</strong>.magick.host</span> for your site URL.</p>
+      <p>
+        Try
+        <span class="font-mono text-sm bg-yellow-50 dark:bg-yellow-300/20">
+          <strong class="italic highlight">anything</strong>.magick.host
+        </span>
+        for your site URL.
+      </p>
     </div>
-    
   </div>
-  <form class="grid gap-2">
-    
-    <div class="flex gap-2 items-center
-    rounded-md
-    bg-white/50 dark:bg-gray-900/50 pb-3">
-    <label
-    class="bg-transparent
-    pr-2
-    focus:outline-none focus:border-indigo-400">Site URL</label>
-    
-    <input
-    type="url"
-    name="value"
-    placeholder="http://your-domain.com"
-    class="flex-1 bg-transparent
-    border-b border-gray-300 dark:border-gray-500
-    focus:outline-none focus:border-indigo-400"
-    />
-  </div>
-    
-  <div class="flex gap-2 items-center
-    rounded-md
-    bg-white/50 dark:bg-gray-900/50 pb-3">
-    <label
-    class="bg-transparent
-    pr-2
-    focus:outline-none focus:border-indigo-400">Icon URL</label>
-    
-    <input
-    type="url"
-    name="value"
-    placeholder="optional"
-    class="flex-1 bg-transparent
-    border-b border-gray-300 dark:border-gray-500
-    focus:outline-none focus:border-indigo-400"
-    />
-  </div>
-    <div class="flex gap-2 items-center
-    rounded-md
-    bg-white/50 dark:bg-gray-900/50">
-    <label
-    class="bg-transparent
-    pr-2
-    focus:outline-none focus:border-indigo-400">Remote Git (optional)</label>
-  </div>
-    
-    
-    <div class="flex gap-2 items-center
-    rounded-md
-    bg-white/50 dark:bg-gray-900/50 pb-3">
-    <input
-    type="text"
-    name="value"
-    placeholder="Repository URL"
-    class="flex-1 bg-transparent
-    border-b border-gray-300 dark:border-gray-500
-    focus:outline-none focus:border-indigo-400"
-    />
-    <input
-    type="text"
-    name="value"
-    placeholder="Branch"
-    class="flex-1 bg-transparent
-    border-b border-gray-300 dark:border-gray-500
-    focus:outline-none focus:border-indigo-400"
-    />
-</div>
-    <div class="flex gap-2 items-center
-    rounded-md
-    bg-white/50 dark:bg-gray-900/50">
-    <label
-    class="bg-transparent
-    pr-2
-    focus:outline-none focus:border-indigo-400">Password protection (optional)</label>
-  </div>
-    
-    
-    <div class="flex pb-4 gap-2 items-center
-    rounded-md
-    bg-white/50 dark:bg-gray-900/50 pb-3">
-    <input
-    type="text"
-    name="value"
-    placeholder="Username"
-    class="flex-1 bg-transparent
-    border-b border-gray-300 dark:border-gray-500
-    focus:outline-none focus:border-indigo-400"
-    />
-    <input
-    type="password"
-    name="value"
-    placeholder="Password"
-    class="flex-1 bg-transparent
-    border-b border-gray-300 dark:border-gray-500
-    focus:outline-none focus:border-indigo-400"
-    />
-</div>
 
-<button type="submit" class="btn px-3! py-2!">Save Settings</button>
-<button class="mt-4 text-sm text-rose-500">Delete Site</button>
-</form>
+  <form class="settings-form grid gap-2">
+    <div class="flex gap-2 items-center rounded-md bg-white/50 dark:bg-gray-900/50 pb-3">
+      <label class="pr-2">Name</label>
+      <input
+        type="text"
+        name="name"
+        placeholder=""
+        class="flex-1 bg-transparent border-b border-gray-300 dark:border-gray-500
+               focus:outline-none focus:border-indigo-400"
+      />
+    </div>
+
+
+    <!-- Site URL -->
+    <div class="flex gap-2 items-center rounded-md bg-white/50 dark:bg-gray-900/50 pb-3">
+      <label class="pr-2">Site URL</label>
+      <input
+        type="text"
+        name="customDomain"
+        placeholder="your-domain.com"
+        class="flex-1 bg-transparent border-b border-gray-300 dark:border-gray-500
+               focus:outline-none focus:border-indigo-400"
+      />
+    </div>
+
+    <!-- Icon URL -->
+    <div class="flex gap-2 items-center rounded-md bg-white/50 dark:bg-gray-900/50 pb-3">
+      <label class="pr-2">Icon URL</label>
+      <input
+        type="url"
+        name="iconUrl"
+        placeholder="optional"
+        class="flex-1 bg-transparent border-b border-gray-300 dark:border-gray-500
+               focus:outline-none focus:border-indigo-400"
+      />
+    </div>
+
+    <!-- Remote Git -->
+    <div class="flex gap-2 items-center rounded-md bg-white/50 dark:bg-gray-900/50">
+      <label class="pr-2">Remote Git (optional)</label>
+    </div>
+
+    <div class="flex gap-2 items-center rounded-md bg-white/50 dark:bg-gray-900/50 pb-3">
+      <input
+        type="text"
+        name="repository"
+        placeholder="Repository URL"
+        class="flex-1 bg-transparent border-b border-gray-300 dark:border-gray-500
+               focus:outline-none focus:border-indigo-400"
+      />
+      <div class="w-28">
+        <input
+          type="text"
+          name="branch"
+          placeholder="Branch"
+          class="flex-1 bg-transparent border-b border-gray-300 dark:border-gray-500
+                focus:outline-none focus:border-indigo-400"
+        />
+      </div>
+    </div>
+
+    <!-- Password protection -->
+    <div class="flex gap-2 items-center rounded-md bg-white/50 dark:bg-gray-900/50">
+      <label class="pr-2">Password protection (optional)</label>
+    </div>
+
+    <div class="flex gap-2 items-center rounded-md bg-white/50 dark:bg-gray-900/50 pb-4">
+      <input
+        type="text"
+        name="authUser"
+        placeholder="Username"
+        class="flex-1 bg-transparent border-b border-gray-300 dark:border-gray-500
+               focus:outline-none focus:border-indigo-400"
+      />
+      <input
+        type="password"
+        name="authPass"
+        placeholder="Password"
+        class="flex-1 bg-transparent border-b border-gray-300 dark:border-gray-500
+               focus:outline-none focus:border-indigo-400"
+      />
+    </div>
+
+    <button
+      type="submit"
+      class="save-settings btn px-3! py-2!"
+    >
+      Save Settings
+    </button>
+
+    <button
+      type="button"
+      class="mt-4 text-sm text-amber-500"
+    >
+      Archive Site
+    </button>
+  </form>
 </div>
