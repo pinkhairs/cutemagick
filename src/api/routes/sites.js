@@ -74,10 +74,21 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
   const directory = `${slug}${suffix}`;
   const sitePath = path.join(SITES_ROOT, directory);
 
-  const domain =
+let domain;
+
+if (process.env.WILDCARD_DOMAIN) {
+  domain =
     generateRandomSubdomain(slug) +
     '.' +
     process.env.WILDCARD_DOMAIN;
+} else {
+  const root = process.env.ROOT_DOMAIN;
+  if (!root) {
+    throw new Error('Missing ROOT_DOMAIN for non-wildcard hosting');
+  }
+
+  domain = `${root.replace(/\/$/, '')}/site/${directory}`;
+}
 
   log.info('[sites:create]', { uuid, name, isGitRepo });
 

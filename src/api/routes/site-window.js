@@ -7,7 +7,7 @@ const router = express.Router();
 
 function getSite(siteId) {
   return db.prepare(`
-    SELECT uuid, name, directory, live_commit
+    SELECT uuid, name, directory, live_commit, domain
     FROM sites
     WHERE uuid = ?
   `).get(siteId);

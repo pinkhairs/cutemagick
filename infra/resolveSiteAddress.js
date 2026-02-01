@@ -1,20 +1,15 @@
 export function resolveSiteAddress(site) {
-  if (!site) return null;
+  if (!site || !site.domain) return null;
 
-  const {
-    domain,
-    directory
-  } = site;
+  const base = site.domain.trim();
 
-  const base =
-    domain && domain.trim()
-      ? domain.trim()
-      : `${directory}.${process.env.WILDCARD_DOMAIN}`;
-
-  // Ensure protocol
+  // If protocol already specified, respect it
   if (/^https?:\/\//i.test(base)) {
     return base;
   }
 
-  return `https://${base}`;
+  const useHttps = String(process.env.SSL_ENABLED) === '1';
+  const protocol = useHttps ? 'https://' : 'http://';
+
+  return protocol + base;
 }

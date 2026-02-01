@@ -155,7 +155,7 @@ function mountFileExplorers(root) {
           return created(false);
         }
         
-        fetch(`/fs/${siteId}/folder`, {
+        csrfFetch(`/fs/${siteId}/folder`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -174,10 +174,10 @@ function mountFileExplorers(root) {
         if (!name) return created(false);
         if (name === '.env') {
           alert('Use the Secrets tab to manage environment variables');
-          return created(false);
+          created(false);
         }
         
-        fetch(`/fs/${siteId}/file`, {
+        csrfFetch(`/fs/${siteId}/file`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -205,7 +205,7 @@ function mountFileExplorers(root) {
         
         renamed({ ...entry, id: newname, name: newname });
         
-        fetch(`/fs/${siteId}/rename`, {
+        csrfFetch(`/fs/${siteId}/rename`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ from, to })
@@ -229,7 +229,7 @@ function mountFileExplorers(root) {
         
         Promise.all(
           paths.map(p =>
-            fetch(`/fs/${siteId}/delete`, {
+            csrfFetch(`/fs/${siteId}/delete`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ path: p })

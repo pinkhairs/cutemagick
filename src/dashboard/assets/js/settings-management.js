@@ -7,7 +7,7 @@
     const form = root.querySelector('.settings-form');
     const saveBtn = root.querySelector('.save-settings');
 
-    fetch(`/sites/${siteId}/settings`)
+    csrfFetch(`/sites/${siteId}/settings`)
     .then(r => r.json())
     .then(data => {
       for (const [key, value] of Object.entries(data)) {
