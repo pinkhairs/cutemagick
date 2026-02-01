@@ -68,7 +68,6 @@
   </main>
   <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
   <div class="fixed w-full inset-0 h-full bg-cover bg-bottom bg-no-repeat -z-1 opacity-30" style="background-image: url()"></div>
-  <script src="/assets/js/events.js"></script>
   <script src="https://unpkg.com/popper.js@1"></script>
   <script src="https://unpkg.com/tippy.js@5"></script>
   <script src="/assets/js/htmx.min.js"></script>
@@ -78,6 +77,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js"></script>
   <script src="/assets/js/mount-code-editor.js"></script>
   <script src="/assets/js/save-file.js"></script>
+  <script src="/assets/js/secrets-management.js"></script>
 
   <script>
     function initTippy(root = document) {
@@ -215,12 +215,52 @@ document.addEventListener('click', (e) => {
         "We tried to combine the two copies of your site, but some changes overlap and need your help.\n\n" +
         "Search “How to deal with merge conflicts” in the documentation to continue."
       );
-
-      // Re-enable any busy buttons and refresh status
-      document.body.dispatchEvent(new Event('commitsChanged'));
     }
   });
 </script>
+<script>
+document.body.addEventListener('siteCommit', e => {
+  console.log(e.detail);
+});
+</script>
+<template id="secretRow" class="flex flex-col gap-4">
+  <div class="flex gap-2 secret-row pb-3">
+    <div
+      class="grid flex-1 grid-cols-1 md:grid-cols-2 gap-3 items-center
+             rounded-md
+             bg-white/50 dark:bg-gray-900/50"
+    >
+      <input
+        type="text"
+        name="key"
+        placeholder="NEW_SECRET_NAME"
+        class="font-mono bg-transparent
+               border-b border-gray-400 dark:border-gray-700
+               focus:outline-none focus:border-indigo-400"
+      />
+
+      <input
+        type="password"
+        name="value"
+        placeholder="value"
+        class="font-mono bg-transparent
+               border-b border-gray-400 dark:border-gray-700
+               focus:outline-none focus:border-indigo-400"
+      />
+    </div>
+
+    <button
+      type="button"
+      class="remove p-1 size-6 text-lg
+             border border-gray-400 dark:border-gray-700
+             rounded-full rotate-45
+             flex items-center justify-center"
+      title="Remove secret"
+    >
+      +
+    </button>
+  </div>
+</template>
 
 </body>
 </html>

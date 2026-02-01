@@ -4,7 +4,6 @@
 >
   <div class="flex flex-1 items-center justify-between gap-4">
 
-    <!-- Left: identity (always static) -->
     <div class="flex items-center gap-2">
       <a
         href="{{siteAddress}}"
@@ -17,7 +16,7 @@
       </a>
     </div>
     
-    {{> site-actions siteId=siteId }}
+    <div hx-trigger="revealed" hx-swap="outerHTML" hx-get="/site-window/{{siteId}}/actions"></div>
 
   </div>
 </div>

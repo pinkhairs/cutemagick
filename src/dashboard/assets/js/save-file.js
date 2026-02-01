@@ -1,24 +1,34 @@
-// save-draft.js
+// save-file.js
 // ----------------------------------------------------
-// Save Draft dropdown using Tippy
+// Save Draft logic (Ace-aware, HTMX-safe)
 // ----------------------------------------------------
 
 (function () {
+
   /* --------------------------------------------------
      Helpers
   -------------------------------------------------- */
+
+  function getAce(windowEl) {
+    return windowEl?._ace || null;
+  }
+
+  function getEditorContent(windowEl) {
+    const aceEditor = getAce(windowEl);
+    return aceEditor ? aceEditor.getValue() : null;
+  }
 
   function saveDraftMenuHTML() {
     return `
       <div class="flex flex-col text-sm">
         <button
-          class="bg-transparent! focus:bg-transparent! px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+          class="px-3 py-2 text-left "
           data-save-action="quick"
         >
           ⚡ Quick save (click again)
         </button>
         <button
-          class="bg-transparent! focus:bg-transparent! px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+          class="px-3 py-2 text-left "
           data-save-action="note"
         >
           📝 Add note & save
@@ -27,14 +37,8 @@
     `;
   }
 
-  function getEditorContent(windowEl) {
-    const editorEl = windowEl.querySelector('.editor');
-    if (!editorEl || !editorEl.id) return null;
-    return ace.edit(editorEl.id).getValue();
-  }
-
   /* --------------------------------------------------
-     Clean / Dirty state
+     Dirty / Clean state
   -------------------------------------------------- */
 
   function markClean(windowEl) {
@@ -74,21 +78,20 @@
     updatePreviewButton(windowEl);
   }
 
-function updatePreviewButton(windowEl) {
-  const preview = windowEl.querySelector('[data-role="preview"]');
-  if (!preview) return;
+  function updatePreviewButton(windowEl) {
+    const preview = windowEl.querySelector('[data-role="preview"]');
+    if (!preview) return;
 
-  if (isDirty(windowEl)) {
-    preview.disabled = true;
-    preview.classList.add('opacity-40');
-    preview.title = 'Save draft to preview changes';
-  } else {
-    preview.disabled = false;
-    preview.classList.remove('opacity-40');
-    preview.title = 'Preview latest saved version';
+    if (isDirty(windowEl)) {
+      preview.disabled = true;
+      preview.classList.add('opacity-40');
+      preview.title = 'Save draft to preview changes';
+    } else {
+      preview.disabled = false;
+      preview.classList.remove('opacity-40');
+      preview.title = 'Preview latest saved version';
+    }
   }
-}
-
 
   /* --------------------------------------------------
      Save logic
@@ -99,7 +102,7 @@ function updatePreviewButton(windowEl) {
     saveBtn.textContent = '☁️ Saving…';
 
     try {
-      const res = await fetch(`/files/${siteId}/save`, {
+      const res = await fetch(`/fs/${siteId}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -111,20 +114,15 @@ function updatePreviewButton(windowEl) {
 
       if (!res.ok) throw new Error('Save failed');
 
-      // ✨ Mark clean immediately after successful save
+      // authoritative clean state
       windowEl._lastSavedValue = content;
+      updateSaveButton(windowEl);
 
-      saveBtn.textContent = '☁️ Saved';
-      setTimeout(() => {
-        updateSaveButton(windowEl);
-      }, 300);
-      CuteMagickEvents.commitsChanged(siteId);
     } catch (err) {
       console.error(err);
       saveBtn.textContent = '⚠️ Error';
       saveBtn.disabled = false;
     }
-    
   }
 
   /* --------------------------------------------------
@@ -147,10 +145,9 @@ function updatePreviewButton(windowEl) {
         placement: 'bottom-start'
       });
 
-      // default to disabled until editor marks dirty
       btn.disabled = true;
-      btn.classList.add('opacity-50');
       btn.textContent = '☁️ Saved';
+      btn.classList.add('opacity-50');
     });
   }
 
@@ -167,14 +164,13 @@ function updatePreviewButton(windowEl) {
   -------------------------------------------------- */
 
   document.addEventListener('click', async (e) => {
-    const saveBtn = e.target.closest('[id^="save-draft-"]');
-    const actionBtn = e.target.closest('[data-save-action]');
 
-    /* ----------------------------------------------
-       MENU ACTIONS
-    ---------------------------------------------- */
+    const actionBtn = e.target.closest('[data-save-action]');
+    const saveBtn   = e.target.closest('[id^="save-draft-"]');
+
+    /* ---------- Menu actions ---------- */
     if (actionBtn) {
-      e.stopPropagation();
+      e.preventDefault();
 
       const windowEl = actionBtn.closest('.window');
       if (!windowEl) return;
@@ -182,7 +178,7 @@ function updatePreviewButton(windowEl) {
       const btn = windowEl.querySelector('[id^="save-draft-"]');
       if (!btn || btn.disabled) return;
 
-      const siteId = windowEl.dataset.siteUuid;
+      const siteId  = windowEl.dataset.siteUuid;
       const filePath = windowEl.dataset.path;
       const content = getEditorContent(windowEl);
       if (content == null) return;
@@ -208,22 +204,20 @@ function updatePreviewButton(windowEl) {
       return;
     }
 
-    /* ----------------------------------------------
-       SAVE BUTTON CLICK
-    ---------------------------------------------- */
+    /* ---------- Save button ---------- */
     if (!saveBtn || saveBtn.disabled) return;
 
-    e.stopPropagation();
+    e.preventDefault();
 
     const windowEl = saveBtn.closest('.window');
     if (!windowEl) return;
 
-    const siteId = windowEl.dataset.siteUuid;
+    const siteId  = windowEl.dataset.siteUuid;
     const filePath = windowEl.dataset.path;
     const content = getEditorContent(windowEl);
     if (content == null) return;
 
-    // SECOND CLICK → QUICK SAVE
+    // second click → quick save
     if (saveBtn.dataset.saveArmed === 'true') {
       saveBtn.dataset.saveArmed = 'false';
       saveBtn._saveTippy.hide();
@@ -239,13 +233,13 @@ function updatePreviewButton(windowEl) {
       return;
     }
 
-    // FIRST CLICK → OPEN MENU + ARM
+    // first click → open menu
     saveBtn.dataset.saveArmed = 'true';
     saveBtn._saveTippy.show();
   });
 
   /* --------------------------------------------------
-     Expose hooks for Ace mount (next step)
+     Public hooks (called from Ace mount)
   -------------------------------------------------- */
 
   window.CuteMagickSaveState = {
@@ -253,20 +247,5 @@ function updatePreviewButton(windowEl) {
     markDirty,
     updateSaveButton
   };
+
 })();
-
-
-
-
-document.addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-role="preview"]');
-  if (!btn || btn.disabled) return;
-
-  const windowEl = btn.closest('.window');
-  if (!windowEl) return;
-
-  const url = btn.dataset.previewHref;
-  if (!url) return;
-
-  window.open(url, '_blank');
-});

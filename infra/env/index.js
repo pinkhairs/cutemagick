@@ -70,3 +70,34 @@ export function validateEnv() {
     port,
   });
 }
+
+export function parseNumberFrom(obj, name, defaultValue) {
+  const raw = obj[name];
+  if (raw == null || raw === '') return defaultValue;
+
+  const num = Number(raw);
+  if (Number.isNaN(num)) {
+    log.warn(
+      `[env] Invalid number for ${name}="${raw}", defaulting to ${defaultValue}`
+    );
+    return defaultValue;
+  }
+
+  return num;
+}
+
+export function parseEnumFrom(obj, name, allowed, defaultValue) {
+  const raw = obj[name];
+  if (!raw) return defaultValue;
+
+  if (!allowed.includes(raw)) {
+    log.warn(
+      `[env] Invalid value for ${name}="${raw}", allowed: ${allowed.join(
+        ', '
+      )}. Defaulting to "${defaultValue}"`
+    );
+    return defaultValue;
+  }
+
+  return raw;
+}

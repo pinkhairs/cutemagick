@@ -1,7 +1,7 @@
 import express from 'express';
 import db from '../../../infra/db/index.js';
 import { resolveSiteAddress } from '../../../infra/resolveSiteAddress.js';
-import { getCommitHistory } from '../../../infra/git/read.js';
+import { getCommitHistory, getHeadCommit } from '../../../infra/git/index.js';
 
 const router = express.Router();
 
@@ -34,16 +34,38 @@ router.get('/:siteId', async (req, res) => {
   });
 });
 
+router.get('/:siteId/preview-file-button', async (req, res) => {
+  const site = getSite(req.params.siteId);
+  if (!site) return res.sendStatus(404);
+
+  const filePath = req.query.path;
+  if (!filePath) return res.status(400).send('Missing path');
+
+  const commitHash = await getHeadCommit({ siteId: site.uuid });
+
+  return res.render('partials/preview-file-button', {
+    layout: false,
+    siteId: site.uuid,
+    directory: site.directory,
+    commitHash,
+    filePath
+  });
+});
+
+
+
 router.get('/:siteId/actions', async (req, res) => {
   const site = getSite(req.params.siteId);
   if (!site) return res.sendStatus(404);
 
   const siteAddress = resolveSiteAddress(site);
+  const headCommit = await getHeadCommit({siteId: site.uuid});
 
   return res.render('partials/site-actions', {
     layout: false,
     siteId: site.uuid,
     siteAddress,
+    commitHash: headCommit,
     siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
     directory: site.directory,
     name: site.name
@@ -73,7 +95,7 @@ router.get('/:siteId/:tab', async (req, res) => {
           siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
           siteId: site.uuid,
           layout: false
-        });
+      });
 
       case 'time-machine':
         const commits = await getCommitHistory({ siteId });
@@ -86,6 +108,7 @@ router.get('/:siteId/:tab', async (req, res) => {
         return res.render('partials/time-machine', {
           siteAddress,
           commits: annotatedCommits,
+          siteDir: site.directory,
           siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
           uuid: site.uuid,
           layout: false

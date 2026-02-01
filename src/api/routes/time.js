@@ -6,7 +6,7 @@ import log from '../../../infra/logs/index.js';
 
 import {
   getCommitHistory,
-} from '../../../infra/git/read.js';
+} from '../../../infra/git/index.js';
 
 import {
   countLiveCommitsToPush,
@@ -152,24 +152,20 @@ function getSite(siteId) {
 -------------------------------------------------- */
 
 router.get('/:siteId/draft-count', async (req, res) => {
-  const site = getSite(req.params.siteId);
-  if (!site) return res.sendStatus(404);
-
-  if (!site.live_commit) {
-    return res.send('0');
-  }
+  const siteId = req.params.siteId;
+  const site = getSite(siteId);
 
   try {
     const count = await countDraftCommits({
-      siteId: site.uuid,
+      siteId,
       liveCommit: site.live_commit
     });
-    return res.send(count);
+
+    return res.render('partials/site-draft-badge', { siteId, count, layout: false});
   } catch (err) {
     console.error('[draft-count]', err.message);
-    return res.status(500).send('0');
+    return res.render('partials/site-draft-badge', { siteId, count: 0 });
   }
 });
-
 
 export default router;

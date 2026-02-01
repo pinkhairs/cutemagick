@@ -77,13 +77,19 @@ router.post('/:siteId/save', async (req, res) => {
 
     await fs.writeFile(fullPath, content, 'utf8');
 
-    await commitFileEdit({ siteId, filePath, message });
+    const commitHash = await commitFileEdit({ siteId, filePath, message });
 
     res.set(
-      'HX-Trigger-After-Settle',
+      'HX-Trigger',
       JSON.stringify({
-        'file:saved': { siteId, path: filePath },
-        commitsChanged: true
+        [`siteCommit`]: {
+          commitHash,
+          source: 'file:save'
+        },
+        [`site:${siteId}:file:saved`]: {
+          path: filePath,
+          commitHash
+        }
       })
     );
 
@@ -143,8 +149,10 @@ router.post('/:siteId/delete', async (req, res) => {
       deleted.push(relativePath);
     }
 
+    let commit;
+
     if (deleted.length > 0) {
-      await commitFileDelete({ siteId, paths: deleted });
+      commit = await commitFileDelete({ siteId, paths: deleted });
     }
 
     log.info('[files:delete] success', {
@@ -152,7 +160,19 @@ router.post('/:siteId/delete', async (req, res) => {
       deletedCount: deleted.length
     });
 
-    res.json({
+    res.set(
+      'HX-Trigger',
+      JSON.stringify({
+        [`siteCommit`]: {
+          commitHash: commit?.head,
+          source: 'file:delete'
+        },
+        [`site:${siteId}:file:deleted`]: {
+          paths: deleted,
+          commitHash: commit?.head
+        }
+      })
+    ).json({
       success: true,
       deleted,
       requested: paths,

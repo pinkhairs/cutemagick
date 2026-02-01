@@ -121,35 +121,39 @@ function mountFileExplorers(root) {
         download: true
       },
       
-onrefresh(folder, required) {
-  const explorer = this;
-  const relPath = folder.GetPathIDs().filter(Boolean).join('/');
-
-  const url = `/fs/${siteId}/list?path=${encodeURIComponent(relPath)}`;
-
-  console.log('[FileExplorer:onrefresh] GET', url);
-
-  const xhr = new explorer.PrepareXHR({
-    method: 'GET',
-    url,
-    onsuccess(e) {
-      const raw = e.target.responseText || e.target.response || '';
-      folder.SetEntries(JSON.parse(raw));
-    },
-    onerror() {
-      if (required) explorer.SetNamedStatusBarText('folder', 'Failed to load folder');
-    }
-  });
-
-  xhr.Send();
-},
-
-
-
+      onrefresh(folder, required) {
+        const explorer = this;
+        const relPath = folder.GetPathIDs().filter(Boolean).join('/');
+        
+        const url = `/fs/${siteId}/list?path=${encodeURIComponent(relPath)}`;
+        
+        console.log('[FileExplorer:onrefresh] GET', url);
+        
+        const xhr = new explorer.PrepareXHR({
+          method: 'GET',
+          url,
+          onsuccess(e) {
+            const raw = e.target.responseText || e.target.response || '';
+            folder.SetEntries(JSON.parse(raw));
+          },
+          onerror() {
+            if (required) explorer.SetNamedStatusBarText('folder', 'Failed to load folder');
+          }
+        });
+        
+        xhr.Send();
+      },
+      
+      
+      
       onnewfolder(created, folder) {
         const parent = folder.GetPathIDs().slice(1).join('/');
         const name = prompt('New folder name:');
         if (!name) return created(false);
+        if (name.includes(' ')) {
+          alert('Folder names cannot contain spaces');
+          return created(false);
+        }
         
         fetch(`/fs/${siteId}/folder`, {
           method: 'POST',
@@ -160,15 +164,18 @@ onrefresh(folder, required) {
         })
         .then(() => {
           created({ id: name, name, type: 'folder' });
-          htmx.trigger(document.body, 'commitsChanged');
         })
         .catch(err => created(err.message));
       },
       
-      onnewfile(entry, folder) {
+      onnewfile(created, folder) {
         const parent = folder.GetPathIDs().slice(1).join('/');
         const name = prompt('New file name:');
         if (!name) return created(false);
+        if (name === '.env') {
+          alert('Use the Secrets tab to manage environment variables');
+          return created(false);
+        }
         
         fetch(`/fs/${siteId}/file`, {
           method: 'POST',
@@ -180,10 +187,16 @@ onrefresh(folder, required) {
         })
         .then(() => {
           created({ id: name, name, type: 'file' });
-          htmx.trigger(document.body, 'commitsChanged');
         })
         .catch(err => created(err.message));
+
+        htmx.trigger(document.body, 'siteCommit', {
+          siteId,
+          
+          source: 'new-file'
+        });
       },
+      
       
       onrename(renamed, folder, entry, newname) {
         const parent = folder.GetPathIDs().slice(1).join('/');
@@ -197,8 +210,13 @@ onrefresh(folder, required) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ from, to })
         })
-        .then(() => htmx.trigger(document.body, 'commitsChanged'))
         .catch(console.error);
+
+        htmx.trigger(document.body, 'siteCommit', {
+          siteId,
+          
+          source: 'rename'
+        });
       },
       
       ondelete(deleted, folder, ids, entries) {
@@ -219,8 +237,11 @@ onrefresh(folder, required) {
           )
         )
         .then(() => {
+          htmx.trigger(document.body, 'siteCommit', {
+            siteId,
+            source: 'delete'
+          });
           deleted(true);
-          htmx.trigger(document.body, 'commitsChanged');
         })
         .catch(console.error);
       },
@@ -258,42 +279,45 @@ onrefresh(folder, required) {
         );
       },
       
-oninitupload(startupload, fileinfo) {
-  console.log('[upload:init]', fileinfo);
-
-  // Allow directory drops
-  if (fileinfo.type === 'dir') {
-    // Let FileExplorer descend into it
-    return startupload(true);
-  }
-
-  const basePath = fileinfo.folder.GetPathIDs().slice(1).join('/');
-
-  // Preserve folder structure if present
-  const rel =
-    fileinfo.file?.webkitRelativePath
-      ? fileinfo.file.webkitRelativePath
-      : fileinfo.name;
-
-  const fullPath = basePath
-    ? `${basePath}/${rel}`
-    : rel;
-
-  fileinfo.url = `/fs/${siteId}/upload`;
-  fileinfo.fileparam = 'file';
-  fileinfo.params = {
-    path: fullPath
-  };
-
-  console.log('[upload:file]', { fullPath });
-
-  startupload(true);
-},
-
+      oninitupload(startupload, fileinfo) {
+        console.log('[upload:init]', fileinfo);
+        
+        // Allow directory drops
+        if (fileinfo.type === 'dir') {
+          // Let FileExplorer descend into it
+          return startupload(true);
+        }
+        
+        const basePath = fileinfo.folder.GetPathIDs().slice(1).join('/');
+        
+        // Preserve folder structure if present
+        const rel =
+        fileinfo.file?.webkitRelativePath
+        ? fileinfo.file.webkitRelativePath
+        : fileinfo.name;
+        
+        const fullPath = basePath
+        ? `${basePath}/${rel}`
+        : rel;
+        
+        fileinfo.url = `/fs/${siteId}/upload`;
+        fileinfo.fileparam = 'file';
+        fileinfo.params = {
+          path: fullPath
+        };
+        
+        console.log('[upload:file]', { fullPath });
+        
+        startupload(true);
+      },
+      
       
       onfinishedupload(finalize, fileinfo) {
-        console.log({finalize, fileinfo});
-        htmx.trigger(document.body, 'commitsChanged');
+        htmx.trigger(document.body, 'siteCommit', {
+          siteId,
+          
+          source: 'upload'
+        });
         finalize(true);
       },
       

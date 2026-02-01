@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import multer from 'multer';
 import crypto from 'crypto';
 import archiver from 'archiver';
+import { triggerFileCommit, triggerSiteCommit } from '../htmx/triggers.js';
 
 import db from '../../../infra/db/index.js';
 import log from '../../../infra/logs/index.js';
@@ -150,21 +151,24 @@ router.post('/:siteId/file', express.urlencoded({ extended: false }), async (req
 
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, content, 'utf8');
+    let commit;
 
     if (existed) {
-      await commitFileEdit({
+      commit = await commitFileEdit({
         siteId,
         filePath: relPath,
         message
       });
     } else {
-      await commitFileCreate({
+      commit = await commitFileCreate({
         siteId,
         fullPath: filePath,
         message
       });
     }
+    const commitHash = commit || null;
 
+    triggerSiteCommit(res, siteId, commitHash, 'file:create');
     res.sendStatus(204);
   } catch (err) {
     log.error('[fs:file]', err.message);
@@ -206,13 +210,15 @@ router.post('/:siteId/rename', express.urlencoded({ extended: false }), async (r
     resolveSafePath(siteRoot, from);
     resolveSafePath(siteRoot, to);
 
-    await commitFileRename({
+    const commit = await commitFileRename({
       siteId,
       oldPath: from,
       newPath: to,
       message
     });
+    const commitHash = commit || null;
 
+    triggerSiteCommit(res, siteId, commitHash, 'file:rename');
     res.sendStatus(204);
   } catch (err) {
     log.error('[fs:rename]', err.message);
@@ -235,11 +241,12 @@ router.post('/:siteId/delete', express.urlencoded({ extended: false }), async (r
     // Validate path only (do NOT mutate FS)
     resolveSafePath(siteRoot, relPath);
 
-    await commitFileDelete({
+    const commitHash = await commitFileDelete({
       siteId,
       paths: [relPath],
       message
-    });
+    }) || null;
+    triggerSiteCommit(res, siteId, commitHash, 'file:delete');
 
     res.sendStatus(204);
   } catch (err) {
@@ -247,6 +254,76 @@ router.post('/:siteId/delete', express.urlencoded({ extended: false }), async (r
     res.status(400).send(err.message);
   }
 });
+
+/* -------------------------------------------------
+   POST /fs/:siteId/save
+   payload: { path, content, message? }
+-------------------------------------------------- */
+
+router.post(
+  '/:siteId/save',
+  express.json({ limit: '10mb' }),
+  async (req, res) => {
+    const siteId = req.params.siteId;
+    const siteRoot = getSiteRoot(siteId);
+    if (!siteRoot) return res.sendStatus(404);
+
+    const { path: relPath, content = '', message } = req.body;
+    if (!relPath) {
+      return res.status(400).send('Missing path');
+    }
+
+    try {
+      const absPath = resolveSafePath(siteRoot, relPath);
+
+      let existed = true;
+      try {
+        await fs.stat(absPath);
+      } catch {
+        existed = false;
+      }
+
+      await fs.mkdir(path.dirname(absPath), { recursive: true });
+      await fs.writeFile(absPath, content, 'utf8');
+
+      let commit;
+      if (existed) {
+        commit = await commitFileEdit({
+          siteId,
+          filePath: relPath,
+          message
+        });
+      } else {
+        commit = await commitFileCreate({
+          siteId,
+          fullPath: absPath,
+          message
+        });
+      }
+
+      triggerFileCommit(
+        res,
+        siteId,
+        relPath,
+        commit || null,
+        existed ? 'file:edit' : 'file:create'
+      );
+
+      triggerSiteCommit(
+        res,
+        siteId,
+        commit || null,
+        existed ? 'file:edit' : 'file:create'
+      );
+
+      res.sendStatus(204);
+    } catch (err) {
+      log.error('[fs:save]', err.message);
+      res.status(400).send(err.message);
+    }
+  }
+);
+
 
 
 /* -------------------------------------------------
@@ -259,7 +336,7 @@ router.post('/:siteId/upload', upload.any(), async (req, res) => {
   if (!siteRoot) return res.sendStatus(404);
 
   const { path: basePath = '', message } = req.body;
-
+  let commit;
   try {
     for (const file of req.files) {
       const relPath = path.join(basePath, file.originalname);
@@ -268,11 +345,15 @@ router.post('/:siteId/upload', upload.any(), async (req, res) => {
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
       await fs.writeFile(targetPath, file.buffer);
 
-      await commitFileUpload({
+      commit = await commitFileUpload({
         siteId,
         filePath: relPath,
         message
       });
+    }
+
+    if (req.files.length > 0) {
+      triggerSiteCommit(res, siteId, commit || null, 'file:upload');
     }
 
     res

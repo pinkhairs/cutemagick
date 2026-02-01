@@ -19,6 +19,7 @@ getOpenWindows() {
 },
 
 addOpenWindow(siteUuid) {
+  console.log({siteUuid});
   if (!siteUuid) return;
   const open = this.getOpenWindows();
   if (!open.includes(siteUuid)) {
