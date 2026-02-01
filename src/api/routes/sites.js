@@ -151,7 +151,7 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
       `).run(head, uuid);
     }
     res
-      .set('HX-Trigger', 'refreshedSites')
+      .set('HX-Trigger', 'refreshSites')
       .sendStatus(204);
   } catch (err) {
     log.error('[sites:create] failed', { err: err.message });
@@ -207,7 +207,7 @@ router.post('/:siteId/update', express.urlencoded({ extended: false }), (req, re
   `).run(name, icon, siteId);
 
   res
-    .set('HX-Trigger', 'refreshedSites')
+    .set('HX-Trigger', 'refreshSites')
     .sendStatus(204);
 });
 
@@ -233,7 +233,7 @@ router.post('/:siteId/delete', async (req, res) => {
     .run(req.params.siteId);
 
   res
-    .set('HX-Trigger', 'refreshedSites')
+    .set('HX-Trigger', 'refreshSites')
     .sendStatus(204);
 });
 
@@ -360,6 +360,81 @@ router.get('/:siteId/secrets', async (req, res) => {
     res.status(err.status || 500).send('Failed to read secrets');
   }
 });
+
+router.get('/:siteId/settings', (req, res) => {
+  const row = db.prepare(`
+    SELECT
+      name,
+      domain,
+      icon,
+      repository,
+      branch,
+      username,
+      password
+    FROM sites
+    WHERE uuid = ?
+  `).get(req.params.siteId);
+
+  if (!row) return res.sendStatus(404);
+
+  res.json({
+    name: row.name,
+    customDomain: row.domain,
+    iconUrl: row.icon,
+    repository: row.repository,
+    branch: row.branch,
+    authUser: row.username,
+    authPass: row.password
+  });
+});
+
+
+router.post(
+  '/:siteId/settings',
+  express.json(),
+  async (req, res) => {
+    const {
+      name,
+      customDomain,
+      iconUrl,
+      repository,
+      branch,
+      authUser,
+      authPass
+    } = req.body;
+
+    const result = db.prepare(`
+      UPDATE sites
+      SET
+        name = ?,
+        domain     = ?,
+        icon       = ?,
+        repository = ?,
+        branch     = ?,
+        username   = ?,
+        password   = ?
+      WHERE uuid = ?
+    `).run(
+      name || null,
+      customDomain || null,
+      iconUrl || null,
+      repository || null,
+      branch || null,
+      authUser || null,
+      authPass || null,
+      req.params.siteId
+    );
+
+    if (result.changes === 0) {
+      return res.sendStatus(404);
+    }
+res.set('HX-Trigger', 'refreshSites');
+
+    res.sendStatus(204);
+  }
+);
+
+
 
 router.post(
   '/:siteId/secrets',
