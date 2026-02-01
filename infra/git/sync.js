@@ -92,6 +92,13 @@ export async function pullFromRemote({ siteId }) {
     ]);
   }
 
+  // capture HEAD before pull
+  const { stdout: beforeOut } = await git(sitePath, [
+    'rev-parse',
+    'HEAD'
+  ]);
+  const before = beforeOut.trim();
+
   try {
     await git(sitePath, ['merge', '--no-edit', '@{u}']);
   } catch {
@@ -100,8 +107,21 @@ export async function pullFromRemote({ siteId }) {
     );
   }
 
-  return { pulled: true };
+  // capture HEAD after pull
+  const { stdout: afterOut } = await git(sitePath, [
+    'rev-parse',
+    'HEAD'
+  ]);
+  const head = afterOut.trim();
+
+  return {
+    pulled: true,
+    head,
+    previousHead: before,
+    changed: head !== before
+  };
 }
+
 
 /* -------------------------------------------------
    Push
@@ -119,14 +139,27 @@ export async function syncToRemote({ siteId }) {
   await assertNoEnvStaged(sitePath);
   await checkSSHAccess({ siteId });
 
-  const args = (await hasUpstream(sitePath))
+  const hadUpstream = await hasUpstream(sitePath);
+
+  const args = hadUpstream
     ? ['push', repository, branch]
     : ['push', '-u', repository, branch];
 
   await git(sitePath, args);
 
-  return { pushed: true };
+  // Confirm current HEAD (does NOT imply change)
+  const { stdout } = await git(sitePath, [
+    'rev-parse',
+    'HEAD'
+  ]);
+
+  return {
+    pushed: true,
+    head: stdout.trim(),
+    upstreamEstablished: !hadUpstream
+  };
 }
+
 
 /* -------------------------------------------------
    Ahead / behind counts
@@ -325,22 +358,18 @@ function getSitePath(siteId) {
 }
 
 /* -------------------------------------------------
-   Read: HEAD commit
+   Commit inspection
 -------------------------------------------------- */
 
-/**
- * Returns the current HEAD commit hash for the site.
- * This is the tip of the working timeline.
- */
 export async function getHeadCommit({ siteId }) {
-  const sitePath = getSitePath(siteId);
+  const { sitePath } = getSiteGitConfig(siteId);
 
-  const { stdout } = await git(sitePath, [
-    'rev-parse',
-    'HEAD'
-  ]);
-
-  return stdout.trim();
+  try {
+    const { stdout } = await git(sitePath, ['rev-parse', 'HEAD']);
+    return stdout.trim();
+  } catch {
+    return null;
+  }
 }
 
 /* -------------------------------------------------

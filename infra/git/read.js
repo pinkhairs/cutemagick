@@ -18,21 +18,6 @@ function getSiteGitConfig(siteId) {
   };
 }
 
-/* -------------------------------------------------
-   Commit inspection
--------------------------------------------------- */
-
-export async function getHeadCommit({ siteId }) {
-  const { sitePath } = getSiteGitConfig(siteId);
-
-  try {
-    const { stdout } = await git(sitePath, ['rev-parse', 'HEAD']);
-    return stdout.trim();
-  } catch {
-    return null;
-  }
-}
-
 export async function getCommitHistory({ siteId }) {
   const { sitePath } = getSiteGitConfig(siteId);
 

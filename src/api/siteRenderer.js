@@ -164,7 +164,6 @@ async function executeScript({
 
     const { headers, body } = parseCgiOutput(stdout);
 
-    // 🚫 prevent forced downloads
     delete headers['content-disposition'];
 
     for (const [key, value] of Object.entries(headers)) {

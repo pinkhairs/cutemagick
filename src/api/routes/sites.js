@@ -29,6 +29,28 @@ import { SITES_ROOT } from '../../../config/index.js';
 
 const router = express.Router();
 
+function getEnvPath(siteId) {
+  const site = db.prepare(`
+    SELECT directory
+    FROM sites
+    WHERE uuid = ?
+  `).get(siteId);
+
+  if (!site) {
+    const err = new Error('Site not found');
+    err.status = 404;
+    throw err;
+  }
+
+  return path.join(SITES_ROOT, site.directory, '.env');
+}
+
+function serializeEnv(rows) {
+  return rows
+    .map(({ key, value }) => `${key}=${value ?? ''}`)
+    .join('\n') + '\n';
+}
+
 /* -------------------------------------------------
    Create site
 -------------------------------------------------- */
@@ -219,8 +241,22 @@ router.post('/:siteId/pull', async (req, res) => {
   const { siteId } = req.params;
 
   try {
-    await pullFromRemote({ siteId });
-    res.set('HX-Trigger', 'commitsChanged').sendStatus(204);
+    const result = await pullFromRemote({ siteId });
+
+    if (result.changed) {
+      res.set(
+        'HX-Trigger',
+        JSON.stringify({
+          [`siteCommit`]: {
+            commitHash: result.head,
+            previousHead: result.previousHead,
+            source: 'pull'
+          }
+        })
+      );
+    }
+
+    res.sendStatus(204);
   } catch (err) {
     log.error('[site:pull]', { siteId, err: err.message });
     res.status(409).send(err.message);
@@ -232,8 +268,19 @@ router.post('/:siteId/push', async (req, res) => {
   const { siteId } = req.params;
 
   try {
-    await syncToRemote({ siteId });
-    res.set('HX-Trigger', 'commitsChanged').sendStatus(204);
+    const result = await syncToRemote({ siteId });
+
+    res.set(
+      'HX-Trigger',
+      JSON.stringify({
+        [`site:${siteId}:sync`]: {
+          pushed: true,
+          head: result.head
+        }
+      })
+    );
+
+    res.sendStatus(204);
   } catch (err) {
     log.error('[site:push]', { siteId, err: err.message });
     res.status(409).send(err.message);
@@ -284,4 +331,78 @@ router.post('/:siteId/restore', express.urlencoded({ extended: false }), async (
   }
 });
 
+router.get('/:siteId/secrets', async (req, res) => {
+  try {
+    const envPath = getEnvPath(req.params.siteId);
+    const text = await fs.readFile(envPath, 'utf8');
+
+    const rows = text
+      .split('\n')
+      .map(line => {
+        if (!line || line.startsWith('#')) return null;
+        const idx = line.indexOf('=');
+        if (idx === -1) return null;
+        return {
+          key: line.slice(0, idx),
+          value: line.slice(idx + 1)
+        };
+      })
+      .filter(Boolean);
+
+    res.json(rows);
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      // No .env yet is fine
+      return res.json([]);
+    }
+
+    log.error('[secrets:read]', { err: err.message });
+    res.status(err.status || 500).send('Failed to read secrets');
+  }
+});
+
+router.post(
+  '/:siteId/secrets',
+  express.json(),
+  async (req, res) => {
+    try {
+      const rows = Array.isArray(req.body) ? req.body : [];
+
+      const clean = rows
+        .filter(r => r && typeof r.key === 'string')
+        .map(r => ({
+          key: r.key.trim(),
+          value: r.value ?? ''
+        }))
+        .filter(r => r.key !== '');
+
+      const envPath = getEnvPath(req.params.siteId);
+      const content = serializeEnv(clean);
+
+      // Write atomically
+      const dir = path.dirname(envPath);
+      const tmpPath = path.join(dir, `.env.${process.pid}.tmp`);
+
+      await fs.writeFile(tmpPath, content, { mode: 0o600 });
+      await fs.rename(tmpPath, envPath);
+
+      log.info('[secrets:write]', {
+        siteId: req.params.siteId,
+        count: clean.length
+      });
+
+      res.sendStatus(204);
+    } catch (err) {
+      log.error('[secrets:write] failed', {
+        siteId: req.params.siteId,
+        err: err.message
+      });
+
+      res.status(err.status || 500).send('Failed to save secrets');
+    }
+  }
+);
+
+
 export default router;
+

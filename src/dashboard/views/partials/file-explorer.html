@@ -1,13 +1,15 @@
 <div class="flex-1 h-full overflow-hidden flex flex-col">
-<div hx-get="/time/{{siteId}}/status" hx-trigger="revealed, commitsChanged from:body" hx-swap="outerHTML"></div>
-
-<div class="flex flex-1 flex-col">
-
   <div
-    class="file-explorer text-black h-full flex-1 w-full relative"
-    data-site-id="{{siteId}}"
-    hx-boost="false"
+    hx-get="/time/{{siteId}}/status"
+    hx-trigger="revealed, siteCommit from:body"
+    hx-swap="outerHTML"
   ></div>
 
-</div>
+  <div class="flex flex-1 flex-col">
+    <div
+      class="file-explorer text-black h-full flex-1 w-full relative"
+      data-site-id="{{siteId}}"
+      hx-boost="false"
+    ></div>
+  </div>
 </div>

@@ -99,7 +99,7 @@ export async function commitFileEdit({ siteId, filePath, message }) {
   assertGitSafePath(filePath);
   await git(sitePath, ['add', filePath]);
 
-  await commitIfStaged(
+  return await commitIfStaged(
     sitePath,
     resolveCommitMessage(message, `Saved ${filePath}`)
   );
@@ -150,16 +150,18 @@ export async function commitFileRename({
   await ensureBranch(sitePath, branch);
   await safeCheckout(sitePath, branch);
 
+  assertGitSafePath(oldPath);
+  assertGitSafePath(newPath);
+
   await git(sitePath, ['mv', oldPath, newPath]);
 
-  await git(sitePath, [
-    'commit',
-    '-m',
+  return commitIfStaged(
+    sitePath,
     resolveCommitMessage(
       message,
       `Rename ${oldPath} → ${newPath}`
     )
-  ]);
+  );
 }
 
 /* -------------------------------------------------
@@ -180,7 +182,12 @@ export async function restoreCommitAsNew({
   // Ensure commit exists
   await git(sitePath, ['cat-file', '-e', `${commit}^{commit}`]);
 
-  // 🔑 Reset index + worktree to EXACT tree snapshot
+    // Hard reset index + working tree
+  await git(sitePath, ['reset', '--hard']);
+
+  // Remove untracked files that would block restore
+  await git(sitePath, ['clean', '-fd']);
+
   await git(sitePath, [
     'read-tree',
     '-u',
@@ -188,28 +195,22 @@ export async function restoreCommitAsNew({
     commit
   ]);
 
-  // Commit the new snapshot
+  const { stdout } = await git(sitePath, [
+    'show',
+    '-s',
+    '--format=%B',
+    commit
+  ]);
+
+  const originalMessage = stdout.trim();
+
   return commitIfStaged(
     sitePath,
     resolveCommitMessage(
       message,
-      `(Restored snapshot ${commit.slice(0, 7)})`
+      `Restored: ${originalMessage}`
     )
   );
-}
-
-/* -------------------------------------------------
-   Read-only helpers
--------------------------------------------------- */
-
-export async function getHeadCommit({ siteId }) {
-  const { sitePath } = getSiteGitConfig(siteId);
-  try {
-    const { stdout } = await git(sitePath, ['rev-parse', 'HEAD']);
-    return stdout.trim();
-  } catch {
-    return null;
-  }
 }
 
 export async function getCommitHistory({ siteId }) {

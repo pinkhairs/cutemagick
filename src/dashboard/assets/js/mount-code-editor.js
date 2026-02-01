@@ -155,6 +155,12 @@ function initializeEditor(editorEl, content = '') {
 
   const editor = ace.edit(editorEl.id);
 
+  // 🔑 NEW: find owning window and store ace there
+  const windowEl = editorEl.closest('.window');
+  if (windowEl) {
+    windowEl._ace = editor;
+  }
+
   // ✅ Apply your custom theme ONCE
   editor.setTheme("ace/theme/custom-pastel");
 
@@ -191,6 +197,22 @@ function initializeEditor(editorEl, content = '') {
   });
   editor.container.style.lineHeight = 1.4;
 
+  // Initial content
   editor.setValue(content, -1);
+
+  // 🔑 NEW: mark clean after initial load
+  if (windowEl) {
+    window.CuteMagickSaveState?.markClean(windowEl);
+  }
+
+  // 🔑 NEW: mark dirty on change
+  editor.session.on('change', () => {
+    if (windowEl) {
+      window.CuteMagickSaveState?.markDirty(windowEl);
+    }
+  });
+
+  // Keep existing reference (fine to have both)
   editorEl._ace = editor;
 }
+

@@ -22,6 +22,7 @@ import previewRouter from './api/routes/preview.js';
 import timeRoutes from './api/routes/time.js';
 
 import { db } from '../infra/index.js';
+import { getHeadCommit } from '../infra/git/index.js';
 
 import log from '../infra/logs/index.js';
 import {
@@ -93,8 +94,14 @@ app.engine(
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'dashboard/views'));
 
-Handlebars.registerHelper('eq', (a, b) => a === b);
-Handlebars.registerHelper('or', (a, b) => Boolean(a || b));
+Handlebars.registerHelper('eq',  (a, b) => a === b);
+Handlebars.registerHelper('ne',  (a, b) => a !== b);
+Handlebars.registerHelper('gt',  (a, b) => Number(a) >  Number(b));
+Handlebars.registerHelper('gte', (a, b) => Number(a) >= Number(b));
+Handlebars.registerHelper('lt',  (a, b) => Number(a) <  Number(b));
+Handlebars.registerHelper('lte', (a, b) => Number(a) <= Number(b));
+Handlebars.registerHelper('or',  (...args) => args.slice(0, -1).some(Boolean));
+Handlebars.registerHelper('and', (...args) => args.slice(0, -1).every(Boolean));
 
 /* ----------------------------
    Static assets
@@ -156,6 +163,8 @@ app.get(/^\/editor\/([^/]+)\/(.+)$/, async (req, res) => {
     return res.sendStatus(404);
   }
 
+  const headCommit = await getHeadCommit({siteId});
+
   return res.render('partials/editor', {
     id: windowId,
     layout: false,
@@ -164,6 +173,7 @@ app.get(/^\/editor\/([^/]+)\/(.+)$/, async (req, res) => {
     path: relPath,
     fileHash: hash,
     filename: filename,
+    commitHash: headCommit
   });
 });
 

@@ -1,7 +1,11 @@
 <div
   class="p-2 text-sm border-b border-gray-400 dark:border-gray-700 git-status flex items-center justify-center"
+  data-site-id="{{siteId}}"
   hx-get="/time/{{siteId}}/status"
-  hx-trigger="commitsChanged from:body"
+  hx-trigger="
+    siteCommit from:body,
+    site:{{siteId}}:sync from:body
+  "
   hx-swap="outerHTML"
 >
   <div class="flex items-center gap-6">
@@ -13,7 +17,14 @@
         hx-indicator="this"
         aria-busy="false"
         data-tippy-content="Make the other copy match this one"
-        onclick="this.setAttribute('aria-busy', 'true'); this.querySelector('.arrow-count').style.visibility = 'hidden';"
+        hx-on:htmx:beforeRequest="
+          this.setAttribute('aria-busy','true');
+          this.querySelector('.arrow-count').style.visibility='hidden';
+        "
+        hx-on:htmx:afterRequest="
+          this.setAttribute('aria-busy','false');
+          this.querySelector('.arrow-count').style.visibility='visible';
+        "
       >
         <span>{{localPlace}}</span>
         <span class="arrow-count">
@@ -21,14 +32,8 @@
           <span>{{localAhead}}</span>
         </span>
       </button>
-      <script>
-        document.currentScript.previousElementSibling.addEventListener('htmx:afterRequest', function() {
-          this.setAttribute('aria-busy', 'false');
-          this.querySelector('.arrow-count').style.visibility = 'visible';
-          document.body.dispatchEvent(new Event('commitsChanged'));
-        });
-      </script>
     {{/if}}
+
     {{#if remoteAhead}}
       <button
         class="flex items-center gap-1"
@@ -37,7 +42,14 @@
         hx-indicator="this"
         aria-busy="false"
         data-tippy-content="Bring those changes into this copy"
-        onclick="this.setAttribute('aria-busy', 'true'); this.querySelector('.arrow-count').style.visibility = 'hidden';"
+        hx-on:htmx:beforeRequest="
+          this.setAttribute('aria-busy','true');
+          this.querySelector('.arrow-count').style.visibility='hidden';
+        "
+        hx-on:htmx:afterRequest="
+          this.setAttribute('aria-busy','false');
+          this.querySelector('.arrow-count').style.visibility='visible';
+        "
       >
         <span>{{externalPlace}}</span>
         <span class="arrow-count">
@@ -45,14 +57,8 @@
           <span>{{remoteAhead}}</span>
         </span>
       </button>
-      <script>
-        document.currentScript.previousElementSibling.addEventListener('htmx:afterRequest', function() {
-          this.setAttribute('aria-busy', 'false');
-          this.querySelector('.arrow-count').style.visibility = 'visible';
-          document.body.dispatchEvent(new Event('commitsChanged'));
-        });
-      </script>
     {{/if}}
+
     {{#unless localAhead}}
       {{#unless remoteAhead}}
         <div>In sync</div>

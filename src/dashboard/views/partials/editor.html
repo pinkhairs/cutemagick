@@ -44,13 +44,11 @@
         </div>
 
         <div class="flex items-center gap-4 ml-auto">
-          <button
-            type="button"
-            data-role="preview"
-            data-preview-href="/preview/{{directory}}/{{path}}"
-          >
-            👀 Preview
-          </button>
+<div
+  hx-get="/site-window/{{siteId}}/preview-file-button?path={{path}}"
+  hx-trigger="revealed, fileCommit from:body"
+  hx-swap="outerHTML">
+</div>
 
           <div
             id="save-draft-{{id}}"

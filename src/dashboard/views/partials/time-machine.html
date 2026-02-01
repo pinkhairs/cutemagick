@@ -62,13 +62,15 @@
         <!-- actions -->
         <div class="flex gap-2 shrink-0">
           {{#unless isLive}}
-            <button
+            <a
   aria-label="Preview this version"
+  href="/preview/{{../siteDir}}/{{hash}}"
+  target="_blank"
   data-history-action="preview"
   data-commit="{{hash}}"
   data-tippy-content="Preview this version">
   👀
-</button>
+        </a>
 
           {{/unless}}
 
