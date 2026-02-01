@@ -68,7 +68,7 @@ console.log('[Secrets] script loaded');
         .filter(r => r.key);
 
       try {
-        const res = await fetch(`/sites/${siteId}/secrets`, {
+        const res = await csrfFetch(`/sites/${siteId}/secrets`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(rows)
@@ -84,7 +84,7 @@ console.log('[Secrets] script loaded');
     });
 
     // Load secrets from disk and replace form contents
-    fetch(`/sites/${siteId}/secrets`)
+    csrfFetch(`/sites/${siteId}/secrets`)
       .then(r => {
         if (!r.ok) throw new Error('Failed to load secrets');
         return r.json();

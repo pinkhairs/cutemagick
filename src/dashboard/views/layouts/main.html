@@ -16,6 +16,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="Cute Magick">
   <link rel="manifest" href="/assets/img/site.webmanifest">
+  <meta name="csrf-token" content="{{csrfToken}}">
 </head>
 <body class="flex-col lg:h-svh justify-between flex text-gray-900 dark:text-white">
   <header class="z-10 px-1 relative">
@@ -67,7 +68,8 @@
   <main class="z-10 lg:fixed lg:right-0" id="windows">
   </main>
   <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
-  <div class="fixed w-full inset-0 h-full bg-cover bg-bottom bg-no-repeat -z-1 opacity-30" style="background-image: url()"></div>
+  <div hx-trigger="refreshBackground from:body" hx-swap="outerHTML" id="background" class="bg-cover bg-center bg-no-repeat fixed w-full h-full inset-0 -z-1"></div>
+  <script src="/assets/js/csrfFetch.js"></script>
   <script src="https://unpkg.com/popper.js@1"></script>
   <script src="https://unpkg.com/tippy.js@5"></script>
   <script src="/assets/js/htmx.min.js"></script>
@@ -136,7 +138,7 @@
     try {
       if (action === 'copy-key') {
         if (!confirm('Copy your public SSH key to your clipboard?')) return;
-        const res = await fetch('/connect/public-key', {
+        const res = await csrfFetch('/config/public-key', {
           method: 'POST',
         });
 
@@ -262,6 +264,172 @@ document.body.addEventListener('siteCommit', e => {
     </button>
   </div>
 </template>
+<script>
+  document.body.addEventListener('htmx:configRequest', (e) => {
+    const token =
+      document.querySelector('meta[name="csrf-token"]')?.content;
+    if (token) {
+      e.detail.headers['X-CSRF-Token'] = token;
+    }
+  });
 
+  const PREFS_KEY = 'cm:admin:prefs';
+
+function loadPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+function applyTheme() {
+  const prefs = loadPrefs();
+  const mode = prefs.theme_mode || 'auto';
+  const root = document.documentElement;
+
+  root.classList.remove('dark');
+
+  if (mode === 'dark') {
+    root.classList.add('dark');
+  } else if (mode === 'light') {
+    // explicitly light: do nothing
+  } else {
+    // auto
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      root.classList.add('dark');
+    }
+  }
+}
+document.addEventListener('DOMContentLoaded', applyPrefs);
+function savePref(key, value) {
+  const prefs = loadPrefs();
+
+  if (value === null || value === undefined) {
+    delete prefs[key];
+  } else {
+    prefs[key] = value;
+  }
+
+  localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+}
+
+function applyPrefs() {
+  applyTheme();
+  const prefs = loadPrefs();
+  const bg = document.getElementById('background');
+  if (!bg) return;
+
+  if (prefs.background_image) {
+    bg.style.backgroundImage =
+      `url("${prefs.background_image}")`;
+  } else {
+    bg.style.removeProperty('background-image');
+  }
+
+  const overlayOn = prefs.show_background_overlay !== false;
+  bg.classList.toggle('lower-opacity-bg', overlayOn);
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const prefs = loadPrefs();
+  applyPrefs(prefs);
+});
+</script>
+<script>
+const button = document.getElementById('admin-prefs-btn');
+tippy(button, {
+  trigger: 'click',
+  interactive: true,
+  placement: 'top-end',
+  content: renderPrefsMenu(),
+});
+
+function fireRefreshBackground() {
+  document.body.dispatchEvent(
+    new Event('refreshBackground')
+  );
+}
+function renderPrefsMenu() {
+  const el = document.createElement('div');
+  el.className = 'flex flex-col gap-2 w-48';
+
+  // Replace background image
+  const bgBtn = document.createElement('button');
+  bgBtn.textContent = 'Replace background image';
+  bgBtn.onclick = () => {
+    const prefs = loadPrefs();
+
+    const url = prompt(
+      'Background image URL:',
+      prefs.background_image || ''
+    );
+    if (url === null) return;
+
+    savePref('background_image', url || null);
+    fireRefreshBackground();
+    applyPrefs();
+  };
+
+  // Toggle overlay
+  const overlayBtn = document.createElement('button');
+
+  function updateOverlayLabel() {
+    const prefs = loadPrefs();
+    overlayBtn.textContent =
+      prefs.show_background_overlay !== false
+        ? 'Hide background overlay'
+        : 'Show background overlay';
+  }
+
+  overlayBtn.onclick = () => {
+    const prefs = loadPrefs();
+    const overlayOn = prefs.show_background_overlay !== false;
+
+    savePref(
+      'show_background_overlay',
+      !overlayOn
+    );
+
+    fireRefreshBackground();
+    updateOverlayLabel();
+    applyPrefs();
+  };
+
+  updateOverlayLabel();
+window.matchMedia('(prefers-color-scheme: dark)')
+  .addEventListener('change', applyTheme);
+
+  // Theme toggle
+const themeBtn = document.createElement('button');
+
+function updateThemeLabel() {
+  const { theme_mode = 'auto' } = loadPrefs();
+  themeBtn.textContent =
+    theme_mode === 'light' ? 'Theme: Light' :
+    theme_mode === 'dark'  ? 'Theme: Dark'  :
+                             'Theme: Auto';
+}
+
+themeBtn.onclick = () => {
+  const { theme_mode = 'auto' } = loadPrefs();
+
+  const next =
+    theme_mode === 'auto' ? 'light' :
+    theme_mode === 'light' ? 'dark' :
+    'auto';
+
+  savePref('theme_mode', next);
+  applyTheme();
+  updateThemeLabel();
+};
+
+updateThemeLabel();
+
+  el.append(bgBtn, overlayBtn, themeBtn);
+  return el;
+}
+
+</script>
 </body>
 </html>

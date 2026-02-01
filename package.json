@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "npm run css:dev & nodemon src/index.js",
-    "css:dev": "tailwindcss -i src/dashboard/app.css -o data/assets/css/style.css --watch",
-    "css:build": "tailwindcss -i src/dashboard/app.css -o data/assets/css/style.css",
+    "css:dev": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o data/assets/css/style.css --watch",
+    "css:build": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o data/assets/css/style.css",
     "start": "npm run assets:sync && npm run css:build && node src/index.js",
     "assets:sync": "cp -r src/dashboard/assets/* data/assets/"
   },

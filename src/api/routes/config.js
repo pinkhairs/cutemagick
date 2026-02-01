@@ -8,7 +8,7 @@ const router = express.Router();
 ----------------------------- */
 
 /**
- * POST /connect/public-key
+ * POST /config/public-key
  * Returns the public SSH key (plaintext)
  */
 router.post('/public-key', (req, res) => {

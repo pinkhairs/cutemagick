@@ -102,7 +102,7 @@
     saveBtn.textContent = '☁️ Saving…';
 
     try {
-      const res = await fetch(`/fs/${siteId}/save`, {
+      const res = await csrfFetch(`/fs/${siteId}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

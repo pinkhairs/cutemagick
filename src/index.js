@@ -13,7 +13,7 @@ import Handlebars from 'handlebars';
 import auth from './api/middleware/auth.js';
 
 import accountRoutes from './api/routes/account.js';
-import connectRoutes from './api/routes/connect.js';
+import configRoutes from './api/routes/config.js';
 import sitesRoutes from './api/routes/sites.js';
 import fsRoutes from './api/routes/fs.js';
 import siteRoutes from './api/routes/site.js';
@@ -32,6 +32,7 @@ import {
 } from '../infra/index.js';
 
 import { DATA_ROOT } from '../config/index.js';
+import csrf from './api/middleware/csrf.js';
 
 /* ----------------------------
    Paths
@@ -60,7 +61,6 @@ startMaintenanceScheduler();
 ----------------------------- */
 
 const app = express();
-
 /* ----------------------------
    Middleware
 ----------------------------- */
@@ -130,6 +130,7 @@ app.use('/site', (req, res, next) => {
 });
 
 app.use('/site', siteRoutes);
+app.use(csrf);
 
 /* ----------------------------
    Authenticated routes
@@ -139,7 +140,7 @@ app.use(auth);
 app.use('/sites', sitesRoutes);
 app.use('/site-window', siteWindowRoutes);
 app.use('/fs', fsRoutes);
-app.use('/connect', connectRoutes);
+app.use('/config', configRoutes);
 app.use('/time', timeRoutes);
 app.use('/preview', previewRouter);
 app.get(/^\/editor\/([^/]+)\/(.+)$/, async (req, res) => {
