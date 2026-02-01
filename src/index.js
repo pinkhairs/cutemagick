@@ -179,7 +179,7 @@ app.get(/^\/editor\/([^/]+)\/(.+)$/, async (req, res) => {
 });
 
 
-app.get('/', (req, res) => {
+app.get('/admin', (req, res) => {
   res.render('index', {
     title: 'Cute Magick',
   });

@@ -22,10 +22,8 @@ html, body, #app {
 }
 
 /* Dark mode */
-@media (prefers-color-scheme: dark) {
-  :root {
+.dark {
     --aria-busy-spinner-color: #e5e7eb; /* slate-200 */
-  }
 }
 
 /* Your theme tokens live here in v4 */
@@ -79,18 +77,16 @@ html, body, #app {
 
 /* map class → background-image */
 @utility bg-subtle-rainbow {
-  @media (prefers-color-scheme: light) {
-    background-image: var(--bg-light-subtle-rainbow);
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;
-  }
-  @media (prefers-color-scheme: dark) {
-    background-image: var(--bg-dark-subtle-rainbow);
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;
-  }
+  background-image: var(--bg-light-subtle-rainbow);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.dark .bg-subtle-rainbow {
+  background-image: var(--bg-dark-subtle-rainbow);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 @utility bg-strong-rainbow {
   background-image: var(--bg-strong-rainbow);
@@ -232,13 +228,13 @@ li:has(.is-live) ~ li .timeline-dot {
 
 /* Light mode */
 :root {
-  --aria-busy-spinner-color: #6b7280; /* gray-500 */
+  --aria-busy-spinner-color: black; /* gray-500 */
 }
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --aria-busy-spinner-color: #d1d5db; /* gray-300 */
+    --aria-busy-spinner-color: white; /* gray-300 */
   }
 }
 
@@ -247,7 +243,7 @@ li:has(.is-live) ~ li .timeline-dot {
   display: inline-block;
   width: 1em;
   height: 1em;
-  margin-inline-end: 0.5em;
+  margin: 0;
   vertical-align: -0.125em;
 
   /* Spinner shape */
@@ -300,5 +296,5 @@ li:has(.is-live) ~ li .timeline-dot {
 
 
 .lower-opacity-bg {
-  @apply opacity-10;
-}
+  @apply opacity-30 dark:opacity-30;
+} 

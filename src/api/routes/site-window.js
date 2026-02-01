@@ -1,7 +1,7 @@
 import express from 'express';
 import db from '../../../infra/db/index.js';
 import { resolveSiteAddress } from '../../../infra/resolveSiteAddress.js';
-import { getCommitHistory, getHeadCommit } from '../../../infra/git/index.js';
+import { getCommitHistory, getHeadCommit, getLiveCommit } from '../../../infra/git/index.js';
 
 const router = express.Router();
 
@@ -60,12 +60,14 @@ router.get('/:siteId/actions', async (req, res) => {
 
   const siteAddress = resolveSiteAddress(site);
   const headCommit = await getHeadCommit({siteId: site.uuid});
-
+  const liveCommit = await getLiveCommit({siteId: site.uuid});
+  
   return res.render('partials/site-actions', {
     layout: false,
     siteId: site.uuid,
     siteAddress,
     commitHash: headCommit,
+    latest: liveCommit === headCommit,
     siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
     directory: site.directory,
     name: site.name

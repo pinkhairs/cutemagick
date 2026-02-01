@@ -1,15 +1,16 @@
-<a
-  href="/preview/{{directory}}/{{commitHash}}"
-  target="_blank"
-  class="btn-secondary relative flex items-center gap-2"
+{{#unless latest}}
+<button
+  onclick="openReviewChanges()"
+  type="button"
+  class="cursor-pointer btn-secondary relative flex items-center gap-2"
 >
   👀 Review Changes
 
-<span
-  hx-get="/time/{{siteId}}/draft-count"
-  hx-trigger="revealed, siteCommit from:body"
-  hx-swap="outerHTML"
-  hx-boost="false"
-></span>
-
-</a>
+  <span
+    hx-get="/time/{{siteId}}/draft-count"
+    hx-trigger="revealed, siteCommit from:body"
+    hx-swap="outerHTML"
+    hx-boost="false"
+  ></span>
+</button>
+{{/unless}}
