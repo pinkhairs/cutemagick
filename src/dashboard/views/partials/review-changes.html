@@ -1,20 +1,17 @@
 <!-- Review Changes Panel Root -->
-<!-- TODO: add pointer-events-none when ready -->
 <div
   id="reviewChangesRoot"
-  class="fixed overflow-auto inset-0 z-50 h-full w-full"
+  class="fixed overflow-auto pointer-events-none inset-0 z-50 h-full w-full"
   aria-hidden="true">
 
   <!-- Backdrop (dim, not blur) -->
-  <!-- TODO: change opacity-70 to 0 -->
   <div
     id="reviewBackdrop"
-    class="fixed inset-0 bg-subtle-rainbow opacity-70 w-full h-full transition-opacity duration-200">
+    class="fixed inset-0 bg-subtle-rainbow opacity-0 w-full h-full transition-opacity duration-200">
   </div>
 
   <!-- Sliding panel -->
   <section class="relative p-3 flex flex-col w-full h-full">
-    <!-- TODO: add translate-x-full when ready -->
     <div
       id="reviewPanel"
       role="dialog"
@@ -22,7 +19,7 @@
       aria-labelledby="reviewPanelTitle"
       class="
         absolute right-0 top-0
-        w-full h-full
+        w-full h-full translate-x-full
         transition-transform duration-700 ease-out
         focus:outline-none
         p-4
