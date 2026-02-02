@@ -27,9 +27,16 @@ saveBtn.addEventListener('click', async (e) => {
       .map(el => [el.name, el.value])
   );
 
+  saveBtn.setAttribute('aria-busy', 'true');
+
   htmx.ajax('POST', `/admin/sites/${siteId}/settings`, {
     values: payload,
     swap: 'none'
+  }).then(() => {
+    saveBtn.setAttribute('aria-busy', 'false');
+    htmx.trigger('body', 'refresh-toolbar');
+  }).catch(() => {
+    saveBtn.setAttribute('aria-busy', 'false');
   });
 });
 

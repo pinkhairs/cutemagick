@@ -41,6 +41,7 @@
       <input
         type="text"
         name="customDomain"
+        required
         placeholder="your-domain.com"
         class="flex-1 bg-transparent border-b border-gray-300 dark:border-gray-500
                focus:outline-none focus:border-indigo-400"
@@ -114,7 +115,20 @@
 
     <button
       type="button"
-      class="mt-4 text-sm text-amber-500"
+      hx-post="/admin/sites/{{siteId}}/archive"
+      hx-confirm="Are you sure? (This is non-destructive.)"
+      hx-swap="none"
+      hx-on::after-request="
+        if (event.detail.successful) {
+          const win = this.closest('.window');
+          DraggableWindows.closeWindow(win);
+          console.log('Site archived');
+        } else {
+          alert('That didn\'t work...');
+        }
+      "
+      hx-on::after-request
+      class="mt-4 text-sm text-amber-600 dark:text-amber-500"
     >
       Archive Site
     </button>

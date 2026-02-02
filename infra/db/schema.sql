@@ -13,10 +13,11 @@ CREATE TABLE IF NOT EXISTS sites (
   username TEXT,
   password TEXT,
   live_commit TEXT,
+  status TEXT,
   created_at TEXT,
   last_viewed TEXT
 );
 
--- Helpful index (optional but cheap)
-CREATE INDEX IF NOT EXISTS idx_sites_last_viewed
-ON sites(last_viewed);
+-- Add status column if missing
+ALTER TABLE sites
+ADD COLUMN IF NOT EXISTS status TEXT;

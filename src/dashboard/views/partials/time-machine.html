@@ -99,7 +99,10 @@ hx-on::after-request="
   const siteRoot = document.querySelector('#' + siteId);
   const filesTab = siteRoot?.querySelector('button[data-tab=&quot;files&quot;]');
 
-  filesTab?.click();
+  if (filesTab) {
+    filesTab.click();
+    htmx.trigger(filesTab, 'click');
+  }
 "
 >
   ⏪️
@@ -134,7 +137,10 @@ hx-on::after-request="
   const siteRoot = document.querySelector('#' + siteId);
   const filesTab = siteRoot?.querySelector('button[data-tab=&quot;files&quot;]');
 
-  filesTab?.click();
+  if (filesTab) {
+    filesTab.click();
+    htmx.trigger(filesTab, 'click');
+  }
 "
 >
   ⏪️
