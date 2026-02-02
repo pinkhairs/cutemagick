@@ -20,4 +20,4 @@ CREATE TABLE IF NOT EXISTS sites (
 
 -- Add status column if missing
 ALTER TABLE sites
-ADD COLUMN IF NOT EXISTS status TEXT;
+ADD COLUMN status TEXT;
