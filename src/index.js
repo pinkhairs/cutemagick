@@ -259,9 +259,9 @@ app.get('/admin', (req, res) => {
 /* ----------------------------
    Server
 ----------------------------- */
-
 const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   log.info('app', `Cute Magick running on http://localhost:${PORT}`);
 });
