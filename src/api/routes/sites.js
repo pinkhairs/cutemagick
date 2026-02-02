@@ -427,7 +427,12 @@ router.get('/archive', (req, res) => {
                       authUser,
                       authPass
                     } = req.body;
-                    
+
+                    // Strip protocol from customDomain
+                    const cleanDomain = customDomain
+                      ? customDomain.replace(/^https?:\/\//, '')
+                      : null;
+
                     const result = db.prepare(`
       UPDATE sites
       SET
@@ -441,7 +446,7 @@ router.get('/archive', (req, res) => {
       WHERE uuid = ?
     `).run(
                       name || null,
-                      customDomain || null,
+                      cleanDomain,
                       iconUrl || null,
                       repository || null,
                       branch || null,
