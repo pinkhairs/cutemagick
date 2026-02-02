@@ -132,7 +132,8 @@ router.get('/:siteId/:tab', async (req, res) => {
           siteAddress,
           siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
           siteId: site.uuid,
-          layout: false
+          layout: false,
+          wildcardDomain: process.env.WILDCARD_DOMAIN,
         });
 
       default:

@@ -29,6 +29,7 @@ import {
   ensureSSHKeypair,
   validateEnv,
   startMaintenanceScheduler,
+  ensureFirstSite,
 } from '../infra/index.js';
 
 import { DATA_ROOT, PUBLIC_ROOT } from '../config/index.js';
@@ -47,14 +48,11 @@ const __dirname = path.dirname(__filename);
 
 validateEnv();
 
-// Ensure DATA_ROOT exists explicitly
-if (!fs.existsSync(DATA_ROOT)) {
-  log.info('[init]', 'creating data root', DATA_ROOT);
-  fs.mkdirSync(DATA_ROOT, { recursive: true });
-}
-
 ensureSSHKeypair();
 startMaintenanceScheduler();
+
+// Ensure first site exists
+await ensureFirstSite();
 
 /* ----------------------------
    App setup

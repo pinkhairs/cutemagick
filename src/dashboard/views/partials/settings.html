@@ -7,17 +7,19 @@
       Settings
     </h2>
 
+    {{#if wildcardDomain}}
     <div class="flex gap-3 rounded-md border border-gray-400 dark:border-gray-700
                 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
       <div class="text-lg">🎲</div>
       <p>
         Try
         <span class="font-mono text-sm bg-yellow-50 dark:bg-yellow-300/20">
-          <strong class="italic highlight">anything</strong>.magick.host
+          <strong class="italic highlight">anything.</strong>{{wildcardDomain}}
         </span>
         for your site URL.
       </p>
     </div>
+    {{/if}}
   </div>
 
   <form class="settings-form grid gap-2">

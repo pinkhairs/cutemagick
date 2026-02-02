@@ -26,6 +26,8 @@ RUN npm run assets:sync \
 
 RUN npm prune --production
 
+RUN mkdir -p /app/data && chown node:node /app/data
+
 USER node
 EXPOSE 3000
 
