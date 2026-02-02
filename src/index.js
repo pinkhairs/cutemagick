@@ -31,7 +31,7 @@ import {
   startMaintenanceScheduler,
 } from '../infra/index.js';
 
-import { DATA_ROOT } from '../config/index.js';
+import { DATA_ROOT, PUBLIC_ROOT } from '../config/index.js';
 import csrf from './api/middleware/csrf.js';
 
 /* ----------------------------
@@ -106,17 +106,21 @@ Handlebars.registerHelper('and', (...args) => args.slice(0, -1).every(Boolean));
 /* ----------------------------
    Static assets
 ----------------------------- */
-
 app.use(
-  '/assets',
-  express.static(path.join(DATA_ROOT, 'assets'))
+  '/admin/assets',
+  express.static(`${PUBLIC_ROOT}/admin`)
 );
+
+app.use('/admin/assets/js',  express.static(`${PUBLIC_ROOT}/admin/assets/js`));
+app.use('/admin/assets/css', express.static(`${PUBLIC_ROOT}/admin/assets/css`));
+app.use('/admin/assets/img', express.static(`${PUBLIC_ROOT}/admin/assets/img`));
+
 
 /* ----------------------------
    Public routes
 ----------------------------- */
 
-app.get('/login', (req, res) => {
+app.get('/admin/login', (req, res) => {
   res.render('login', {
     title: 'Log in · Cute Magick',
     layout: false,
@@ -124,26 +128,22 @@ app.get('/login', (req, res) => {
 });
 
 // Public hosted sites
-app.use('/account', accountRoutes);
-app.use('/site', (req, res, next) => {
-  next();
-});
-
+app.use('/admin/account', accountRoutes);
 app.use('/site', siteRoutes);
-app.use(csrf);
 
 /* ----------------------------
    Authenticated routes
 ----------------------------- */
 
 app.use(auth);
-app.use('/sites', sitesRoutes);
-app.use('/site-window', siteWindowRoutes);
-app.use('/fs', fsRoutes);
-app.use('/config', configRoutes);
-app.use('/time', timeRoutes);
-app.use('/preview', previewRouter);
-app.get(/^\/editor\/([^/]+)\/(.+)$/, async (req, res) => {
+app.use(csrf);
+app.use('/admin/sites', sitesRoutes);
+app.use('/admin/site-window', siteWindowRoutes);
+app.use('/admin/fs', fsRoutes);
+app.use('/admin/config', configRoutes);
+app.use('/admin/time', timeRoutes);
+app.use('/admin/preview', previewRouter);
+app.get(/^\/admin\/editor\/([^/]+)\/(.+)$/, async (req, res) => {
   const siteId = req.params[0];
   const relPath = req.params[1];
   const filename = path.basename(relPath);

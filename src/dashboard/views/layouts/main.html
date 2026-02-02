@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="stylesheet" href="/admin/assets/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=SUSE:wght@100..800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/file-explorer.css" />
+  <link rel="stylesheet" href="/admin/assets/css/file-explorer.css" />
   <title>Cute Magick</title>
 
-  <link rel="icon" type="image/png" href="/assets/img/favicon-96x96.png" sizes="96x96">
-  <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
-  <link rel="shortcut icon" href="/assets/img/favicon.ico">
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="/admin/assets/img/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="/admin/assets/img/favicon.svg">
+  <link rel="shortcut icon" href="/admin/assets/img/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/admin/assets/img/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="Cute Magick">
-  <link rel="manifest" href="/assets/img/site.webmanifest">
+  <link rel="manifest" href="/admin/assets/img/site.webmanifest">
   <meta name="csrf-token" content="{{csrfToken}}">
 </head>
 <body class="flex-col lg:h-svh justify-between flex text-gray-900 dark:text-white">
@@ -38,15 +38,27 @@
           }
 
           if (!nameOrUrl) return;
-          htmx.ajax('POST', '/sites', {
-            values: { nameOrUrl },
-            swap: 'none'
-          }).then(res => {
-            htmx.trigger(document.body, 'refreshSites');
-          })
-          .catch(err => {
-            alert('Sorry that didn\'t work. Make sure you\'ve added the Cute Magick key to your Git server (top right button) and try again.');
-          });
+          this.setAttribute('aria-busy', 'true');
+          htmx.ajax('POST', '/admin/sites', {
+  values: { nameOrUrl },
+  swap: 'none'
+})
+.then(res => {
+  if (!res.ok) {
+    throw new Error('Request failed');
+  }
+
+  htmx.trigger(document.body, 'refreshSites');
+})
+.catch(() => {
+  alert(
+    'Sorry that didn’t work. Make sure you’ve added the Cute Magick key ' +
+    'to your Git server (top right button) and try again.'
+  );
+})
+.finally(() => {
+  this.removeAttribute('aria-busy');
+});
         "
         class="btn py-1! rainbow-tiler border-0! lg:px-4! text-black!">New Site</button>
       </nav>
@@ -67,20 +79,21 @@
   {{{body}}}
   <main class="z-10 lg:fixed lg:right-0" id="windows">
   </main>
+  <div id="review-panel-container"></div>
   <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
   <div hx-trigger="refreshBackground from:body" hx-swap="outerHTML" id="background" class="bg-cover bg-center bg-no-repeat fixed w-full h-full inset-0 -z-1"></div>
-  <script src="/assets/js/csrfFetch.js"></script>
+  <script src="/admin/assets/js/csrfFetch.js"></script>
   <script src="https://unpkg.com/popper.js@1"></script>
   <script src="https://unpkg.com/tippy.js@5"></script>
-  <script src="/assets/js/htmx.min.js"></script>
-  <script src="/assets/js/DraggableWindows.js" defer></script>
-  <script src="/assets/js/file-explorer.js" defer></script>
-  <script src="/assets/js/mount-file-explorer.js" defer></script>
+  <script src="/admin/assets/js/htmx.min.js"></script>
+  <script src="/admin/assets/js/DraggableWindows.js"></script>
+  <script src="/admin/assets/js/file-explorer.js"></script>
+  <script src="/admin/assets/js/mount-file-explorer.js" ></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js"></script>
-  <script src="/assets/js/mount-code-editor.js"></script>
-  <script src="/assets/js/save-file.js"></script>
-  <script src="/assets/js/secrets-management.js"></script>
-  <script src="/assets/js/settings-management.js"></script>
+  <script src="/admin/assets/js/mount-code-editor.js"></script>
+  <script src="/admin/assets/js/save-file.js"></script>
+  <script src="/admin/assets/js/secrets-management.js"></script>
+  <script src="/admin/assets/js/settings-management.js"></script>
 
   <script>
     function initTippy(root = document) {
@@ -138,7 +151,7 @@
     try {
       if (action === 'copy-key') {
         if (!confirm('Copy your public SSH key to your clipboard?')) return;
-        const res = await csrfFetch('/config/public-key', {
+        const res = await csrfFetch('/admin/config/public-key', {
           method: 'POST',
         });
 
@@ -190,8 +203,8 @@ document.addEventListener('click', function(e) {
   const currentPath = localStorage.getItem(key) || '';
 
   const url = currentPath
-    ? `/site-window/${uuid}/${currentPath}`
-    : `/site-window/${uuid}`;
+    ? `/admin/site-window/${uuid}/${currentPath}`
+    : `/admin/site-window/${uuid}`;
 
   window.htmx.ajax('GET', url, {
     target: '#windows',
@@ -218,12 +231,13 @@ document.addEventListener('click', (e) => {
         "We tried to combine the two copies of your site, but some changes overlap and need your help.\n\n" +
         "Search “How to deal with merge conflicts” in the documentation to continue."
       );
-    }
+  }
   });
 </script>
 <script>
 document.body.addEventListener('siteCommit', e => {
-  console.log(e.detail);
+  if (!e.detail) return;
+  const siteId = e.detail.siteId;
 });
 </script>
 <template id="secretRow" class="flex flex-col gap-4">
@@ -265,14 +279,6 @@ document.body.addEventListener('siteCommit', e => {
   </div>
 </template>
 <script>
-  document.body.addEventListener('htmx:configRequest', (e) => {
-    const token =
-      document.querySelector('meta[name="csrf-token"]')?.content;
-    if (token) {
-      e.detail.headers['X-CSRF-Token'] = token;
-    }
-  });
-
   const PREFS_KEY = 'cm:admin:prefs';
 
 function loadPrefs() {
@@ -431,50 +437,36 @@ updateThemeLabel();
 }
 
 </script>
-{{> review-changes}}
 <script>
-  const root = document.getElementById('reviewChangesRoot');
-  const panel = document.getElementById('reviewPanel');
-  const backdrop = document.getElementById('reviewBackdrop');
+  function closeReviewChanges() {
+    const reviewChangesRoot = document.getElementById('reviewChangesRoot');
+  reviewChangesRoot.remove();
+  }
+  document.body.addEventListener('htmx:afterSwap', (e) => {
+    // Only react when Review Changes is injected
+    const root = e.target.querySelector?.('#reviewChangesRoot');
+    if (!root) return;
 
-  let lastFocusedEl = null;
+    const backdrop = root.querySelector('#reviewBackdrop');
+    const panel = root.querySelector('#reviewPanel');
 
-  function openReviewChanges() {
-    lastFocusedEl = document.activeElement;
-
+    // Make interactive
     root.classList.remove('pointer-events-none');
     root.setAttribute('aria-hidden', 'false');
 
+    // Fade in backdrop
     backdrop.classList.remove('opacity-0');
     backdrop.classList.add('opacity-70');
+
+    // Slide panel in
     panel.classList.remove('translate-x-full');
 
-    // Focus panel after animation starts
+    // Optional: focus panel for accessibility
     requestAnimationFrame(() => {
-      panel.focus();
+      panel.focus?.();
     });
-  }
-
-  function closeReviewChanges() {
-    backdrop.classList.add('opacity-0');
-    backdrop.classList.remove('opacity-70');
-    panel.classList.add('translate-x-full');
-
-    root.setAttribute('aria-hidden', 'true');
-
-    // Delay pointer-events reset until animation ends
-    setTimeout(() => {
-      root.classList.add('pointer-events-none');
-      if (lastFocusedEl) lastFocusedEl.focus();
-    }, 300);
-  }
-
-  // Escape to close
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && root.getAttribute('aria-hidden') === 'false') {
-      closeReviewChanges();
-    }
   });
 </script>
+
 </body>
 </html>

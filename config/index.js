@@ -10,7 +10,7 @@ export const DATA_ROOT = path.resolve(
   process.env.DATA_ROOT || path.join(PROJECT_ROOT, 'data')
 );
 
-export const ASSETS_ROOT = path.join(DATA_ROOT, 'assets');
+export const PUBLIC_ROOT = path.join(PROJECT_ROOT, 'public');
 export const SITES_ROOT = path.join(DATA_ROOT, 'sites');
 export const RENDERS_ROOT = path.join(DATA_ROOT, 'renders');
 

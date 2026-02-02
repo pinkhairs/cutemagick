@@ -21,7 +21,7 @@
       class="
         absolute right-0 top-0
         w-full h-full translate-x-full
-        transition-transform duration-700 ease-out
+        transition-transform duration-1000 ease-out
         focus:outline-none
         p-4
       "
@@ -43,7 +43,7 @@
         </header>
 
         <div class="h-full overflow-x-auto flex flex-1 flex-col">
-          <div class="pb-4 w-[200%] lg:w-auto flex flex-1 flex-row lg:items-center lg:justify-between gap-8">
+          <div class="pb-4 w-[200%] lg:w-auto flex flex-1 flex-row lg:justify-between gap-8">
             <div class="w-1/2 lg:w-1/4 flex-1 lg:flex-none gap-4 flex flex-col">
               <div class="flex flex-col gap-2">
                 <h2 class="font-bold text-4xl">Review Changes</h2>
@@ -55,106 +55,16 @@
                 <p>Site is password-protected.</p>
               </div>
 
-              <div class="flex flex-col">
-              <h3 class="py-2 text-gray-600 dark:text-gray-500 uppercase tracking-wider text-sm">Latest</h3>
+              <div
+                hx-get="/admin/time/{{siteId}}/commits"
+                hx-trigger="revealed"
+                hx-swap="outerHTML"
+              ></div>
 
-              <div class="flex flex-col gap-2">
-                <div class="relative flex items-center gap-4 p-2 rounded-md border-[3px] border-blue-400 bg-subtle-rainbow">
-
-                  <!-- timeline -->
-                  <div class="relative flex flex-col items-center w-6 shrink-0">
-                    <span class="timeline-dot size-3 rounded-full border-gray-600 dark:border-gray-300 border-dashed border-[1.5px]"></span>
-                    <span class="absolute top-3 bottom-0 w-px border-l border-dashed border-gray-400 dark:border-gray-600"></span>
-                  </div>
-
-                  <!-- content -->
-                  <div class="flex items-center gap-4 flex-1 min-w-0">
-                    <div class="flex-1 min-w-0">
-                      <div class="truncate">
-                        lua version
-                      </div>
-
-                      <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                        <time datetime="2026-01-30 19:19:26 -0800">
-                          2026-01-30 19:19:26 -0800
-                        </time>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              </div>
-
-              <div class="flex flex-col">
-
-              <h3 class="py-2 text-gray-600 dark:text-gray-500 uppercase tracking-wider text-sm">Other drafts</h3>
-
-              <div class="lg:h-96 h-64 overflow-auto space-y-1">
-                {{> review-commits-list }}
-              </div>
-              <div class="flex flex-col pt-6">
-
-              <h3 class="pb-2 text-gray-600 dark:text-gray-500 uppercase tracking-wider text-sm">Live</h3>
-
-              <div class="relative hover:bg-white flex items-center gap-4 p-2 rounded-md">
-
-                <div class="relative flex flex-col items-center w-6 shrink-0">
-                  <span class="is-live relative flex h-3 w-3">
-                    <span class="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
-                  </span>
-                  <span class="absolute top-3 bottom-0 w-px border-l border-dashed border-gray-400 dark:border-gray-600"></span>
-                </div>
-
-                <div class="flex items-center gap-4 flex-1 min-w-0">
-                  <div class="flex-1 min-w-0">
-                    <div class="truncate font-medium">
-                      two capitals in version copy
-                    </div>
-
-                    <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                      <time datetime="2026-01-30 19:19:56 -0800">
-                        2026-01-30 19:19:56 -0800
-                      </time>
-                    </div>
-                  </div>
-                </div>
-              </div>
-                    </div>
-                    </div>
             </div>
 
-            <div class="w-1/2 lg:w-3/4 justify-center gap-4 flex flex-col lg:aspect-auto flex-1 h-full">
-
-              <div class="flex-1 flex items-center justify-between">
-                <div class="flex gap-2 items-start justify-between">
-                  <button class="lg:hidden">&larr;</button>
-                  <div>
-                    <div class="truncate text-lg font-bold">
-                      lua version
-                    </div>
-
-                    <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                      <time datetime="2026-01-30 19:19:26 -0800">
-                        2026-01-30 19:19:26 -0800
-                      </time>
-                    </div>
-                  </div>
-                </div>
-                <div class="flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    class="p-1 size-8 relative top-1 text-xl
-                          border border-gray-500 dark:border-gray-700
-                          rounded-full
-                          flex items-center justify-center"
-                    aria-label="Close review panel">
-                    &nearr;
-                  </button>
-                  <button class="text-lg font-bold cursor-pointer px-4 py-2 block bg-strong-rainbow rounded-full">Go Live!</button>
-                </div>
-              </div>
-              <iframe class="overflow-hidden rounded-2xl border-[3px] border-blue-400" src="http://localhost:3000/site/cutemagick-homepage"></iframe>
+            <div id="review-preview-site" class="w-1/2 lg:w-3/4 justify-center gap-4 flex flex-col lg:aspect-auto flex-1 h-full">
+              <div hx-get="/admin/time/{{siteId}}/select/{{headCommit.hash}}" hx-trigger="revealed" hx-swap="outerHTML"></div>              
             </div>
           </div>
         </div>

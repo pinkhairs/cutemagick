@@ -448,3 +448,30 @@ export async function countDraftCommits({ siteId, liveCommit }) {
     return 0;
   }
 }
+export async function assertSSHReachable(repository) {
+  if (typeof repository !== 'string') {
+    throw new Error('Invalid repository URL');
+  }
+
+  try {
+    await git(process.cwd(), [
+      'ls-remote',
+      '--exit-code',
+      repository
+    ], {
+      env: {
+        ...process.env,
+        GIT_SSH_COMMAND: [
+          'ssh',
+          '-o', 'BatchMode=yes',
+          '-o', 'ConnectTimeout=5',
+          '-o', 'StrictHostKeyChecking=accept-new'
+        ].join(' ')
+      }
+    });
+  } catch {
+    throw new Error(
+      'Cannot access remote repository over SSH'
+    );
+  }
+}

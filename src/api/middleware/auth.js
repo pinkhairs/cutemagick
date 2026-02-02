@@ -53,5 +53,5 @@ function unauth(req, res) {
   }
 
   // Full page navigation → redirect OK
-  return res.redirect('/login');
+  return res.redirect('/admin/login');
 }

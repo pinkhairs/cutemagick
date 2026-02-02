@@ -1,39 +1,32 @@
-# ---- base ----
 FROM node:20-bookworm
 
-# System deps
 RUN apt-get update && apt-get install -y \
   ca-certificates \
   php-cgi \
   php-cli \
+  python3 \
+  lua5.4 \
+  bash \
   && rm -rf /var/lib/apt/lists/*
 
-# App dir
 WORKDIR /app
 
-# Install deps first (better layer caching)
 COPY package*.json ./
 RUN npm install
 
-# Copy source
 COPY . .
 
-# Create data dirs inside image
 RUN mkdir -p \
-    /app/data/assets/css \
-    /app/data/assets \
- && chown -R node:node /app
+  public/admin/assets \
+  public/admin/css
 
-# Build assets at image build time
+# Build static assets into image
 RUN npm run assets:sync \
  && npm run css:build
 
-# Drop dev deps
 RUN npm prune --production
 
-# Runtime user
 USER node
-
 EXPOSE 3000
 
 CMD ["node", "src/index.js"]

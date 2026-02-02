@@ -126,7 +126,7 @@ export async function commitFileDelete({ siteId, paths, message }) {
 
   const result = await commitIfStaged(
     sitePath,
-    resolveCommitMessage(message, `Deleted ${paths.length} item(s)`)
+    resolveCommitMessage(message, `Deleted ${paths[0]}`)
   );
 
   // Nothing to commit = already deleted / no-op

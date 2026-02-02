@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="stylesheet" href="/admin/assets/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=SUSE:wght@100..800&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/png" href="/assets/img/favicon-96x96.png" sizes="96x96">
-  <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
-  <link rel="shortcut icon" href="/assets/img/favicon.ico">
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="/admin/assets/img/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="/admin/assets/img/favicon.svg">
+  <link rel="shortcut icon" href="/admin/assets/img/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/admin/assets/img/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-title" content="Cute Magick">
-  <link rel="manifest" href="/assets/img/site.webmanifest">
+  <link rel="manifest" href="/admin/assets/img/site.webmanifest">
   <title>Cute Magick</title>
 </head>
-<body class="flex text-gray-700 dark:text-white">
+<body class="flex">
   <div class="max-w-lg w-full p-4 mx-auto flex flex-col">
     <div class="flex items-center justify-center">{{> logo}}</div>
     <section class="card -mt-2 w-full">
       <h2 class="text-center font-bold text-xl">Site Panel</h2>
-      <form action="/account/login" method="post">
+      <form action="/admin/account/login" method="post">
         <label class="block py-6">
           <span class="font-bold block pb-2">Email</span>
           <input name="email" type="email" placeholder="example@cutemagick.com" class="text-field">
@@ -36,5 +36,21 @@
     </section>
   </div>
   <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
+  <script>
+    (function () {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+      function applyDarkMode(e) {
+        document.body.classList.toggle('dark', e.matches);
+        document.body.classList.toggle('text-white', e.matches);
+      }
+
+      // Apply on first load
+      applyDarkMode(media);
+
+      // React to system theme changes
+      media.addEventListener('change', applyDarkMode);
+    })();
+  </script>
 </body>
 </html>

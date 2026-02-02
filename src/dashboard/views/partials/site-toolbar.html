@@ -2,7 +2,7 @@
   class="site-toolbar shrink-0 flex items-center px-2 pt-2 pb-3
          border-t border-gray-400 dark:border-gray-700 text-sm"
 >
-  <div class="flex flex-1 items-center justify-between gap-4">
+  <div class="relative flex flex-1 items-center justify-between gap-4">
 
     <div class="flex items-center gap-2">
       <a
@@ -15,8 +15,8 @@
         <span>{{siteAddressDisplay}}</span>
       </a>
     </div>
-    
-    <div hx-trigger="revealed" hx-swap="outerHTML" hx-get="/site-window/{{siteId}}/actions"></div>
-
+    <div id="site-actions-{{siteId}}">
+      <div hx-trigger="revealed" hx-swap="innerHTML" hx-target="#site-actions-{{siteId}}" hx-get="/admin/site-window/{{siteId}}/actions"></div>
+    </div>
   </div>
 </div>

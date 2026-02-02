@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../../../infra/db/index.js';
 import { resolveSiteAddress } from '../../../infra/resolveSiteAddress.js';
 import { getCommitHistory, getHeadCommit, getLiveCommit } from '../../../infra/git/index.js';
+import { link } from 'fs';
 
 const router = express.Router();
 
@@ -52,8 +53,6 @@ router.get('/:siteId/preview-file-button', async (req, res) => {
   });
 });
 
-
-
 router.get('/:siteId/actions', async (req, res) => {
   const site = getSite(req.params.siteId);
   if (!site) return res.sendStatus(404);
@@ -61,6 +60,8 @@ router.get('/:siteId/actions', async (req, res) => {
   const siteAddress = resolveSiteAddress(site);
   const headCommit = await getHeadCommit({siteId: site.uuid});
   const liveCommit = await getLiveCommit({siteId: site.uuid});
+
+  console.log(liveCommit === headCommit);
   
   return res.render('partials/site-actions', {
     layout: false,

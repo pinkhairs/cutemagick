@@ -1,4 +1,4 @@
-// src/api/routes/sites.js
+// src/api/routes/admin/sites.js
 import express from 'express';
 import crypto from 'crypto';
 import fs from 'fs/promises';
@@ -8,6 +8,7 @@ import db from '../../../infra/db/index.js';
 import log from '../../../infra/logs/index.js';
 
 import {
+  assertSSHReachable,
   pullFromRemote,
   syncToRemote
 } from '../../../infra/git/sync.js';
@@ -114,6 +115,7 @@ if (process.env.WILDCARD_DOMAIN) {
     );
 
     if (isGitRepo) {
+      await assertSSHReachable(input);
       const { head } = await cloneRepo({ sitePath, repository: input });
       db.prepare(`
         UPDATE sites

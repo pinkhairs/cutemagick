@@ -5,11 +5,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "npm run css:dev & nodemon src/index.js",
-    "css:dev": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o data/assets/css/style.css --watch",
-    "css:build": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o data/assets/css/style.css",
-    "start": "npm run assets:sync && npm run css:build && node src/index.js",
-    "assets:sync": "cp -r src/dashboard/assets/* data/assets/"
+    "dev": "npm run assets:sync && npm run css:dev & nodemon src/index.js",
+    "css:dev": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o public/admin/css/style.css --watch",
+    "css:build": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o public/admin/css/style.css",
+    "assets:sync": "mkdir -p public/admin/assets && cp -r src/dashboard/assets/* public/admin/assets/"
   },
   "author": "",
   "license": "ISC",

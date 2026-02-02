@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../../../infra/db/index.js';
 import { renderSite } from '../siteRenderer.js';
+import { getHeadCommit } from '../../../infra/index.js';
 
 const router = express.Router();
 
@@ -13,15 +14,14 @@ const router = express.Router();
 -------------------------------------------------- */
 
 router.use(async (req, res) => {
-  // Strip leading slash and split
   const parts = req.path.replace(/^\/+/, '').split('/');
 
   const site = parts.shift();
-  const commit = parts.shift();
-  const relPath = parts.join('/');
+  let first = parts.shift();     // may be commit OR asset OR undefined
+  let relPath = parts.join('/');
 
-  if (!site || !commit) {
-    return res.status(404).send('Preview not found');
+  if (!site) {
+    return res.sendStatus(404);
   }
 
   const siteRow = db
@@ -29,8 +29,25 @@ router.use(async (req, res) => {
     .get(site);
 
   if (!siteRow) {
-    return res.status(404).send('Site not found');
+    return res.sendStatus(404);
   }
+
+  let commit;
+  
+  if (first && /^[0-9a-f]{7,40}$/i.test(first)) {
+    commit = first;
+  }
+
+  else {
+    commit = await getHeadCommit({ siteId: siteRow.uuid });
+
+    // If there *was* a first segment, it is part of the path
+    if (first) {
+      relPath = [first, relPath].filter(Boolean).join('/');
+    }
+  }
+
+  console.log({commit});
 
   return renderSite({
     req,
@@ -41,5 +58,6 @@ router.use(async (req, res) => {
     mode: 'preview',
   });
 });
+
 
 export default router;

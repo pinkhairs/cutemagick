@@ -59,7 +59,8 @@ export async function renderSite({
       'index.html',
       'index.js',
       'index.py',
-      'index.sh'
+      'index.sh',
+      'index.lua'
     ];
 
     for (const name of indexCandidates) {
@@ -92,19 +93,33 @@ export async function renderSite({
 
   const ext = path.extname(effectivePath);
 
-  /* ---------------------------------
-     Static files
-     --------------------------------- */
+/* ---------------------------------
+   Executable vs static decision
+   --------------------------------- */
 
-  const EXECUTABLE_INDEXES = new Set([
-    'index.php',
-    'index.js',
-    'index.py',
-    'index.sh',
-  ]);
+let isExecutable = false;
 
-  const isExecutable =
-    EXECUTABLE_INDEXES.has(path.basename(effectivePath));
+// PHP, Python, Lua: always executable
+if (ext === '.php' || ext === '.py' || ext === '.lua') {
+  isExecutable = true;
+}
+
+// Bash: executable bit required
+if (ext === '.sh') {
+  const stat = fs.statSync(absPath);
+  if (!(stat.mode & 0o111)) {
+    return res.status(403).send('Script not executable');
+  }
+  isExecutable = true;
+}
+
+// Node: only if shebang explicitly says node
+if (ext === '.js') {
+  const shebang = readShebang(absPath);
+  isExecutable = isNodeShebang(shebang);
+}
+
+
 
   if (!isExecutable) {
     if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) {
@@ -178,35 +193,53 @@ async function executeScript({
     return res.send(body);
   }
 
-  if (ext === '.js') {
-    // Node execution is handled by executeRuntime, not runProcess
-    const { stdout } = await executeRuntime({
-      lang: 'node',
-      cwd: runtimeDir,
-      scriptPath,
-      env: {
-        REQUEST_METHOD: req.method,
-        REQUEST_URI: req.originalUrl,
-        QUERY_STRING: req.originalUrl.split('?')[1] || '',
-        CONTENT_TYPE: req.headers['content-type'] || '',
-        CONTENT_LENGTH: req.headers['content-length'] || '',
-      },
-    });
+if (ext === '.js') {
+  const { stdout } = await executeRuntime({
+    lang: 'node',
+    cwd: runtimeDir,
+    scriptPath,
+    env: {
+      REQUEST_METHOD: req.method,
+      REQUEST_URI: req.originalUrl,
+      QUERY_STRING: req.originalUrl.split('?')[1] || '',
+      CONTENT_TYPE: req.headers['content-type'] || '',
+      CONTENT_LENGTH: req.headers['content-length'] || '',
+    },
+  });
 
-    res.type('text/html');
-    return res.send(stdout);
-  }
-
+  res.type('text/html');
+  return res.send(stdout);
+}
   if (ext === '.py') {
-    const { stdout } = await runProcess({
-      lang: 'python',
-      cwd: runtimeDir,
-      scriptPath
-    });
+    const { stdout } = await runProcess(
+  'python3',
+  [scriptPath],
+  { cwd: runtimeDir }
+);
 
     res.type('text/plain');
     return res.send(stdout);
   }
+if (ext === '.lua') {
+  const { stdout } = await runProcess(
+    'lua',
+    [scriptPath],
+    { cwd: runtimeDir }
+  );
+
+  const { headers, body } = parseCgiOutput(stdout);
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'content-length') continue;
+    res.setHeader(key, value);
+  }
+
+  if (!headers['content-type']) {
+    res.type('text/html');
+  }
+
+  return res.send(body);
+}
 
   if (ext === '.sh') {
     const stat = fs.statSync(path.join(runtimeDir, scriptPath));
@@ -214,11 +247,12 @@ async function executeScript({
       return res.status(403).send('Script not executable');
     }
 
-    const { stdout } = await runProcess({
-      lang: 'bash',
-      cwd: runtimeDir,
-      scriptPath
-    });
+    const { stdout } = await runProcess(
+      '/bin/bash',
+      [scriptPath],
+      { cwd: runtimeDir }
+    );
+
 
     res.type('text/plain');
     return res.send(stdout);
@@ -257,4 +291,30 @@ function parseCgiOutput(output) {
   }
 
   return { headers, body };
+}
+
+function readShebang(filePath) {
+  const fd = fs.openSync(filePath, 'r');
+  const buf = Buffer.alloc(200);
+  const bytes = fs.readSync(fd, buf, 0, buf.length, 0);
+  fs.closeSync(fd);
+
+  if (bytes < 2) return null;
+
+  const firstLine = buf
+    .toString('utf8', 0, bytes)
+    .split(/\r?\n/, 1)[0];
+
+  if (!firstLine.startsWith('#!')) return null;
+
+  return firstLine.slice(2).trim();
+}
+
+function isNodeShebang(shebang) {
+  if (!shebang) return false;
+  return (
+    shebang === '/usr/bin/node' ||
+    shebang === '/usr/bin/env node' ||
+    shebang.endsWith('/node')
+  );
 }
