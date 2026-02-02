@@ -9,6 +9,12 @@ import log from '../../../infra/logs/index.js';
  * Skips /admin and /site routes to preserve existing functionality.
  */
 export default async function domainResolver(req, res, next) {
+  log.info('[domain-resolver]', {
+    path: req.path,
+    host: req.get('host'),
+    xForwardedHost: req.get('x-forwarded-host'),
+  });
+
   // Skip domain resolution for admin and site routes
   if (req.path.startsWith('/admin') || req.path.startsWith('/site')) {
     return next();
@@ -49,8 +55,10 @@ export default async function domainResolver(req, res, next) {
 
   // No site found for this domain
   if (!siteRow) {
-    log.debug('[domain-resolver]', 'no site found for domain', { domain: domainToMatch });
-    return res.status(404).send('Site not found');
+    if (!siteRow) {
+      log.warn('[domain-resolver]', 'unmapped domain', { domain: domainToMatch });
+      return res.status(200).send('Cute Magick ★');
+    }
   }
 
   // No published version
