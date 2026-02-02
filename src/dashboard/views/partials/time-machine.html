@@ -84,7 +84,7 @@
   data-tippy-content="Restore this point in time as a draft"
   hx-post="/admin/sites/{{../uuid}}/restore"
   hx-confirm="Are you sure? (This is non-destructive.)"
-  hx-vals='{"commit":"{{hash}}"}'
+  hx-vals='{"commit":"{{jsonEscape hash}}"}'
 hx-on::after-request="
   const status = event.detail.xhr.status;
 
@@ -119,7 +119,7 @@ hx-on::after-request="
   data-tippy-content="Restore this point in time as a draft"
   hx-post="/admin/sites/{{../uuid}}/restore"
   hx-confirm="Are you sure? (This is non-destructive.)"
-  hx-vals='{"commit":"{{hash}}"}'
+  hx-vals='{"commit":"{{jsonEscape hash}}"}'
 hx-on::after-request="
   const status = event.detail.xhr.status;
 

@@ -14,7 +14,6 @@ function setCsrfToken(token) {
   const meta = getCsrfMeta();
   if (!meta || !token) return;
   meta.setAttribute('content', token);
-  console.log('[csrf] meta token updated', token);
 }
 
 function extractCsrfFromResponse(res) {
@@ -38,7 +37,6 @@ function csrfFetch(url, options = {}) {
   // 🔒 Do NOT overwrite if caller already set it
   if (token && !headers['X-CSRF-Token']) {
     headers['X-CSRF-Token'] = token;
-    console.log('[csrfFetch] attached token');
   }
 
   return fetch(url, {
@@ -60,18 +58,15 @@ document.body.addEventListener('htmx:configRequest', (e) => {
 
   // 🔒 If already present, do nothing
   if (headers['X-CSRF-Token']) {
-    console.log('[htmx][csrf] header already present, skipping');
     return;
   }
 
   const token = getCsrfToken();
   if (!token) {
-    console.warn('[htmx][csrf] no token available');
     return;
   }
 
   headers['X-CSRF-Token'] = token;
-  console.log('[htmx][csrf] attached token');
 });
 
 /* =========================================================
@@ -116,11 +111,9 @@ document.body.addEventListener('htmx:afterRequest', (e) => {
         if (token) {
           originalSetHeader.call(this, 'X-CSRF-Token', token);
           this._cmCsrfAttached = true;
-          console.log('[xhr][csrf] attached token');
         }
       }
     } catch (err) {
-      console.warn('[xhr][csrf] attach failed', err);
     }
 
     return originalSend.apply(this, args);

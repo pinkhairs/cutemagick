@@ -18,7 +18,12 @@ router.get('/:siteId', async (req, res) => {
   const site = getSite(req.params.siteId);
   if (!site) return res.sendStatus(404);
   const siteAddress = resolveSiteAddress(site);
-  
+
+  // Use Handlebars to safely render the iframe
+  const iframeHtml = `<iframe src="/site/${site.directory.replace(/["'<>&]/g, c =>
+    ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c])
+  )}" class="w-full h-full border-none"></iframe>`;
+
   res.render('partials/site-window', {
     layout: false,
     id: site.uuid,
@@ -26,12 +31,7 @@ router.get('/:siteId', async (req, res) => {
     siteAddress,
     siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
     directory: site.directory,
-    body: `
-      <iframe
-        src="/site/${site.directory}"
-        class="w-full h-full border-none"
-      ></iframe>
-    `
+    body: iframeHtml
   });
 });
 
@@ -61,8 +61,6 @@ router.get('/:siteId/actions', async (req, res) => {
   const headCommit = await getHeadCommit({siteId: site.uuid});
   const liveCommit = await getLiveCommit({siteId: site.uuid});
 
-  console.log(liveCommit === headCommit);
-  
   return res.render('partials/site-actions', {
     layout: false,
     siteId: site.uuid,
@@ -85,9 +83,13 @@ router.get('/:siteId/:tab', async (req, res) => {
   try {
     switch (tab) {
       case 'home':
+        // Escape site.directory to prevent XSS
+        const escapedDir = site.directory.replace(/["'<>&]/g, c =>
+          ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c])
+        );
         return res.send(`
           <iframe
-            src="/site/${site.directory}"
+            src="/site/${escapedDir}"
             class="w-full h-full border-none"
           ></iframe>
         `);
