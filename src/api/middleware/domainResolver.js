@@ -15,7 +15,8 @@ export default async function domainResolver(req, res, next) {
   }
 
   // Get the Host header (includes port, trust proxy handles X-Forwarded-Host)
-  const domainToMatch = req.get('host');
+  const rawHost = req.get('host');
+  const domainToMatch = rawHost?.split(':')[0].toLowerCase();
 
   if (!domainToMatch) {
     log.warn('[domain-resolver]', 'no host header found');
