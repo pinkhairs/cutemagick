@@ -43,3 +43,4 @@ ssh-data/*
 !ssh-data/.gitkeep
 
 ssh/*
+public/
