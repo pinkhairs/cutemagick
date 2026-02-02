@@ -17,7 +17,3 @@ CREATE TABLE IF NOT EXISTS sites (
   created_at TEXT,
   last_viewed TEXT
 );
-
--- Add status column if missing
-ALTER TABLE sites
-ADD COLUMN status TEXT;
