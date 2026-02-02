@@ -23,12 +23,10 @@
     <div class="font-semibold p-4 w-full inline-flex large:text-lg gap-4 lg:gap-6 justify-between items-center">
       <nav class="inline-flex text-sm lg:text-base items-center gap-4 lg:gap-6">
         <button
-        hx-on:click="
+hx-on:click="
           let nameOrUrl = prompt('Enter site name (or Git repo URL):');
           if (!nameOrUrl) return;
-
           const gitUrlRegex = /^(git@[\w.-]+:[\w./~-]+\.git|https?:\/\/[\w.-]+\/[\w./~-]+\.git)$/;
-
           if (nameOrUrl.startsWith('http://') || nameOrUrl.startsWith('https://')) {
             nameOrUrl = prompt('Enter an SSH URL');
             if (!gitUrlRegex.test(nameOrUrl)) {
@@ -36,29 +34,25 @@
               return;
             }
           }
-
           if (!nameOrUrl) return;
           this.setAttribute('aria-busy', 'true');
+          
+          const handler = (evt) => {
+            if (evt.detail.successful) {
+              htmx.trigger(document.body, 'refreshSites');
+            } else {
+              alert(`Sorry, that didn't work. Make sure you've added the Cute Magick key to your Git server (top right button) and try again.`);
+            }
+            this.removeAttribute('aria-busy');
+            document.body.removeEventListener('htmx:afterRequest', handler);
+          };
+          
+          document.body.addEventListener('htmx:afterRequest', handler);
+          
           htmx.ajax('POST', '/admin/sites', {
-  values: { nameOrUrl },
-  swap: 'none'
-})
-.then(res => {
-  if (!res.ok) {
-    throw new Error('Request failed');
-  }
-
-  htmx.trigger(document.body, 'refreshSites');
-})
-.catch(() => {
-  alert(
-    'Sorry that didn’t work. Make sure you’ve added the Cute Magick key ' +
-    'to your Git server (top right button) and try again.'
-  );
-})
-.finally(() => {
-  this.removeAttribute('aria-busy');
-});
+            values: { nameOrUrl },
+            swap: 'none'
+          });
         "
         class="btn py-1! rainbow-tiler border-0! lg:px-4! text-black!">New Site</button>
       </nav>
@@ -326,8 +320,23 @@ function applyPrefs() {
   if (!bg) return;
 
   if (prefs.background_image) {
-    bg.style.backgroundImage =
-      `url("${prefs.background_image}")`;
+    // Validate URL to prevent CSS injection
+    try {
+      const url = new URL(prefs.background_image, window.location.origin);
+      if (!['http:', 'https:', 'data:'].includes(url.protocol)) {
+        console.warn('Invalid background image protocol:', url.protocol);
+        bg.style.removeProperty('background-image');
+        savePref('background_image', null);
+        return;
+      }
+      // Escape quotes to prevent breaking out of url()
+      const safeUrl = prefs.background_image.replace(/["'\\]/g, '\\$&');
+      bg.style.backgroundImage = `url("${safeUrl}")`;
+    } catch (e) {
+      console.warn('Invalid background image URL:', e);
+      bg.style.removeProperty('background-image');
+      savePref('background_image', null);
+    }
   } else {
     bg.style.removeProperty('background-image');
   }

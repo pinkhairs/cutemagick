@@ -69,6 +69,33 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Security headers
+app.use((req, res, next) => {
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+
+  // Enable XSS filter (legacy browsers)
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Content Security Policy
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' data: https:; " +
+    "connect-src 'self'; " +
+    "frame-src 'self'; " +
+    "base-uri 'self';"
+  );
+
+  next();
+});
+
 // HTMX: disable caching for fragment responses
 app.use((req, res, next) => {
   if (req.headers['hx-request']) {
@@ -102,6 +129,40 @@ Handlebars.registerHelper('lt',  (a, b) => Number(a) <  Number(b));
 Handlebars.registerHelper('lte', (a, b) => Number(a) <= Number(b));
 Handlebars.registerHelper('or',  (...args) => args.slice(0, -1).some(Boolean));
 Handlebars.registerHelper('and', (...args) => args.slice(0, -1).every(Boolean));
+
+// Safe URL validation helper for CSS url() contexts
+Handlebars.registerHelper('safeUrl', function(url) {
+  if (!url) return '';
+
+  try {
+    const parsed = new URL(url, 'http://localhost');
+    // Only allow http, https, and data URLs
+    if (!['http:', 'https:', 'data:'].includes(parsed.protocol)) {
+      return '';
+    }
+    // Escape quotes and backslashes for CSS context
+    return url.replace(/["'\\]/g, '\\$&');
+  } catch {
+    return '';
+  }
+});
+
+// JSON-safe escaping for hx-vals and other JSON contexts
+Handlebars.registerHelper('jsonEscape', function(value) {
+  if (value == null) return '';
+  return JSON.stringify(String(value)).slice(1, -1); // Remove surrounding quotes
+});
+
+// HTML attribute escaping
+Handlebars.registerHelper('escapeAttr', function(value) {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+});
 
 /* ----------------------------
    Static assets

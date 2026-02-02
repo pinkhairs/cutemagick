@@ -144,6 +144,9 @@ btn.dataset.saveArmed = 'false';
 
       btn._saveTippy = tippy(btn, {
         content: saveDraftMenuHTML(),
+        // SECURITY NOTE: allowHTML is safe here because content comes from
+        // hardcoded saveDraftMenuHTML() function, not user input.
+        // Never set allowHTML: true with user-controlled content.
         allowHTML: true,
         interactive: true,
         trigger: 'manual',

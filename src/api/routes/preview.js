@@ -47,8 +47,6 @@ router.use(async (req, res) => {
     }
   }
 
-  console.log({commit});
-
   return renderSite({
     req,
     res,
