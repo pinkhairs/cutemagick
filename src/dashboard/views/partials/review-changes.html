@@ -6,6 +6,7 @@
 
   <!-- Backdrop (dim, not blur) -->
   <div
+    onclick="closeReviewChanges()"
     id="reviewBackdrop"
     class="fixed inset-0 bg-subtle-rainbow opacity-0 w-full h-full transition-opacity duration-200">
   </div>
@@ -31,9 +32,10 @@
         <header class="flex items-center justify-end">
           <button
             type="button"
+            onclick="closeReviewChanges()"
             class="p-1 size-8 relative top-1 text-xl
                    border border-gray-500 dark:border-gray-700
-                   rounded-full
+                   rounded-full cursor-pointer
                    flex items-center justify-center"
             aria-label="Close review panel">
             ×
