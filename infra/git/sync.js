@@ -11,6 +11,7 @@ import {
 } from './plumbing.js';
 
 import { SITES_ROOT } from '../../config/index.js';
+import { DATA_ROOT } from '../fs/roots.js';
 
 /* -------------------------------------------------
    Helpers
@@ -454,7 +455,7 @@ export async function assertSSHReachable(repository) {
   }
 
   try {
-    await git(process.cwd(), [
+    await git(DATA_ROOT, [
       'ls-remote',
       '--exit-code',
       repository

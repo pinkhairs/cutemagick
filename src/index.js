@@ -1,6 +1,5 @@
 import 'dotenv/config';
 
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
@@ -208,6 +207,7 @@ app.use('/site', siteRoutes);
 
 app.use(auth);
 app.use(csrf);
+
 app.use('/admin/sites', sitesRoutes);
 app.use('/admin/site-window', siteWindowRoutes);
 app.use('/admin/fs', fsRoutes);
