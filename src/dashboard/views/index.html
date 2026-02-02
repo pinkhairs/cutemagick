@@ -1,7 +1,8 @@
 <div class="flex-1 h-full relative z-10 flex">
 <nav id="sites" hx-get="/admin/sites" hx-trigger="load, refreshSites from:body" hx-swap="innerHTML" class="flex-1"></nav>
 
-  <footer class="absolute bottom-2 right-3">
+  <footer class="absolute bottom-2 inline-flex gap-3 right-3">
+    <button id="archive-btn">🗃️</button>
     <button id="admin-prefs-btn">⚙️</button>
   </footer>
 </div>

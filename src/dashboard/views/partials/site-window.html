@@ -76,7 +76,12 @@ class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-c
     <div id="site-{{id}}-content" class="flex-1 overflow-auto transition-opacity">
       {{{body}}}
     </div>
-    {{> site-toolbar directory=directory siteId=id siteAddress=siteAddress }}
+    <div
+      id="site-{{id}}-toolbar"
+      hx-get="/admin/site-window/{{id}}/toolbar"
+      hx-trigger="load, refresh-toolbar from:body"
+      hx-swap="outerHTML"
+    ></div>
   </div>
 </div>
 </div>

@@ -53,62 +53,76 @@ function getEnvPath(siteId) {
     .join('\n') + '\n';
   }
   
+
+router.get('/archive', (req, res) => {
+  const sites = db.prepare(`
+    SELECT
+      uuid,
+      name,
+      directory
+    FROM sites
+    WHERE status = 'archived'
+    ORDER BY name ASC
+  `).all();
+
+  res.json(sites);
+});
   /* -------------------------------------------------
   Create site
   -------------------------------------------------- */
-router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
-  let sitePath;
-
-  try {
-    const input = req.body.nameOrUrl?.trim();
-    if (!input) return res.sendStatus(400);
-
-    const isGitRepo =
+  router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
+    let sitePath;
+    
+    try {
+      const input = req.body.nameOrUrl?.trim();
+      if (!input) return res.sendStatus(400);
+      
+      const isGitRepo =
       /^(git@|https?:\/\/).+(\.git)?$/.test(input);
-
-    const uuid = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    const name = isGitRepo
+      
+      const uuid = crypto.randomUUID();
+      const now = new Date().toISOString();
+      
+      const name = isGitRepo
       ? path.basename(input, '.git')
       : input;
-
-    const slug = slugify(name);
-    const suffix = await nextAvailableDirectorySuffix(SITES_ROOT, slug);
-    const directory = `${slug}${suffix}`;
-    sitePath = path.join(SITES_ROOT, directory);
-
-    let domain;
-    if (process.env.WILDCARD_DOMAIN) {
-      domain =
+      
+      const slug = slugify(name);
+      const suffix = await nextAvailableDirectorySuffix(SITES_ROOT, slug);
+      const directory = `${slug}${suffix}`;
+      sitePath = path.join(SITES_ROOT, directory);
+      
+      let domain;
+      if (process.env.WILDCARD_DOMAIN) {
+        domain =
         generateRandomSubdomain(slug) +
         '.' +
         process.env.WILDCARD_DOMAIN;
-    } else {
-      const root = process.env.ROOT_DOMAIN;
-      if (!root) {
-        throw new Error('Missing ROOT_DOMAIN for non-wildcard hosting');
+      } else {
+        const root = process.env.ROOT_DOMAIN;
+        if (!root) {
+          throw new Error('Missing ROOT_DOMAIN for non-wildcard hosting');
+        }
+        domain = `${root.replace(/\/$/, '')}/site/${directory}`;
       }
-      domain = `${root.replace(/\/$/, '')}/site/${directory}`;
-    }
-
-    log.info('[sites:create]', { uuid, name, isGitRepo });
-
-    let liveCommit = null;
-    let repository = null;
-    let branch = null;
-    await fs.mkdir(sitePath, { recursive: true });
-
-    if (isGitRepo) {
-      await assertSSHReachable(input);
-      const { head } = await cloneRepo({ sitePath, repository: input });
-      liveCommit = head;
-      repository = input;
-      branch = 'main';
-    } else {
-      await ensureRepo(sitePath, 'main');
-      const indexPath = path.join(sitePath, 'index.html');
-      await fs.writeFile(indexPath, `<!DOCTYPE html>
+      
+      log.info('[sites:create]', { uuid, name, isGitRepo });
+      
+      let liveCommit = null;
+      let repository = null;
+      let branch = null;
+      await fs.mkdir(sitePath, { recursive: true });
+      
+      if (isGitRepo) {
+        await assertSSHReachable(input);
+        const { head } = await cloneRepo({ sitePath, repository: input });
+        liveCommit = head;
+        repository = input;
+        branch = 'main';
+      } else {
+        await ensureRepo(sitePath, 'main');
+        const indexPath = path.join(sitePath, 'index.html');
+        await fs.writeFile(indexPath, `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -129,10 +143,10 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
 </body>
 </html>
 `);
-      liveCommit = await commitFileCreate({ siteId: uuid, fullPath: indexPath });
-    }
-
-    db.prepare(`
+          liveCommit = await commitFileCreate({ siteId: uuid, fullPath: indexPath });
+        }
+        
+        db.prepare(`
       INSERT INTO sites (
         uuid, name, icon, domain, directory,
         repository, branch, live_commit,
@@ -140,238 +154,240 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      uuid,
-      name,
-      null,
-      domain,
-      directory,
-      repository,
-      branch,
-      liveCommit,
-      now,
-      now
-    );
-
-    res.set('HX-Trigger', 'refreshSites').sendStatus(204);
-
-  } catch (err) {
-    log.error('[sites:create] failed', {
-      err: err.message,
-      stack: err.stack
+          uuid,
+          name,
+          null,
+          domain,
+          directory,
+          repository,
+          branch,
+          liveCommit,
+          now,
+          now
+        );
+        
+        res.set('HX-Trigger', 'refreshSites').sendStatus(204);
+        
+      } catch (err) {
+        log.error('[sites:create] failed', {
+          err: err.message,
+          stack: err.stack
+        });
+        
+        if (sitePath) {
+          await fs.rm(sitePath, { recursive: true, force: true }).catch(() => {});
+        }
+        await fs.rm(sitePath, { recursive: true });
+        res.status(500).send('Site creation failed');
+      }
     });
-
-    if (sitePath) {
-      await fs.rm(sitePath, { recursive: true, force: true }).catch(() => {});
-    }
-    await fs.rm(sitePath, { recursive: true });
-    res.status(500).send('Site creation failed');
-  }
-});
-
-  
-  /* -------------------------------------------------
-  List sites (HTML fragment)
-  -------------------------------------------------- */
-  
-  router.get('/', (req, res) => {
-    const sites = db.prepare(`
-    SELECT uuid, name, icon, domain, directory
-    FROM sites
-    ORDER BY last_viewed DESC
-  `).all();
-      
-      res.render('partials/sites', {
-        layout: false,
-        sites
-      });
-    });
+    
     
     /* -------------------------------------------------
-    Get site metadata (JSON)
+    List sites (HTML fragment)
     -------------------------------------------------- */
     
-    router.get('/:siteId', (req, res) => {
-      const site = db.prepare(`
+    router.get('/', (req, res) => {
+      const sites = db.prepare(`
+    SELECT uuid, name, icon, domain, directory
+    FROM sites
+    WHERE status IS NULL
+      OR status != 'archived'
+    ORDER BY last_viewed DESC
+  `).all();
+        
+        res.render('partials/sites', {
+          layout: false,
+          sites
+        });
+      });
+      
+      /* -------------------------------------------------
+      Get site metadata (JSON)
+      -------------------------------------------------- */
+      
+      router.get('/:siteId', (req, res) => {
+        const site = db.prepare(`
     SELECT *
     FROM sites
     WHERE uuid = ?
   `).get(req.params.siteId);
+          
+          if (!site) return res.sendStatus(404);
+          res.json(site);
+        });
         
-        if (!site) return res.sendStatus(404);
-        res.json(site);
-      });
-      
-      /* -------------------------------------------------
-      Update site identity
-      -------------------------------------------------- */
-      
-      router.post('/:siteId/update', express.urlencoded({ extended: false }), (req, res) => {
-        const { siteId } = req.params;
-        const { name, icon } = req.body;
+        /* -------------------------------------------------
+        Update site identity
+        -------------------------------------------------- */
         
-        db.prepare(`
+        router.post('/:siteId/update', express.urlencoded({ extended: false }), (req, res) => {
+          const { siteId } = req.params;
+          const { name, icon } = req.body;
+          
+          db.prepare(`
     UPDATE sites
     SET name = ?, icon = ?
     WHERE uuid = ?
   `).run(name, icon, siteId);
-          
-          res
-          .set('HX-Trigger', 'refreshSites')
-          .sendStatus(204);
-        });
-        
-        /* -------------------------------------------------
-        Delete site
-        -------------------------------------------------- */
-        
-        router.post('/:siteId/delete', async (req, res) => {
-          const site = db.prepare(`
-    SELECT directory
-    FROM sites
-    WHERE uuid = ?
-  `).get(req.params.siteId);
-            
-            if (!site) return res.sendStatus(404);
-            
-            await fs.rm(path.join(SITES_ROOT, site.directory), {
-              recursive: true,
-              force: true
-            });
-            
-            db.prepare(`DELETE FROM sites WHERE uuid = ?`)
-            .run(req.params.siteId);
             
             res
             .set('HX-Trigger', 'refreshSites')
             .sendStatus(204);
           });
           
-          router.post('/:siteId/pull', async (req, res) => {
-            const { siteId } = req.params;
-            
-            try {
-              const result = await pullFromRemote({ siteId });
-              
-              if (result.changed) {
-                res.set(
-                  'HX-Trigger',
-                  JSON.stringify({
-                    [`siteCommit`]: {
-                      commitHash: result.head,
-                      previousHead: result.previousHead,
-                      source: 'pull'
-                    }
-                  })
-                );
-              }
-              
-              res.sendStatus(204);
-            } catch (err) {
-              log.error('[site:pull]', { siteId, err: err.message });
-              res.status(409).send(err.message);
-            }
-          });
+          /* -------------------------------------------------
+          Delete site
+          -------------------------------------------------- */
           
-          
-          router.post('/:siteId/push', async (req, res) => {
-            const { siteId } = req.params;
-            
-            try {
-              const result = await syncToRemote({ siteId });
+          router.post('/:siteId/delete', async (req, res) => {
+            const site = db.prepare(`
+    SELECT directory
+    FROM sites
+    WHERE uuid = ?
+  `).get(req.params.siteId);
               
-              res.set(
-                'HX-Trigger',
-                JSON.stringify({
-                  [`site:${siteId}:sync`]: {
-                    pushed: true,
-                    head: result.head
-                  }
-                })
-              );
+              if (!site) return res.sendStatus(404);
               
-              res.sendStatus(204);
-            } catch (err) {
-              log.error('[site:push]', { siteId, err: err.message });
-              res.status(409).send(err.message);
-            }
-          });
-          
-          router.post('/:siteId/make-live', async (req, res) => {
-            const { siteId } = req.params;
-            
-            try {
-              const head = await getHeadCommit({ siteId });
+              await fs.rm(path.join(SITES_ROOT, site.directory), {
+                recursive: true,
+                force: true
+              });
               
-              if (!head) {
-                return res.status(400).send('Nothing to publish');
-              }
+              db.prepare(`DELETE FROM sites WHERE uuid = ?`)
+              .run(req.params.siteId);
               
-              db.prepare(`
-      UPDATE sites
-      SET live_commit = ?
-      WHERE uuid = ?
-    `).run(head, siteId);
-                
-                log.info('[site:make-live]', { siteId, head });
-                res.sendStatus(204);
-              } catch (err) {
-                log.error('[site:make-live]', { siteId, err: err.message });
-                res.status(500).send('Failed to make site live');
-              }
+              res
+              .set('HX-Trigger', 'refreshSites')
+              .sendStatus(204);
             });
             
-            router.post('/:siteId/restore', express.urlencoded({ extended: false }), async (req, res) => {
+            router.post('/:siteId/pull', async (req, res) => {
               const { siteId } = req.params;
-              const { commit } = req.body;
-              
-              if (!commit) return res.sendStatus(400);
               
               try {
-                await restoreCommitAsNew({
-                  siteId,
-                  commit
-                });
+                const result = await pullFromRemote({ siteId });
                 
-                log.info('[site:restore]', { siteId, commit });
+                if (result.changed) {
+                  res.set(
+                    'HX-Trigger',
+                    JSON.stringify({
+                      [`siteCommit`]: {
+                        commitHash: result.head,
+                        previousHead: result.previousHead,
+                        source: 'pull'
+                      }
+                    })
+                  );
+                }
+                
                 res.sendStatus(204);
               } catch (err) {
-                log.error('[site:restore]', { siteId, commit, err: err.message });
+                log.error('[site:pull]', { siteId, err: err.message });
                 res.status(409).send(err.message);
               }
             });
             
-            router.get('/:siteId/secrets', async (req, res) => {
+            
+            router.post('/:siteId/push', async (req, res) => {
+              const { siteId } = req.params;
+              
               try {
-                const envPath = getEnvPath(req.params.siteId);
-                const text = await fs.readFile(envPath, 'utf8');
+                const result = await syncToRemote({ siteId });
                 
-                const rows = text
-                .split('\n')
-                .map(line => {
-                  if (!line || line.startsWith('#')) return null;
-                  const idx = line.indexOf('=');
-                  if (idx === -1) return null;
-                  return {
-                    key: line.slice(0, idx),
-                    value: line.slice(idx + 1)
-                  };
-                })
-                .filter(Boolean);
+                res.set(
+                  'HX-Trigger',
+                  JSON.stringify({
+                    [`site:${siteId}:sync`]: {
+                      pushed: true,
+                      head: result.head
+                    }
+                  })
+                );
                 
-                res.json(rows);
+                res.sendStatus(204);
               } catch (err) {
-                if (err.code === 'ENOENT') {
-                  // No .env yet is fine
-                  return res.json([]);
-                }
-                
-                log.error('[secrets:read]', { err: err.message });
-                res.status(err.status || 500).send('Failed to read secrets');
+                log.error('[site:push]', { siteId, err: err.message });
+                res.status(409).send(err.message);
               }
             });
             
-            router.get('/:siteId/settings', (req, res) => {
-              const row = db.prepare(`
+            router.post('/:siteId/make-live', async (req, res) => {
+              const { siteId } = req.params;
+              
+              try {
+                const head = await getHeadCommit({ siteId });
+                
+                if (!head) {
+                  return res.status(400).send('Nothing to publish');
+                }
+                
+                db.prepare(`
+      UPDATE sites
+      SET live_commit = ?
+      WHERE uuid = ?
+    `).run(head, siteId);
+                  
+                  log.info('[site:make-live]', { siteId, head });
+                  res.sendStatus(204);
+                } catch (err) {
+                  log.error('[site:make-live]', { siteId, err: err.message });
+                  res.status(500).send('Failed to make site live');
+                }
+              });
+              
+              router.post('/:siteId/restore', express.urlencoded({ extended: false }), async (req, res) => {
+                const { siteId } = req.params;
+                const { commit } = req.body;
+                
+                if (!commit) return res.sendStatus(400);
+                
+                try {
+                  await restoreCommitAsNew({
+                    siteId,
+                    commit
+                  });
+                  
+                  log.info('[site:restore]', { siteId, commit });
+                  res.sendStatus(204);
+                } catch (err) {
+                  log.error('[site:restore]', { siteId, commit, err: err.message });
+                  res.status(409).send(err.message);
+                }
+              });
+              
+              router.get('/:siteId/secrets', async (req, res) => {
+                try {
+                  const envPath = getEnvPath(req.params.siteId);
+                  const text = await fs.readFile(envPath, 'utf8');
+                  
+                  const rows = text
+                  .split('\n')
+                  .map(line => {
+                    if (!line || line.startsWith('#')) return null;
+                    const idx = line.indexOf('=');
+                    if (idx === -1) return null;
+                    return {
+                      key: line.slice(0, idx),
+                      value: line.slice(idx + 1)
+                    };
+                  })
+                  .filter(Boolean);
+                  
+                  res.json(rows);
+                } catch (err) {
+                  if (err.code === 'ENOENT') {
+                    // No .env yet is fine
+                    return res.json([]);
+                  }
+                  
+                  log.error('[secrets:read]', { err: err.message });
+                  res.status(err.status || 500).send('Failed to read secrets');
+                }
+              });
+              
+              router.get('/:siteId/settings', (req, res) => {
+                const row = db.prepare(`
     SELECT
       name,
       domain,
@@ -383,36 +399,36 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
     FROM sites
     WHERE uuid = ?
   `).get(req.params.siteId);
-                
-                if (!row) return res.sendStatus(404);
-                
-                res.json({
-                  name: row.name,
-                  customDomain: row.domain,
-                  iconUrl: row.icon,
-                  repository: row.repository,
-                  branch: row.branch,
-                  authUser: row.username,
-                  authPass: row.password
-                });
-              });
-              
-              
-              router.post(
-                '/:siteId/settings',
-                express.json(),
-                async (req, res) => {
-                  const {
-                    name,
-                    customDomain,
-                    iconUrl,
-                    repository,
-                    branch,
-                    authUser,
-                    authPass
-                  } = req.body;
                   
-                  const result = db.prepare(`
+                  if (!row) return res.sendStatus(404);
+                  
+                  res.json({
+                    name: row.name,
+                    customDomain: row.domain,
+                    iconUrl: row.icon,
+                    repository: row.repository,
+                    branch: row.branch,
+                    authUser: row.username,
+                    authPass: row.password
+                  });
+                });
+                
+                
+                router.post(
+                  '/:siteId/settings',
+                  express.json(),
+                  async (req, res) => {
+                    const {
+                      name,
+                      customDomain,
+                      iconUrl,
+                      repository,
+                      branch,
+                      authUser,
+                      authPass
+                    } = req.body;
+                    
+                    const result = db.prepare(`
       UPDATE sites
       SET
         name = ?,
@@ -424,70 +440,113 @@ router.post('/', express.urlencoded({ extended: false }), async (req, res) => {
         password   = ?
       WHERE uuid = ?
     `).run(
-                    name || null,
-                    customDomain || null,
-                    iconUrl || null,
-                    repository || null,
-                    branch || null,
-                    authUser || null,
-                    authPass || null,
-                    req.params.siteId
-                  );
-                  
-                  if (result.changes === 0) {
-                    return res.sendStatus(404);
-                  }
-                  res.set('HX-Trigger', 'refreshSites');
-                  
-                  res.sendStatus(204);
-                }
-              );
-              
-              
-              
-              router.post(
-                '/:siteId/secrets',
-                express.json(),
-                async (req, res) => {
-                  try {
-                    const rows = Array.isArray(req.body) ? req.body : [];
+                      name || null,
+                      customDomain || null,
+                      iconUrl || null,
+                      repository || null,
+                      branch || null,
+                      authUser || null,
+                      authPass || null,
+                      req.params.siteId
+                    );
                     
-                    const clean = rows
-                    .filter(r => r && typeof r.key === 'string')
-                    .map(r => ({
-                      key: r.key.trim(),
-                      value: r.value ?? ''
-                    }))
-                    .filter(r => r.key !== '');
-                    
-                    const envPath = getEnvPath(req.params.siteId);
-                    const content = serializeEnv(clean);
-                    
-                    // Write atomically
-                    const dir = path.dirname(envPath);
-                    const tmpPath = path.join(dir, `.env.${process.pid}.tmp`);
-                    
-                    await fs.writeFile(tmpPath, content, { mode: 0o600 });
-                    await fs.rename(tmpPath, envPath);
-                    
-                    log.info('[secrets:write]', {
-                      siteId: req.params.siteId,
-                      count: clean.length
-                    });
+                    if (result.changes === 0) {
+                      return res.sendStatus(404);
+                    }
+                    res.set('HX-Trigger', 'refreshSites');
                     
                     res.sendStatus(204);
-                  } catch (err) {
-                    log.error('[secrets:write] failed', {
-                      siteId: req.params.siteId,
-                      err: err.message
-                    });
-                    
-                    res.status(err.status || 500).send('Failed to save secrets');
                   }
-                }
-              );
+                );
+                
+                
+                
+                router.post(
+                  '/:siteId/secrets',
+                  express.json(),
+                  async (req, res) => {
+                    try {
+                      const rows = Array.isArray(req.body) ? req.body : [];
+                      
+                      const clean = rows
+                      .filter(r => r && typeof r.key === 'string')
+                      .map(r => ({
+                        key: r.key.trim(),
+                        value: r.value ?? ''
+                      }))
+                      .filter(r => r.key !== '');
+                      
+                      const envPath = getEnvPath(req.params.siteId);
+                      const content = serializeEnv(clean);
+                      
+                      // Write atomically
+                      const dir = path.dirname(envPath);
+                      const tmpPath = path.join(dir, `.env.${process.pid}.tmp`);
+                      
+                      await fs.writeFile(tmpPath, content, { mode: 0o600 });
+                      await fs.rename(tmpPath, envPath);
+                      
+                      log.info('[secrets:write]', {
+                        siteId: req.params.siteId,
+                        count: clean.length
+                      });
+                      
+                      res.sendStatus(204);
+                    } catch (err) {
+                      log.error('[secrets:write] failed', {
+                        siteId: req.params.siteId,
+                        err: err.message
+                      });
+                      
+                      res.status(err.status || 500).send('Failed to save secrets');
+                    }
+                  }
+                );
+                router.post('/:siteId/archive', async (req, res) => {
+                  const { siteId } = req.params;
+                  
+                  const result = db.prepare(`
+    UPDATE sites
+    SET
+      status = 'archived',
+      domain = NULL
+    WHERE uuid = ?
+  `).run(siteId);
+                    
+                    if (result.changes === 0) {
+                      return res.sendStatus(404);
+                    }
+                    
+                    log.info('[site:archive]', { siteId });
+                    
+                    res
+                    .set('HX-Trigger', 'refreshSites')
+                    .sendStatus(204);
+                  });
               
-              
-              export default router;
-              
-              
+
+
+router.post('/:siteId/restore-archive', async (req, res) => {
+  const { siteId } = req.params;
+
+  const result = db.prepare(`
+    UPDATE sites
+    SET
+      status = NULL
+    WHERE uuid = ?
+      AND status = 'archived'
+  `).run(siteId);
+
+  if (result.changes === 0) {
+    return res.sendStatus(404);
+  }
+
+  log.info('[site:restore-archive]', { siteId });
+
+  res
+    .set('HX-Trigger', 'refreshSites')
+    .sendStatus(204);
+});
+
+
+export default router;

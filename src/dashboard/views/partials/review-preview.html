@@ -27,14 +27,28 @@
     {{#if (eq selectedCommit liveCommit.hash)}}
       <button style="box-shadow: inset #444 0 0 0 1px" disabled class="text-lg font-bold px-4 py-2 block rounded-full">Live Now</button>
     {{else}}
-      <button 
+      <button
        hx-on::before-request="
           this.setAttribute('aria-busy','true');
         "
         hx-on::after-request="
           this.setAttribute('aria-busy','false');
           alert('Your site is live!');
-          closeReviewChanges();
+
+          const siteId = '{{siteId}}';
+          const siteWindow = document.getElementById(siteId);
+
+          if (siteWindow) {
+            window.DraggableWindows?.closeWindow(siteWindow);
+            setTimeout(() => {
+              window.openSiteWindow({ uuid: siteId });
+              setTimeout(() => {
+                closeReviewChanges();
+              }, 100);
+            }, 100);
+          } else {
+            closeReviewChanges();
+          }
         "
          hx-confirm="Are you sure? (This is your moment!)" hx-post="/admin/time/{{siteId}}/go-live/{{selectedCommit}}" class="text-lg font-bold cursor-pointer px-4 py-2 block text-black bg-strong-rainbow rounded-full">Go Live!</button>
     {{/if}}

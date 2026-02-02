@@ -1,6 +1,10 @@
 <div
+  id="site-{{siteId}}-toolbar"
   class="site-toolbar shrink-0 flex items-center px-2 pt-2 pb-3
          border-t border-gray-400 dark:border-gray-700 text-sm"
+  hx-get="/admin/site-window/{{siteId}}/toolbar"
+  hx-trigger="refresh-toolbar from:body"
+  hx-swap="outerHTML"
 >
   <div class="relative flex flex-1 items-center justify-between gap-4">
 
