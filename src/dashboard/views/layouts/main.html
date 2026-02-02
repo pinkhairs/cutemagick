@@ -432,6 +432,49 @@ updateThemeLabel();
 
 </script>
 {{> review-changes}}
+<script>
+  const root = document.getElementById('reviewChangesRoot');
+  const panel = document.getElementById('reviewPanel');
+  const backdrop = document.getElementById('reviewBackdrop');
 
+  let lastFocusedEl = null;
+
+  function openReviewChanges() {
+    lastFocusedEl = document.activeElement;
+
+    root.classList.remove('pointer-events-none');
+    root.setAttribute('aria-hidden', 'false');
+
+    backdrop.classList.remove('opacity-0');
+    backdrop.classList.add('opacity-70');
+    panel.classList.remove('translate-x-full');
+
+    // Focus panel after animation starts
+    requestAnimationFrame(() => {
+      panel.focus();
+    });
+  }
+
+  function closeReviewChanges() {
+    backdrop.classList.add('opacity-0');
+    backdrop.classList.remove('opacity-70');
+    panel.classList.add('translate-x-full');
+
+    root.setAttribute('aria-hidden', 'true');
+
+    // Delay pointer-events reset until animation ends
+    setTimeout(() => {
+      root.classList.add('pointer-events-none');
+      if (lastFocusedEl) lastFocusedEl.focus();
+    }, 300);
+  }
+
+  // Escape to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && root.getAttribute('aria-hidden') === 'false') {
+      closeReviewChanges();
+    }
+  });
+</script>
 </body>
 </html>
