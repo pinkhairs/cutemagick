@@ -16,23 +16,6 @@
           input.value = value;
         }
       }
-
-      // 🔒 Lock branch if already set (one-time on load)
-      const branchInput = form.querySelector('[name="branch"]');
-      if (branchInput && data.branch) {
-  branchInput.disabled = true;
-branchInput.setAttribute('aria-disabled', 'true');
-  const wrapper = branchInput.parentElement;
-  wrapper.setAttribute(
-    'data-tippy-content',
-    'Start a new site to try a new branch'
-  );
-
-  branchInput.classList.add('opacity-60', 'cursor-not-allowed');
-
-  // Ensure tooltip fires on wrapper hover
-  wrapper.classList.add('cursor-help');
-}
     });
 
 saveBtn.addEventListener('click', async (e) => {
