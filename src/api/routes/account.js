@@ -10,7 +10,7 @@ router.post('/login', (req, res) => {
   const email = req.body.email?.trim().toLowerCase();
 
   if (!email || !password) {
-    return res.redirect('/login');
+    return res.redirect('/admin/login');
   }
 
   const hash = crypto
@@ -23,7 +23,7 @@ router.post('/login', (req, res) => {
     hash === process.env.PASSWORD;
 
   if (!validUser) {
-    return res.redirect('/login');
+    return res.redirect('/admin/login');
   }
 
   const token = jwt.sign(
@@ -39,12 +39,12 @@ router.post('/login', (req, res) => {
     path: '/',
   });
 
-  res.redirect('/');
+  res.redirect('/admin');
 });
 
 router.post('/logout', auth, (req, res) => {
   res.clearCookie('token', { path: '/' });
-  res.redirect('/login');
+  res.redirect('/admin/login');
 });
 
 export default router;

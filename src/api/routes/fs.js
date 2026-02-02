@@ -315,8 +315,7 @@ router.post(
         commit || null,
         existed ? 'file:edit' : 'file:create'
       );
-
-      res.sendStatus(204);
+      res.setHeader('X-CSRF-Token', req.csrfToken()).sendStatus(204);
     } catch (err) {
       log.error('[fs:save]', err.message);
       res.status(400).send(err.message);

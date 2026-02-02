@@ -1,14 +1,32 @@
-FROM node:22-alpine
+FROM node:20-bookworm
+
+RUN apt-get update && apt-get install -y \
+  ca-certificates \
+  php-cgi \
+  php-cli \
+  python3 \
+  lua5.4 \
+  bash \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY package.json ./
-COPY index.js ./
+COPY package*.json ./
+RUN npm install
 
-# Create data dirs inside image
+COPY . .
+
 RUN mkdir -p \
-    /app/dashboard/assets/css \
-    /app/renders
-USER node
+  public/admin/assets \
+  public/admin/css
 
-CMD ["node", "index.js"]
+# Build static assets into image
+RUN npm run assets:sync \
+ && npm run css:build
+
+RUN npm prune --production
+
+USER node
+EXPOSE 3000
+
+CMD ["node", "src/index.js"]

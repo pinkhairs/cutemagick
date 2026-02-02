@@ -1,16 +1,24 @@
-{{#unless latest}}
-<button
-  onclick="openReviewChanges()"
-  type="button"
-  class="cursor-pointer btn-secondary relative flex items-center gap-2"
+<div
+  id="site-actions-{{siteId}}"
+  hx-trigger="siteCommit from:body, fileCommit from:body"
+  hx-get="/admin/site-window/{{siteId}}/actions"
+  hx-swap="innerHTML"
 >
-  👀 Review Changes
+  {{#if (eq latest false)}}
+    <button
+      hx-get="/admin/time/{{siteId}}/review"
+      hx-swap="innerHTML"
+      hx-target="#review-panel-container"
+      type="button"
+      class="cursor-pointer btn-secondary flex items-center gap-2"
+    >
+      👀 Review Changes
+    </button>
 
-  <span
-    hx-get="/time/{{siteId}}/draft-count"
-    hx-trigger="revealed, siteCommit from:body"
-    hx-swap="outerHTML"
-    hx-boost="false"
-  ></span>
-</button>
-{{/unless}}
+    <span
+      hx-get="/admin/time/{{siteId}}/draft-count"
+      hx-trigger="revealed, siteCommit, fileCommit"
+      hx-swap="outerHTML"
+    ></span>
+  {{/if}}
+</div>

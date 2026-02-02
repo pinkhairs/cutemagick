@@ -3,6 +3,7 @@
   class="editor mt-4 lg:mt-0 lg:h-130 w-full lg:w-2xl relative window-wrapper window"
   data-window-kind="file"
   data-site-uuid="{{siteId}}"
+  data-site-id="{{siteId}}"
   data-file-path="{{path}}"
   data-file-hash="{{fileHash}}"
 >
@@ -45,7 +46,7 @@
 
         <div class="flex items-center gap-4 ml-auto">
 <div
-  hx-get="/site-window/{{siteId}}/preview-file-button?path={{path}}"
+  hx-get="/admin/site-window/{{siteId}}/preview-file-button?path={{path}}"
   hx-trigger="revealed, fileCommit from:body"
   hx-swap="outerHTML">
 </div>
@@ -67,7 +68,7 @@
           data-site-uuid="{{siteId}}"
           data-file-path="{{path}}"
           data-language="{{language}}"
-          hx-get="/fs/{{siteId}}/file?path={{path}}"
+          hx-get="/admin/fs/{{siteId}}/file?path={{path}}"
           hx-trigger="load"
           hx-swap="none"
         ></div>

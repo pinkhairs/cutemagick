@@ -1,0 +1,43 @@
+<div class="flex-1 flex items-center justify-between">
+  <div class="flex gap-2 items-start justify-between">
+    <button class="lg:hidden">&larr;</button>
+    <div>
+      <div class="truncate text-lg font-bold">
+        {{commit.subject}}
+      </div>
+
+      <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+        <time datetime="2026-01-30 19:19:26 -0800">
+          {{commit.date}}
+        </admin/time>
+      </div>
+    </div>
+  </div>
+  <div class="flex items-center justify-end gap-2">
+    <a
+      href="/admin/preview/{{siteDir}}/{{selectedCommit}}"
+      target="_blank"
+      class="p-1 size-8 text-xl
+            border border-gray-500 dark:border-gray-700
+            rounded-full
+            flex items-center justify-center"
+      aria-label="Close review panel">
+      &nearr;
+    </a>
+    {{#if (eq selectedCommit liveCommit.hash)}}
+      <button style="box-shadow: inset #444 0 0 0 1px" disabled class="text-lg font-bold px-4 py-2 block rounded-full">Live Now</button>
+    {{else}}
+      <button 
+       hx-on::before-request="
+          this.setAttribute('aria-busy','true');
+        "
+        hx-on::after-request="
+          this.setAttribute('aria-busy','false');
+          alert('Your site is live!');
+          closeReviewChanges();
+        "
+         hx-confirm="Are you sure? (This is your moment!)" hx-post="/admin/time/{{siteId}}/go-live/{{selectedCommit}}" class="text-lg font-bold cursor-pointer px-4 py-2 block text-black bg-strong-rainbow rounded-full">Go Live!</button>
+    {{/if}}
+  </div>
+</div>
+<iframe class="overflow-hidden rounded-2xl" src="/admin/preview/{{siteDir}}/{{selectedCommit}}"></iframe>

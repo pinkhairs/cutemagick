@@ -34,26 +34,16 @@ export const RUNTIMES = {
     cmd: '/usr/bin/python3',
     args: [],
   },
-  ruby: {
-    env: 'RUNTIME_RUBY',
-    cmd: '/usr/bin/ruby',
-    args: [],
-  },
   bash: {
     env: 'RUNTIME_BASH',
-    cmd: '/bin/sh',
+    cmd: '/bin/bash',
     args: [],
   },
-  go: {
-    env: 'RUNTIME_GO',
-    cmd: null,
+  lua: {
+    env: 'RUNTIME_LUA',
+    cmd: '/usr/bin/lua',
     args: [],
-  },
-  rust: {
-    env: 'RUNTIME_RUST',
-    cmd: null,
-    args: [],
-  },
+  }
 };
 
 /* ----------------------------
@@ -62,26 +52,6 @@ export const RUNTIMES = {
 
 function isRuntimeEnabled(envKey) {
   return process.env[envKey] === '1';
-}
-
-function isNodeExecutable(scriptPath) {
-  try {
-    const fd = fs.openSync(scriptPath, 'r');
-    const buffer = Buffer.alloc(64);
-    const bytesRead = fs.readSync(fd, buffer, 0, buffer.length, 0);
-    fs.closeSync(fd);
-
-    if (bytesRead === 0) return false;
-
-    const firstLine = buffer
-      .toString('utf8', 0, bytesRead)
-      .split('\n')[0]
-      .trim();
-
-    return firstLine.startsWith('#!');
-  } catch {
-    return false;
-  }
 }
 
 function assertExecutablePathAllowed(target) {
@@ -99,7 +69,7 @@ function assertExecutablePathAllowed(target) {
   throw new Error(`Path escapes execution roots: ${target}`);
 }
 
-export function executeRuntime({
+export async function executeRuntime({
   lang,
   scriptPath,
   cwd,
@@ -120,9 +90,15 @@ export function executeRuntime({
     throw new Error('cwd is required');
   }
 
+  // Normalize and validate cwd
   const resolvedCwd = path.resolve(cwd);
   assertExecutablePathAllowed(resolvedCwd);
 
+  if (!fs.existsSync(resolvedCwd)) {
+    throw new Error(`Invalid cwd: ${resolvedCwd}`);
+  }
+
+  // Normalize scriptPath (you already handle object forms correctly)
   if (typeof scriptPath !== 'string') {
     if (scriptPath && typeof scriptPath === 'object') {
       const maybe =
@@ -143,13 +119,9 @@ export function executeRuntime({
     }
   }
 
-  if (!fs.existsSync(resolvedCwd)) {
-    throw new Error(`Invalid cwd: ${resolvedCwd}`);
-  }
-
   const resolvedScript = path.resolve(resolvedCwd, scriptPath);
   assertExecutablePathAllowed(resolvedScript);
-  
+
   if (!fs.existsSync(resolvedScript)) {
     throw new Error(`Script not found: ${resolvedScript}`);
   }
@@ -157,12 +129,14 @@ export function executeRuntime({
   const command = rt.cmd ?? resolvedScript;
   const args = rt.cmd ? [...rt.args, resolvedScript] : [];
 
+  // Minimal safe env
   let childEnv = {
     PATH: process.env.PATH,
     HOME: resolvedCwd,
     ...env,
   };
 
+  // --- PHP CGI (UNCHANGED) ---
   if (lang === 'php') {
     childEnv = {
       ...childEnv,

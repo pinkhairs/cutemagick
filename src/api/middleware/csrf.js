@@ -1,38 +1,50 @@
 import crypto from 'crypto';
 
-/*
-  Very small session-like store:
-  key = csrf session id (cookie)
-  value = csrf token
-*/
 const csrfStore = new Map();
 
 const CSRF_COOKIE = 'cm_csrf_id';
 const CSRF_HEADER = 'x-csrf-token';
+const CSRF_WRAPPED = Symbol('csrfWrapped');
 
 export default function csrf(req, res, next) {
-  // Safe methods do not require CSRF
-  if (isSafeMethod(req.method)) {
-    ensureToken(req, res);
-    return next();
+  ensureToken(req, res);
+
+  req.csrfToken = function () {
+    const csrfId = req.cookies?.[CSRF_COOKIE];
+    return csrfId && csrfStore.get(csrfId);
+  };
+
+  // 🔑 Intercept header write, not end()
+  if (!res[CSRF_WRAPPED]) {
+    res[CSRF_WRAPPED] = true;
+
+    const originalWriteHead = res.writeHead;
+    res.writeHead = function (...args) {
+      const token = req.csrfToken?.();
+      if (token && !res.headersSent) {
+        res.setHeader('X-CSRF-Token', token);
+      }
+      return originalWriteHead.apply(this, args);
+    };
   }
 
-  const csrfId = req.cookies?.[CSRF_COOKIE];
-  const expected = csrfId && csrfStore.get(csrfId);
+  if (!isSafeMethod(req.method)) {
+    const csrfId = req.cookies?.[CSRF_COOKIE];
+    const expected = csrfId && csrfStore.get(csrfId);
+    const provided =
+      req.headers[CSRF_HEADER] ||
+      req.body?._csrf;
 
-  const provided =
-    req.headers[CSRF_HEADER] ||
-    req.body?._csrf;
+    if (!expected || !provided || provided !== expected) {
+      return res.sendStatus(403);
+    }
 
-  if (!expected || !provided || provided !== expected) {
-    return res.sendStatus(403);
+    rotateToken(csrfId);
   }
 
-  // Optional: rotate token after successful write
-  rotateToken(csrfId);
-
-  return next();
+  next();
 }
+
 
 /* ----------------------------
    Helpers
@@ -56,9 +68,8 @@ function ensureToken(req, res) {
 }
 
 function rotateToken(csrfId) {
-  if (csrfId && csrfStore.has(csrfId)) {
-    csrfStore.set(csrfId, randomToken());
-  }
+  const next = randomToken();
+  csrfStore.set(csrfId, next);
 }
 
 function randomToken() {
@@ -66,9 +77,7 @@ function randomToken() {
 }
 
 function isSafeMethod(method) {
-  return (
-    method === 'GET' ||
-    method === 'HEAD' ||
-    method === 'OPTIONS'
-  );
+  return method === 'GET' ||
+         method === 'HEAD' ||
+         method === 'OPTIONS';
 }

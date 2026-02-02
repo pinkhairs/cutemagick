@@ -1,7 +1,7 @@
 <div
   class="p-2 text-sm border-b border-gray-400 dark:border-gray-700 git-status flex items-center justify-center"
   data-site-id="{{siteId}}"
-  hx-get="/time/{{siteId}}/status"
+  hx-get="/admin/time/{{siteId}}/status"
   hx-trigger="
     siteCommit from:body,
     site:{{siteId}}:sync from:body
@@ -12,7 +12,7 @@
     {{#if localAhead}}
       <button
         class="flex items-center gap-1"
-        hx-post="/sites/{{siteId}}/push"
+        hx-post="/admin/sites/{{siteId}}/push"
         hx-swap="none"
         hx-indicator="this"
         aria-busy="false"
@@ -37,7 +37,7 @@
     {{#if remoteAhead}}
       <button
         class="flex items-center gap-1"
-        hx-post="/sites/{{siteId}}/pull"
+        hx-post="/admin/sites/{{siteId}}/pull"
         hx-swap="none"
         hx-indicator="this"
         aria-busy="false"

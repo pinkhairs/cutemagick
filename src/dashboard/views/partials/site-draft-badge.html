@@ -7,7 +7,7 @@
          text-center font-semibold select-none cursor-pointer"
   data-action="open-time-machine"
   data-tippy-content="{{count}} draft change{{#unless (eq count 1)}}s{{/unless}}"
-  hx-get="/time/{{siteId}}/draft-count"
+  hx-get="/admin/time/{{siteId}}/draft-count"
   hx-trigger="siteCommit from:body"
   hx-swap="outerHTML"
 >
@@ -15,7 +15,7 @@
 </span>
 {{else}}
 <span
-  hx-get="/time/{{siteId}}/draft-count"
+  hx-get="/admin/time/{{siteId}}/draft-count"
   hx-trigger="siteCommit from:body"
   hx-swap="outerHTML"
 ></span>

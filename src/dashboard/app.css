@@ -297,4 +297,9 @@ li:has(.is-live) ~ li .timeline-dot {
 
 .lower-opacity-bg {
   @apply opacity-30 dark:opacity-30;
-} 
+}
+
+.active-commit-review {
+  box-shadow: inset #51A2FF 0 0 0 4px;
+  @apply bg-gray-50 dark:bg-gray-800;
+}
