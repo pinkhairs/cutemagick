@@ -13,3 +13,5 @@ export { startMaintenanceScheduler } from './maintenance.js';
 export { validateEnv } from './validateEnv.js';
 
 export { executeRuntime } from './process/executeRuntime.js';
+
+export { ensureFirstSite } from './init/firstSite.js';

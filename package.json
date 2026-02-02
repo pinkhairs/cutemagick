@@ -8,7 +8,8 @@
     "dev": "npm run assets:sync && npm run css:dev & nodemon src/index.js",
     "css:dev": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o public/admin/css/style.css --watch",
     "css:build": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o public/admin/css/style.css",
-    "assets:sync": "mkdir -p public/admin/assets && cp -r src/dashboard/assets/* public/admin/assets/"
+    "assets:sync": "mkdir -p public/admin/assets && cp -r src/dashboard/assets/* public/admin/assets/",
+    "start": "npm run assets:sync && npm run css:dev & node src/index.js"
   },
   "author": "",
   "license": "ISC",
