@@ -93,7 +93,11 @@ if (process.env.WILDCARD_DOMAIN) {
 
   log.info('[sites:create]', { uuid, name, isGitRepo });
 
+  
   try {
+    if (isGitRepo) {
+      await assertSSHReachable(input);
+    }
     db.prepare(`
       INSERT INTO sites (
         uuid, name, icon, domain, directory,
@@ -115,7 +119,6 @@ if (process.env.WILDCARD_DOMAIN) {
     );
 
     if (isGitRepo) {
-      await assertSSHReachable(input);
       const { head } = await cloneRepo({ sitePath, repository: input });
       db.prepare(`
         UPDATE sites
