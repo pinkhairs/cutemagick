@@ -11,6 +11,7 @@ import cookieParser from 'cookie-parser';
 import Handlebars from 'handlebars';
 
 import auth from './api/middleware/auth.js';
+import domainResolver from './api/middleware/domainResolver.js';
 
 import accountRoutes from './api/routes/account.js';
 import configRoutes from './api/routes/config.js';
@@ -59,6 +60,10 @@ await ensureFirstSite();
 ----------------------------- */
 
 const app = express();
+
+// Trust proxy for correct Host headers behind reverse proxies
+app.set('trust proxy', true);
+
 /* ----------------------------
    Middleware
 ----------------------------- */
@@ -174,6 +179,13 @@ app.use('/admin/assets/js',  express.static(`${PUBLIC_ROOT}/admin/assets/js`));
 app.use('/admin/assets/css', express.static(`${PUBLIC_ROOT}/admin/assets/css`));
 app.use('/admin/assets/img', express.static(`${PUBLIC_ROOT}/admin/assets/img`));
 
+
+/* ----------------------------
+   Domain resolver
+----------------------------- */
+
+// Serves sites based on Host header (skips /admin and /site routes)
+app.use(domainResolver);
 
 /* ----------------------------
    Public routes
