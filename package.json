@@ -1,22 +1,36 @@
 {
   "name": "cutemagick",
-  "version": "0.0.0",
-  "description": "A personal web runtime with Git-powered time travel",
+  "version": "1.0.0",
+  "description": "",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "assets:sync": "mkdir -p public/admin/assets && cp -r src/dashboard/assets/* public/admin/assets/",
     "css:build": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o public/admin/css/style.css",
     "start": "npm run assets:sync && npm run css:build && node src/index.js",
-    "watch": "LOG_LEVEL=debug node --watch src/index.js"
+    "watch": "LOG_LEVEL=debug node --watch src/index.js",
+    "docs:dev": "vitepress dev ../documentation",
+    "docs:build": "vitepress build ../documentation",
+    "docs:preview": "vitepress preview ../documentation"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pinkhairs/cutemagick"
+  "author": "Diana Lopez",
+  "license": "ISC",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.6.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-handlebars": "^8.0.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
+    "simple-git": "^3.30.0",
+    "tailwindcss": "^4.1.18",
+    "unique-names-generator": "^4.7.1"
   },
-  "author": "Diana Lopez <me@diana.nu>",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18"
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.18",
+    "nodemon": "^3.1.11"
   }
 }
