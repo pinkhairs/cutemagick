@@ -1,7 +1,7 @@
 {
   "name": "cutemagick",
   "version": "1.0.0",
-  "description": "",
+  "description": "A personal web runtime with Git-powered time travel",
   "main": "index.js",
   "type": "module",
   "scripts": {
