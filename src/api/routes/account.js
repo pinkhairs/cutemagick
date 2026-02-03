@@ -1,11 +1,11 @@
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 import express from 'express';
 import auth from '../middleware/auth.js'
 
 const router = express.Router();
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { password } = req.body;
   const email = req.body.email?.trim().toLowerCase();
 
@@ -13,16 +13,10 @@ router.post('/login', (req, res) => {
     return res.redirect('/admin/login');
   }
 
-  const hash = crypto
-    .createHash('sha256')
-    .update(password)
-    .digest('hex');
+  const emailValid = email === process.env.LOGIN_EMAIL;
+  const passwordValid = emailValid && await bcrypt.compare(password, process.env.PASSWORD);
 
-  const validUser =
-    email === process.env.LOGIN_EMAIL &&
-    hash === process.env.PASSWORD;
-
-  if (!validUser) {
+  if (!emailValid || !passwordValid) {
     return res.redirect('/admin/login');
   }
 
