@@ -23,10 +23,10 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "simple-git": "^3.30.0",
-    "tailwindcss": "^4.1.18",
     "unique-names-generator": "^4.7.1"
   },
   "devDependencies": {
+    "tailwindcss": "^4.1.18",
     "@tailwindcss/cli": "^4.1.18",
     "nodemon": "^3.1.11"
   }
