@@ -1,0 +1,165 @@
+<div class="p-4">
+  <div class="history-notices mb-4">
+    <h2 class="font-bold text-xl pb-2">Time Machine</h2>
+
+    <p class="mt-1 pb-4">
+      This is your history. Every change is recorded here.
+    </p>
+
+    <div class="flex gap-2 rounded-md border border-gray-400 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed rounded-bl-none rounded-br-none border-b-0">
+      <div class="text-lg">🔒</div>
+      <p>
+        You can't edit your past, but you can travel in time.
+        <span
+          class="inline-flex items-center justify-center ml-1 size-4.5 rounded-full border-[1.5px] border-gray-400 text-sm cursor-help"
+          data-tippy-content="You can jump back and forth to any point in history without fear. Every change is preserved."
+        >?</span>
+      </p>
+    </div>
+
+    <div class="flex gap-3 rounded-tr-none rounded-tl-none rounded-md border border-gray-400 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
+      <div class="text-lg">🌍</div>
+      <p>Your changes are private until you go live.</p>
+    </div>
+  </div>
+<ul class="space-y-1 max-w-3xl">
+
+  {{#if commits.length}}
+
+    {{#each commits}}
+    <li class="relative flex items-center gap-4 px-2 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700">
+
+      <!-- timeline -->
+      <div class="relative flex flex-col items-center w-6 shrink-0">
+        {{#if isLive}}
+          <span data-tippy-content="Live version" class="is-live relative flex h-3 w-3">
+            <span class="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
+            <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
+          </span>
+        {{else}}
+          <span class="timeline-dot size-3 rounded-full border-gray-600 dark:border-gray-300 border-dashed border-[1.5px]"></span>
+        {{/if}}
+
+        {{#unless @last}}
+          <span class="absolute top-3 bottom-0 w-px border-l border-dashed border-gray-400 dark:border-gray-600"></span>
+        {{/unless}}
+      </div>
+
+      <!-- content -->
+      <div class="flex items-center gap-4 flex-1 min-w-0">
+        <div class="flex-1 min-w-0">
+          <div class="truncate {{#if isLive}}font-medium{{/if}}">
+            {{subject}}
+          </div>
+
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            <time datetime="{{date}}">
+              {{date}}
+            </time>
+          </div>
+        </div>
+
+        <!-- actions -->
+        <div class="flex gap-2 shrink-0">
+          {{#unless isLive}}
+            <a
+  aria-label="Preview this version"
+  href="/admin/preview/{{../siteDir}}/{{hash}}"
+  target="_blank"
+  data-history-action="preview"
+  data-commit="{{hash}}"
+  data-tippy-content="Preview this version">
+  👀
+        </a>
+
+          {{/unless}}
+
+          {{#unless isLive}}
+            {{#unless @first}}
+<button
+  aria-label="Restore as draft"
+  data-history-action="restore-draft"
+  data-site="{{../uuid}}"
+  data-commit="{{hash}}"
+  data-tippy-content="Restore this point in time as a draft"
+  hx-post="/admin/sites/{{../uuid}}/restore"
+  hx-confirm="Are you sure? (This is non-destructive.)"
+  hx-vals='{"commit":"{{jsonEscape hash}}"}'
+hx-on::after-request="
+  const status = event.detail.xhr.status;
+
+  if (status < 200 || status >= 300) {
+    alert('That didn\'t work...');
+    return;
+  }
+
+  alert('Draft restored. Check out your files');
+
+  const siteId = this.dataset.site;
+  const siteRoot = document.querySelector('#' + siteId);
+  const filesTab = siteRoot?.querySelector('button[data-tab=&quot;files&quot;]');
+
+  if (filesTab) {
+    filesTab.click();
+    htmx.trigger(filesTab, 'click');
+  }
+"
+>
+  ⏪️
+</button>
+
+
+            {{/unless}}
+          {{/unless}}
+
+
+          {{#if isLive}}
+            <button
+  aria-label="Restore as draft"
+  data-history-action="restore-draft"
+  data-site="{{../uuid}}"
+  data-commit="{{hash}}"
+  data-tippy-content="Restore this point in time as a draft"
+  hx-post="/admin/sites/{{../uuid}}/restore"
+  hx-confirm="Are you sure? (This is non-destructive.)"
+  hx-vals='{"commit":"{{jsonEscape hash}}"}'
+hx-on::after-request="
+  const status = event.detail.xhr.status;
+
+  if (status < 200 || status >= 300) {
+    alert('That didn\'t work...');
+    return;
+  }
+
+  alert('Draft restored. Check out your files');
+
+  const siteId = this.dataset.site;
+  const siteRoot = document.querySelector('#' + siteId);
+  const filesTab = siteRoot?.querySelector('button[data-tab=&quot;files&quot;]');
+
+  if (filesTab) {
+    filesTab.click();
+    htmx.trigger(filesTab, 'click');
+  }
+"
+>
+  ⏪️
+</button>
+          {{/if}}
+        </div>
+      </div>
+    </li>
+    {{/each}}
+
+  {{else}}
+
+    <li class="text-gray-500 italic px-2 py-4">
+      No history yet.
+    </li>
+
+  {{/if}}
+
+</ul>
+
+
+</div>

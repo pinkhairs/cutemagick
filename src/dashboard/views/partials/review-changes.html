@@ -1,0 +1,74 @@
+<!-- Review Changes Panel Root -->
+<div
+  id="reviewChangesRoot"
+  class="fixed overflow-auto pointer-events-none inset-0 z-50 h-full w-full"
+  aria-hidden="true">
+
+  <!-- Backdrop (dim, not blur) -->
+  <div
+    onclick="closeReviewChanges()"
+    id="reviewBackdrop"
+    class="fixed inset-0 bg-subtle-rainbow opacity-0 w-full h-full transition-opacity duration-200">
+  </div>
+
+  <!-- Sliding panel -->
+  <section class="relative p-3 flex flex-col w-full h-full">
+    <div
+      id="reviewPanel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reviewPanelTitle"
+      class="
+        absolute right-0 top-0
+        w-full h-full translate-x-full
+        transition-transform duration-1000 ease-out
+        focus:outline-none
+        p-4
+      "
+      tabindex="-1">
+
+      <div class="window rounded-3xl! w-full h-full p-4 flex flex-col gap-8">
+
+        <header class="flex items-center justify-end">
+          <button
+            type="button"
+            onclick="closeReviewChanges()"
+            class="p-1 size-8 relative top-1 text-xl
+                   border border-gray-500 dark:border-gray-700
+                   rounded-full cursor-pointer
+                   flex items-center justify-center"
+            aria-label="Close review panel">
+            ×
+          </button>
+        </header>
+
+        <div class="h-full overflow-x-auto flex flex-1 flex-col">
+          <div class="pb-4 w-[200%] lg:w-auto flex flex-1 flex-row lg:justify-between gap-8">
+            <div class="w-1/2 lg:w-1/4 flex-1 lg:flex-none gap-4 flex flex-col">
+              <div class="flex flex-col gap-2">
+                <h2 class="font-bold text-4xl">Review Changes</h2>
+                <p class="opacity-80 italic">...and go live!</p>
+              </div>
+
+              <div class="flex gap-3 rounded-md border border-gray-400 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
+                <div class="text-lg">🔒️</div>
+                <p>Site is password-protected.</p>
+              </div>
+
+              <div
+                hx-get="/admin/time/{{siteId}}/commits"
+                hx-trigger="revealed"
+                hx-swap="outerHTML"
+              ></div>
+
+            </div>
+
+            <div id="review-preview-site" class="w-1/2 lg:w-3/4 justify-center gap-4 flex flex-col lg:aspect-auto flex-1 h-full">
+              <div hx-get="/admin/time/{{siteId}}/select/{{headCommit.hash}}" hx-trigger="revealed" hx-swap="outerHTML"></div>              
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

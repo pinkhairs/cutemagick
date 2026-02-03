@@ -1,0 +1,22 @@
+{{#if count}}
+<span
+  class="draft-badge absolute -top-1 -right-1
+         min-w-[1.1rem] h-[1.1rem] px-1
+         rounded-full text-[10px] leading-[1.1rem]
+         text-white bg-blue-500 dark:bg-blue-700
+         text-center font-semibold select-none cursor-pointer"
+  data-action="open-time-machine"
+  data-tippy-content="{{count}} draft change{{#unless (eq count 1)}}s{{/unless}}"
+  hx-get="/admin/time/{{siteId}}/draft-count"
+  hx-trigger="siteCommit from:body"
+  hx-swap="outerHTML"
+>
+  <span class="draft-badge-swing">{{#if (gt count 99)}}99+{{else}}{{count}}{{/if}}</span>
+</span>
+{{else}}
+<span
+  hx-get="/admin/time/{{siteId}}/draft-count"
+  hx-trigger="siteCommit from:body"
+  hx-swap="outerHTML"
+></span>
+{{/if}}

@@ -1,8 +1,8 @@
 # Cute Magick
 
-**A personal web runtime with Git-powered time travel.**
+## What is it?
 
-Cute Magick is an open source system for hosting small websites with server-side power—counters, guestbooks, APIs, tools, experiments—without the complexity of traditional deployment. Write HTML & CSS, add PHP or Node.js when you need it, and get automatic versioning with every change.
+Cute Magick is an open source, self-hosted website platform with baked-in Git. Cute Magick gives you an  building and running websites in a variety of languages including HTML, PHP, Node.js, Python.
 
 🌐 **[cutemagick.com](https://cutemagick.com)**  
 📧 **[me@diana.nu](mailto:me@diana.nu)**
@@ -11,9 +11,9 @@ Cute Magick is an open source system for hosting small websites with server-side
 
 ## Status
 
-Active development is happening on the `dev` branch. The `main` branch will receive stable releases starting February 2026.
+Active development is happening on the `dev` branch. The `main` receives stable releases.
 
-This is a work in progress. If you're interested in following along or want to be notified when it's ready for real projects, watch this repo or email me.
+This is a work in progress. If you're interested in following along, watch this repo or email me.
 
 ---
 

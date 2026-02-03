@@ -1,0 +1,233 @@
+import path from 'path';
+import db from '../db/index.js';
+import { SITES_ROOT } from '../../config/index.js';
+
+import {
+  git,
+  ensureRepo,
+  ensureBranch,
+  safeCheckout,
+  assertGitSafePath,
+  assertNoEnvStaged
+} from './plumbing.js';
+
+/* -------------------------------------------------
+   Helpers
+-------------------------------------------------- */
+
+function getSiteGitConfig(siteId) {
+  const site = db
+    .prepare('SELECT directory, branch FROM sites WHERE uuid = ?')
+    .get(siteId);
+
+  if (!site) {
+    throw new Error('Site not found');
+  }
+
+  return {
+    sitePath: path.join(SITES_ROOT, site.directory),
+    branch: site.branch || 'main',
+  };
+}
+
+function resolveCommitMessage(userMessage, fallback) {
+  return userMessage?.trim() || fallback;
+}
+
+/* -------------------------------------------------
+   Commit helpers
+-------------------------------------------------- */
+
+async function commitIfStaged(sitePath, message) {
+  console.log('[COMMIT CHECK]', sitePath, message);
+  await assertNoEnvStaged(sitePath);
+
+  const { stdout } = await git(sitePath, [
+    'status',
+    '--porcelain'
+  ]);
+
+  console.log('[COMMIT PORCELAIN]', JSON.stringify(stdout));
+
+  if (!stdout.trim()) return null;
+
+  try {
+    await git(sitePath, ['commit', '-m', message]);
+  } catch (err) {
+    console.error('[GIT COMMIT FAILED]', err.stderr || err);
+    throw err;
+  }
+
+  const { stdout: hashOut } = await git(sitePath, [
+    'rev-parse',
+    'HEAD'
+  ]);
+
+  return hashOut.trim();
+}
+
+/* -------------------------------------------------
+   File-based porcelain
+-------------------------------------------------- */
+
+export async function commitFileCreate({ siteId, fullPath, message }) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+  const rel = path.relative(sitePath, fullPath);
+
+  if (rel.startsWith('..')) {
+    throw new Error('Git path escapes site root');
+  }
+
+  await ensureRepo(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  assertGitSafePath(rel);
+  await git(sitePath, ['add', rel]);
+
+  return commitIfStaged(
+    sitePath,
+    resolveCommitMessage(message, `Created ${rel}`)
+  );
+}
+
+export async function commitFileEdit({ siteId, filePath, message }) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+
+  await ensureRepo(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  assertGitSafePath(filePath);
+  await git(sitePath, ['add', filePath]);
+
+  return await commitIfStaged(
+    sitePath,
+    resolveCommitMessage(message, `Saved ${filePath}`)
+  );
+}
+
+export async function commitFileUpload({ siteId, filePath, message }) {
+  return commitFileEdit({ siteId, filePath, message });
+}
+
+export async function commitFileDelete({ siteId, paths, message }) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+
+  await ensureRepo(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  await git(sitePath, [
+    'rm',
+    '-r',
+    '--force',
+    '--ignore-unmatch',
+    '--',
+    ...paths
+  ]);
+
+  const result = await commitIfStaged(
+    sitePath,
+    resolveCommitMessage(message, `Deleted ${paths[0]}`)
+  );
+
+  // Nothing to commit = already deleted / no-op
+  if (!result) {
+    return null;
+  }
+
+  return result;
+}
+
+
+export async function commitFileRename({
+  siteId,
+  oldPath,
+  newPath,
+  message
+}) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+
+  await ensureRepo(sitePath, branch);
+  await ensureBranch(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  assertGitSafePath(oldPath);
+  assertGitSafePath(newPath);
+
+  await git(sitePath, ['mv', oldPath, newPath]);
+
+  return commitIfStaged(
+    sitePath,
+    resolveCommitMessage(
+      message,
+      `Rename ${oldPath} → ${newPath}`
+    )
+  );
+}
+
+/* -------------------------------------------------
+   Time Machine
+-------------------------------------------------- */
+
+export async function restoreCommitAsNew({
+  siteId,
+  commit,
+  message
+}) {
+  const { sitePath, branch } = getSiteGitConfig(siteId);
+
+  await ensureRepo(sitePath, branch);
+  await ensureBranch(sitePath, branch);
+  await safeCheckout(sitePath, branch);
+
+  // Ensure commit exists
+  await git(sitePath, ['cat-file', '-e', `${commit}^{commit}`]);
+
+    // Hard reset index + working tree
+  await git(sitePath, ['reset', '--hard']);
+
+  // Remove untracked files that would block restore
+  await git(sitePath, ['clean', '-fd']);
+
+  await git(sitePath, [
+    'read-tree',
+    '-u',
+    '--reset',
+    commit
+  ]);
+
+  const { stdout } = await git(sitePath, [
+    'show',
+    '-s',
+    '--format=%B',
+    commit
+  ]);
+
+  const originalMessage = stdout.trim();
+
+  return commitIfStaged(
+    sitePath,
+    resolveCommitMessage(
+      message,
+      `Restored: ${originalMessage}`
+    )
+  );
+}
+
+export async function getCommitHistory({ siteId }) {
+  const { sitePath } = getSiteGitConfig(siteId);
+
+  const { stdout } = await git(sitePath, [
+    'log',
+    '--date=iso',
+    '--pretty=format:%H%x1f%ad%x1f%s'
+  ]);
+
+  return stdout
+    .trim()
+    .split('\n')
+    .filter(Boolean)
+    .map(line => {
+      const [hash, date, subject] = line.split('\x1f');
+      return { hash, date, subject };
+    });
+}

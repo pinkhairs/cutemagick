@@ -1,0 +1,305 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark &));
+
+body {
+  font-family: 'SUSE', sans-serif !important;
+}
+
+html, body, #app {
+  height: 100%;
+}
+
+#app {
+  @apply grid;
+}
+
+.window {
+  cursor: move;
+}
+
+:root {
+  --aria-busy-spinner-color: #1f2937; /* slate-800 */
+}
+
+/* Dark mode */
+.dark {
+    --aria-busy-spinner-color: #e5e7eb; /* slate-200 */
+}
+
+/* Your theme tokens live here in v4 */
+@theme {
+  /* shadows */
+  --shadow-white-inset: 0px 6px 6px rgb(81 103 146 / 0.25), inset 0 0 64px 40px rgba(255, 255, 255, 0.9);
+  --shadow-dark: inset 0 0 64px 24px rgba(16, 24, 40, .9);
+  
+  /* colors */
+  --color-pink: #FFA3D8;
+  --color-purple: #D5A8FF;
+  --color-periwinkle: #AAC6FF;
+  --color-cyan: #65F0F5;
+  --color-mint: #94FCC1;
+  --color-yellow: #F0EBB5;
+  --color-sky: #99BDFF;
+  --color-aqua-light: #D6FFF3;
+  --color-periwinkle-light: #D6E4FF;
+  --color-pink-light: #FFE4FC;
+  --color-cream: #FFF1E7;
+  
+  --bg-light-subtle-rainbow: 
+  linear-gradient(
+  296.6deg,
+  #C4FDED 0.33%,
+  #C6D7FE 30.23%,
+  #FFD8FA 60.13%,
+  #FEEADE 100%
+  );
+--bg-dark-subtle-rainbow: linear-gradient(
+  296.6deg,
+  #143237 0.33%,   /* deep slate + saturated mint */
+  #1a2744 30.23%,  /* deep slate + periwinkle */
+  #2a1f3d 60.13%,  /* deep slate + pink-violet */
+  #2a231b 100%     /* deep slate + peach */
+);
+
+
+  --bg-strong-rainbow: linear-gradient(
+  270deg,
+  #F46FBC 0%,
+  #B673F4 15.38%,
+  #759FF4 32.69%,
+  #3FE2E7 51.44%,
+  #62F2A0 65.87%,
+  #EDE379 80.77%,
+  #F46FBC 100%
+);
+}
+
+
+/* map class → background-image */
+@utility bg-subtle-rainbow {
+  background-image: var(--bg-light-subtle-rainbow);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.dark .bg-subtle-rainbow {
+  background-image: var(--bg-dark-subtle-rainbow);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+@utility bg-strong-rainbow {
+  background-image: var(--bg-strong-rainbow);
+}
+
+
+@keyframes bg-pan-x { to { background-position: 300% 0; } }
+
+/* attach a tiled, animated overlay on ::after */
+.rainbow-tiler {
+  position: relative;
+  isolation: isolate; /* keep overlay above only this element */
+  background-image: var(--bg-strong-rainbow);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-position: 0 0;
+}
+.rainbow-tiler::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  z-index: -1; /* under content but above the base bg */
+  background-image: var(--bg-strong-rainbow);
+  background-repeat: repeat-x;
+  background-size: 300% 100%;
+  background-position: 0 0;
+  opacity: 0; transition: opacity .25s linear;
+}
+.rainbow-tiler:hover::after {
+  opacity: 1;
+  animation: bg-pan-x 2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rainbow-tiler:hover::after { animation: none; }
+}
+
+/* tiny utilities so we don't repeat Tailwind classes */
+.highlight{ @apply inline-block text-transparent bg-clip-text bg-strong-rainbow hover:opacity-80; }
+.btn{ @apply cursor-pointer inline-flex items-center justify-center gap-2 rounded-full bg-gray-800 dark:bg-blue-800 p-2.5 text-white hover:bg-gray-700 dark:hover:bg-blue-900 text-center; }
+.field{ @apply w-full rounded-xl border border-gray-700 bg-gray-900/50 px-3.5 py-2.5 text-[15px] text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[#b793ff] focus:border-gray-600; }
+.cta{
+  @apply relative inline-flex w-full items-center justify-center overflow-hidden rounded-xl px-4 py-2.5 text-[15px] font-semibold text-white;
+}
+.text-field {
+  @apply w-full rounded-3xl border border-gray-300/80 dark:border-gray-700
+  bg-white dark:bg-gray-950/40
+  px-3.5 py-2.5 
+  text-gray-800 dark:text-gray-100
+  placeholder:text-gray-400 dark:placeholder:text-gray-500
+  focus:outline-none focus:ring-2 focus:ring-periwinkle;
+}
+.card {
+  @apply p-4 lg:py-8 lg:px-9 shadow-white-inset dark:shadow-dark bg-white dark:bg-gray-900 border-white/90 rounded-2xl;
+}
+.window {
+  @apply px-3 border-white/90 py-2 lg:px-5 lg:pt-3 lg:pb-4 shadow-white-inset dark:shadow-dark dark:bg-gray-800 bg-gray-200 lg:rounded-2xl;
+}
+
+
+pre, code, .font-monospace {
+  font-family: 'Space Mono', monospace;
+}
+.blend {
+  mix-blend-mode: difference;
+  color: white;
+}
+/* Active file-tab */
+[data-active="true"] {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+.fe_fileexplorer_body_wrap {
+  @apply flex-row-reverse;
+}
+
+[data-tab][data-active="true"] {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+.fe_fileexplorer_wrap .fe_fileexplorer_inner_wrap {
+  border: 0 !important;
+}
+iframe {
+  @apply bg-white w-full h-full border-0;
+}
+#site-toolbar[data-dirty="false"] #commits-count,
+#site-toolbar[data-dirty="false"] #preview-btn,
+#site-toolbar[data-dirty="false"] #go-live-btn {
+  display: none;
+}
+
+#site-toolbar[data-dirty="false"] #live-indicator {
+  display: inline-flex;
+}
+
+/* Draft dots AFTER live */
+li:has(.is-live) ~ li .timeline-dot {
+  @apply bg-gray-300 dark:bg-white/10;
+  border: none;
+}
+
+.pointer-events-none {
+  pointer-events: none;
+}
+/* Sync base */
+.sync-up,
+.sync-down,
+.sync-x {
+  @apply inline-flex items-center gap-1 font-medium;
+}
+
+/* Push */
+.sync-up {
+  @apply text-green-600 dark:text-green-400;
+}
+
+/* Pull */
+.sync-down {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Diverged */
+.sync-x {
+  @apply text-red-600 dark:text-red-400 cursor-not-allowed;
+}
+
+/* Badge */
+.badge {
+  @apply inline-flex items-center justify-center
+         min-w-[1.25rem] h-5 px-1
+         text-xs font-semibold
+         rounded-full
+         bg-gray-200 text-gray-800
+         dark:bg-gray-700 dark:text-gray-100;
+}
+
+.editor-container {
+  line-height: 1.65;
+}
+
+/* Light mode */
+:root {
+  --aria-busy-spinner-color: black; /* gray-500 */
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --aria-busy-spinner-color: white; /* gray-300 */
+  }
+}
+
+[aria-busy="true"]:not(input, select, textarea, html, form)::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin: 0;
+  vertical-align: -0.125em;
+
+  /* Spinner shape */
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cstyle%3E.spinner_rXNP%7Banimation:spinner_YeBj .8s infinite%7D@keyframes spinner_YeBj%7B0%25%7Banimation-timing-function:cubic-bezier(0.33,0,.66,.33);cy:5px%7D46.875%25%7Bcy:20px;rx:4px;ry:4px%7D50%25%7Banimation-timing-function:cubic-bezier(0.33,.66,.66,1);cy:20.5px;rx:4.8px;ry:3px%7D53.125%25%7Brx:4px;ry:4px%7D100%25%7Bcy:5px%7D%7D%3C/style%3E%3Cellipse class='spinner_rXNP' cx='12' cy='5' rx='4' ry='4'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cstyle%3E.spinner_rXNP%7Banimation:spinner_YeBj .8s infinite%7D@keyframes spinner_YeBj%7B0%25%7Banimation-timing-function:cubic-bezier(0.33,0,.66,.33);cy:5px%7D46.875%25%7Bcy:20px;rx:4px;ry:4px%7D50%25%7Banimation-timing-function:cubic-bezier(0.33,.66,.66,1);cy:20.5px;rx:4.8px;ry:3px%7D53.125%25%7Brx:4px;ry:4px%7D100%25%7Bcy:5px%7D%7D%3C/style%3E%3Cellipse class='spinner_rXNP' cx='12' cy='5' rx='4' ry='4'/%3E%3C/svg%3E");
+
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+
+  /* THIS is the visible color */
+  background-color: var(--aria-busy-spinner-color);
+}
+
+.file-explorer {
+  @apply lg:max-h-101;
+}
+
+.git-status + div .file-explorer .fe_fileexplorer_items_scroll_wrap {
+  @apply lg:h-75!;
+}
+.draft-badge-swing {
+  display: inline-block;
+  animation: badge-swing 320ms ease-out both;
+}
+
+.draft-badge {
+  display: inline-block;
+  animation: badge-scale 320ms ease-out both;
+}
+
+@keyframes badge-scale {
+  0%   { transform: scale(0.85); }
+  40%  { transform: scale(1.3); }
+  65%  { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes badge-swing {
+  0%   { transform: rotate(0deg); }
+  40%  { transform: rotate(-6deg); }
+  65%  { transform: rotate(4deg); }
+  85%  { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+
+
+.lower-opacity-bg {
+  @apply opacity-30 dark:opacity-30;
+}
+
+.active-commit-review {
+  box-shadow: inset #51A2FF 0 0 0 4px;
+  @apply bg-gray-50 dark:bg-gray-800;
+}

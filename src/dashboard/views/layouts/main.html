@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/admin/assets/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=SUSE:wght@100..800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/admin/assets/css/file-explorer.css" />
+  <title>Cute Magick</title>
+
+  <link rel="icon" type="image/png" href="/admin/assets/img/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="/admin/assets/img/favicon.svg">
+  <link rel="shortcut icon" href="/admin/assets/img/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/admin/assets/img/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="Cute Magick">
+  <link rel="manifest" href="/admin/assets/img/site.webmanifest">
+  <meta name="csrf-token" content="{{csrfToken}}">
+</head>
+<body class="flex-col lg:h-svh justify-between flex text-gray-900 dark:text-white">
+  <header class="z-10 px-1 relative">
+    <div class="font-semibold p-4 w-full inline-flex large:text-lg gap-4 lg:gap-6 justify-between items-center">
+      <nav class="inline-flex text-sm lg:text-base items-center gap-4 lg:gap-6">
+        <button
+hx-on:click="
+          let nameOrUrl = prompt('Enter site name (or Git repo URL):');
+          if (!nameOrUrl) return;
+          const gitUrlRegex = /^(git@[\w.-]+:[\w./~-]+\.git|https?:\/\/[\w.-]+\/[\w./~-]+\.git)$/;
+          if (nameOrUrl.startsWith('http://') || nameOrUrl.startsWith('https://')) {
+            nameOrUrl = prompt('Enter an SSH URL');
+            if (!gitUrlRegex.test(nameOrUrl)) {
+              alert('Invalid Git URL');
+              return;
+            }
+          }
+          if (!nameOrUrl) return;
+          this.setAttribute('aria-busy', 'true');
+          
+          const handler = (evt) => {
+            if (evt.detail.successful) {
+              htmx.trigger(document.body, 'refreshSites');
+            } else {
+              alert(`Sorry, that didn't work. Make sure you've added the Cute Magick key to your Git server (top right button) and try again.`);
+            }
+            this.removeAttribute('aria-busy');
+            document.body.removeEventListener('htmx:afterRequest', handler);
+          };
+          
+          document.body.addEventListener('htmx:afterRequest', handler);
+          
+          htmx.ajax('POST', '/admin/sites', {
+            values: { nameOrUrl },
+            swap: 'none'
+          });
+        "
+        class="btn py-1! rainbow-tiler border-0! lg:px-4! text-black!">New Site</button>
+      </nav>
+      <nav class="inline-flex text-sm lg:text-base gap-4 lg:gap-6">
+        <div
+          class="cursor-pointer select-none"
+          data-action="copy-key"
+        >
+          🔌 Connect
+        </div>
+        <button onclick="if (confirm('Ready to log out?')) {
+          htmx.ajax('POST', '/account/logout');
+          setTimeout(() => {}, 0);
+        }">🚪 Log Out</button>
+      </nav>
+    </div>
+  </header>
+  {{{body}}}
+  <main class="z-10 lg:fixed lg:right-0" id="windows">
+  </main>
+  <div id="review-panel-container"></div>
+  <div class="bg-subtle-rainbow fixed w-full h-full inset-0 -z-1"></div>
+  <div hx-trigger="refreshBackground from:body" hx-swap="outerHTML" id="background" class="bg-cover bg-center bg-no-repeat fixed w-full h-full inset-0 -z-1"></div>
+  <script src="/admin/assets/js/csrfFetch.js"></script>
+  <script src="https://unpkg.com/popper.js@1"></script>
+  <script src="https://unpkg.com/tippy.js@5"></script>
+  <script src="/admin/assets/js/htmx.min.js"></script>
+  <script src="/admin/assets/js/DraggableWindows.js"></script>
+  <script src="/admin/assets/js/file-explorer.js"></script>
+  <script src="/admin/assets/js/mount-file-explorer.js" ></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.2/ace.js"></script>
+  <script src="/admin/assets/js/mount-code-editor.js"></script>
+  <script src="/admin/assets/js/save-file.js"></script>
+  <script src="/admin/assets/js/secrets-management.js"></script>
+  <script src="/admin/assets/js/settings-management.js"></script>
+
+  <script>
+    function initTippy(root = document) {
+      if (!window.tippy) return;
+
+      root.querySelectorAll('[data-tippy-content]').forEach(el => {
+        if (!el._tippy) {
+          tippy(el, {
+            placement: 'bottom'
+          });
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initTippy();
+    });
+
+    document.body.addEventListener('htmx:afterSwap', (e) => {
+      initTippy(e.target);
+    });
+  </script>
+
+<script>
+  function forceCopy(text) {
+    const input = document.createElement('input');
+    input.value = text;
+
+    // Make it focusable & invisible
+    input.style.position = 'fixed';
+    input.style.top = '-1000px';
+    input.style.left = '-1000px';
+
+    document.body.appendChild(input);
+
+    input.focus();
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+
+    const success = document.execCommand('copy');
+    document.body.removeChild(input);
+
+    return success;
+  }
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const action = btn.dataset.action;
+
+    try {
+      if (action === 'copy-key') {
+        if (!confirm('Copy your public SSH key to your clipboard?')) return;
+        const res = await csrfFetch('/admin/config/public-key', {
+          method: 'POST',
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch key');
+
+        const key = await res.text();
+
+        // 🔑 THE IMPORTANT PART
+        const copied = forceCopy(key);
+
+        if (!copied) {
+          alert('Copy failed. Please copy manually:\n\n' + key);
+          return;
+        }
+
+        alert('Your public SSH key has been copied to your clipboard!');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Something went wrong. Please try again.');
+    }
+  });
+</script>
+<script>
+document.addEventListener('click', function(e) {
+  const tab = e.target.closest('[data-tab]');
+  if (tab) {
+    // Remove data-active from all tabs in this window
+    tab.closest('.window').querySelectorAll('[data-tab]').forEach(el => {
+      delete el.dataset.active;
+    });
+    
+    // Set active on clicked tab after HTMX processes
+    setTimeout(() => {
+      tab.dataset.active = 'true';
+    }, 0);
+  }
+});
+</script>
+<script>
+  window.openSiteWindow = function ({ uuid }) {
+  const existing = document.getElementById(`site-window-${uuid}`);
+  if (existing) {
+    window.DraggableWindows?.focusWindow(existing);
+    return;
+  }
+
+  const key = `win-path-site-${uuid}`;
+  const currentPath = localStorage.getItem(key) || '';
+
+  const url = currentPath
+    ? `/admin/site-window/${uuid}/${currentPath}`
+    : `/admin/site-window/${uuid}`;
+
+  window.htmx.ajax('GET', url, {
+    target: '#windows',
+    swap: 'afterbegin',
+    pushUrl: false,
+  });
+};
+</script>
+<script>
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action="open-time-machine"]');
+  if (!el) return;
+
+  const win = el.closest('.window');
+  win?.querySelector('[data-tab="time-machine"]')?.click();
+});
+</script>
+<script>
+  document.body.addEventListener('htmx:responseError', function (evt) {
+    const xhr = evt.detail.xhr;
+
+    if (xhr.status === 409) {
+      alert(
+        "We tried to combine the two copies of your site, but some changes overlap and need your help.\n\n" +
+        "Search “How to deal with merge conflicts” in the documentation to continue."
+      );
+  }
+  });
+</script>
+<script>
+document.body.addEventListener('siteCommit', e => {
+  if (!e.detail) return;
+  const siteId = e.detail.siteId;
+});
+</script>
+<template id="secretRow" class="flex flex-col gap-4">
+  <div class="flex gap-2 secret-row pb-3">
+    <div
+      class="grid flex-1 grid-cols-1 md:grid-cols-2 gap-3 items-center
+             rounded-md
+             bg-white/50 dark:bg-gray-900/50"
+    >
+      <input
+        type="text"
+        name="key"
+        placeholder="NEW_SECRET_NAME"
+        class="font-mono bg-transparent
+               border-b border-gray-400 dark:border-gray-700
+               focus:outline-none focus:border-indigo-400"
+      />
+
+      <input
+        type="password"
+        name="value"
+        placeholder="value"
+        class="font-mono bg-transparent
+               border-b border-gray-400 dark:border-gray-700
+               focus:outline-none focus:border-indigo-400"
+      />
+    </div>
+
+    <button
+      type="button"
+      class="remove p-1 size-6 text-lg
+             border border-gray-400 dark:border-gray-700
+             rounded-full rotate-45
+             flex items-center justify-center"
+      title="Remove secret"
+    >
+      +
+    </button>
+  </div>
+</template>
+<script>
+  const PREFS_KEY = 'cm:admin:prefs';
+
+function loadPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+function applyTheme() {
+  const prefs = loadPrefs();
+  const mode = prefs.theme_mode || 'auto';
+  const root = document.documentElement;
+
+  root.classList.remove('dark');
+
+  if (mode === 'dark') {
+    root.classList.add('dark');
+  } else if (mode === 'light') {
+    // explicitly light: do nothing
+  } else {
+    // auto
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      root.classList.add('dark');
+    }
+  }
+}
+document.addEventListener('DOMContentLoaded', applyPrefs);
+function savePref(key, value) {
+  const prefs = loadPrefs();
+
+  if (value === null || value === undefined) {
+    delete prefs[key];
+  } else {
+    prefs[key] = value;
+  }
+
+  localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+}
+
+function applyPrefs() {
+  applyTheme();
+  const prefs = loadPrefs();
+  const bg = document.getElementById('background');
+  if (!bg) return;
+
+  if (prefs.background_image) {
+    // Validate URL to prevent CSS injection
+    try {
+      const url = new URL(prefs.background_image, window.location.origin);
+      if (!['http:', 'https:', 'data:'].includes(url.protocol)) {
+        console.warn('Invalid background image protocol:', url.protocol);
+        bg.style.removeProperty('background-image');
+        savePref('background_image', null);
+        return;
+      }
+      // Escape quotes to prevent breaking out of url()
+      const safeUrl = prefs.background_image.replace(/["'\\]/g, '\\$&');
+      bg.style.backgroundImage = `url("${safeUrl}")`;
+    } catch (e) {
+      console.warn('Invalid background image URL:', e);
+      bg.style.removeProperty('background-image');
+      savePref('background_image', null);
+    }
+  } else {
+    bg.style.removeProperty('background-image');
+  }
+
+  const overlayOn = prefs.show_background_overlay !== false;
+  bg.classList.toggle('lower-opacity-bg', overlayOn);
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const prefs = loadPrefs();
+  applyPrefs(prefs);
+});
+</script>
+<script>
+const button = document.getElementById('admin-prefs-btn');
+tippy(button, {
+  trigger: 'click',
+  interactive: true,
+  placement: 'top-end',
+  content: renderPrefsMenu(),
+});
+
+function fireRefreshBackground() {
+  document.body.dispatchEvent(
+    new Event('refreshBackground')
+  );
+}
+function renderPrefsMenu() {
+  const el = document.createElement('div');
+  el.className = 'flex flex-col gap-2 w-48';
+
+  // Replace background image
+  const bgBtn = document.createElement('button');
+  bgBtn.textContent = 'Replace background image';
+  bgBtn.onclick = () => {
+    const prefs = loadPrefs();
+
+    const url = prompt(
+      'Background image URL:',
+      prefs.background_image || ''
+    );
+    if (url === null) return;
+
+    savePref('background_image', url || null);
+    fireRefreshBackground();
+    applyPrefs();
+  };
+
+  // Toggle overlay
+  const overlayBtn = document.createElement('button');
+
+  function updateOverlayLabel() {
+    const prefs = loadPrefs();
+    overlayBtn.textContent =
+      prefs.show_background_overlay !== false
+        ? 'Hide background overlay'
+        : 'Show background overlay';
+  }
+
+  overlayBtn.onclick = () => {
+    const prefs = loadPrefs();
+    const overlayOn = prefs.show_background_overlay !== false;
+
+    savePref(
+      'show_background_overlay',
+      !overlayOn
+    );
+
+    fireRefreshBackground();
+    updateOverlayLabel();
+    applyPrefs();
+  };
+
+  updateOverlayLabel();
+window.matchMedia('(prefers-color-scheme: dark)')
+  .addEventListener('change', applyTheme);
+
+  // Theme toggle
+const themeBtn = document.createElement('button');
+
+function updateThemeLabel() {
+  const { theme_mode = 'auto' } = loadPrefs();
+  themeBtn.textContent =
+    theme_mode === 'light' ? 'Theme: Light' :
+    theme_mode === 'dark'  ? 'Theme: Dark'  :
+                             'Theme: Auto';
+}
+
+themeBtn.onclick = () => {
+  const { theme_mode = 'auto' } = loadPrefs();
+
+  const next =
+    theme_mode === 'auto' ? 'light' :
+    theme_mode === 'light' ? 'dark' :
+    'auto';
+
+  savePref('theme_mode', next);
+  applyTheme();
+  updateThemeLabel();
+};
+
+updateThemeLabel();
+
+  el.append(bgBtn, overlayBtn, themeBtn);
+  return el;
+}
+
+</script>
+<script>
+const archiveBtn = document.getElementById('archive-btn');
+
+tippy(archiveBtn, {
+  trigger: 'click',
+  interactive: true,
+  placement: 'top-end',
+  content: () => renderArchiveMenu(), // ← IMPORTANT
+});
+
+/* -----------------------------------------------
+   Helpers
+------------------------------------------------ */
+
+function fireRefreshSites() {
+  document.body.dispatchEvent(
+    new Event('refreshSites')
+  );
+}
+
+async function fetchArchivedSites() {
+  const res = await csrfFetch('/admin/sites/archive');
+  if (!res.ok) throw new Error('Failed to load archived sites');
+  return res.json();
+}
+
+/* -----------------------------------------------
+   Menu renderer
+------------------------------------------------ */
+
+function renderArchiveMenu() {
+  const el = document.createElement('div');
+  el.className = 'flex flex-col gap-2 w-56 text-sm';
+
+  const header = document.createElement('div');
+  header.textContent = 'Archived sites';
+  header.className = 'font-medium text-white mb-1';
+
+  const list = document.createElement('div');
+  list.className = 'flex flex-col gap-1';
+
+  el.append(header, list);
+
+  // Initial loading state
+  const loading = document.createElement('div');
+  loading.textContent = 'Loading…';
+  loading.className = 'text-gray-400 italic';
+  list.append(loading);
+
+  fetchArchivedSites()
+    .then(sites => {
+      list.innerHTML = '';
+
+      if (!sites.length) {
+        const empty = document.createElement('div');
+        empty.textContent = 'No archived sites';
+        empty.className = 'text-gray-400 italic';
+        list.append(empty);
+        return;
+      }
+
+      sites.forEach(site => {
+        const btn = document.createElement('button');
+        btn.className =
+          'text-left px-2 py-1 rounded hover:bg-white/10';
+
+        btn.textContent = site.name || site.directory;
+
+        btn.onclick = async () => {
+          const ok = confirm(
+            'Restore this site? (It won’t affect any other site)'
+          );
+          if (!ok) return;
+
+          try {
+            const res = await csrfFetch(
+              `/admin/sites/${site.uuid}/restore-archive`,
+              { method: 'POST' }
+            );
+
+            if (!res.ok) {
+              alert('Failed to restore site');
+              return;
+            }
+
+            fireRefreshSites();
+
+            // 🔁 Re-render the dropdown *without closing it*
+            const instance = archiveBtn._tippy;
+            if (instance) {
+              instance.setContent(renderArchiveMenu());
+            }
+
+          } catch (err) {
+            alert('Failed to restore site');
+          }
+        };
+
+        list.append(btn);
+      });
+    })
+    .catch(() => {
+      list.innerHTML = '';
+      const err = document.createElement('div');
+      err.textContent = 'Failed to load archived sites';
+      err.className = 'text-red-500';
+      list.append(err);
+    });
+
+  return el;
+}
+</script>
+
+
+
+<script>
+  function closeReviewChanges() {
+    const reviewChangesRoot = document.getElementById('reviewChangesRoot');
+  reviewChangesRoot.remove();
+  }
+  document.body.addEventListener('htmx:afterSwap', (e) => {
+    // Only react when Review Changes is injected
+    const root = e.target.querySelector?.('#reviewChangesRoot');
+    if (!root) return;
+
+    const backdrop = root.querySelector('#reviewBackdrop');
+    const panel = root.querySelector('#reviewPanel');
+
+    // Make interactive
+    root.classList.remove('pointer-events-none');
+    root.setAttribute('aria-hidden', 'false');
+
+    // Fade in backdrop
+    backdrop.classList.remove('opacity-0');
+    backdrop.classList.add('opacity-70');
+
+    // Slide panel in
+    panel.classList.remove('translate-x-full');
+
+    // Optional: focus panel for accessibility
+    requestAnimationFrame(() => {
+      panel.focus?.();
+    });
+  });
+</script>
+
+</body>
+</html>

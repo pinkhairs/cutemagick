@@ -1,0 +1,24 @@
+<div
+  id="site-actions-{{siteId}}"
+  hx-trigger="siteCommit from:body, fileCommit from:body"
+  hx-get="/admin/site-window/{{siteId}}/actions"
+  hx-swap="innerHTML"
+>
+  {{#if (eq latest false)}}
+    <button
+      hx-get="/admin/time/{{siteId}}/review"
+      hx-swap="innerHTML"
+      hx-target="#review-panel-container"
+      type="button"
+      class="cursor-pointer btn-secondary flex items-center gap-2"
+    >
+      👀 Review Changes
+    </button>
+
+    <span
+      hx-get="/admin/time/{{siteId}}/draft-count"
+      hx-trigger="revealed, siteCommit, fileCommit"
+      hx-swap="outerHTML"
+    ></span>
+  {{/if}}
+</div>

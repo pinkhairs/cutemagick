@@ -1,0 +1,68 @@
+<div
+  class="p-2 text-sm border-b border-gray-400 dark:border-gray-700 git-status flex items-center justify-center"
+  data-site-id="{{siteId}}"
+  hx-get="/admin/time/{{siteId}}/status"
+  hx-trigger="
+    siteCommit from:body,
+    site:{{siteId}}:sync from:body
+  "
+  hx-swap="outerHTML"
+>
+  <div class="flex items-center gap-6">
+    {{#if localAhead}}
+      <button
+        class="flex items-center gap-1"
+        hx-post="/admin/sites/{{siteId}}/push"
+        hx-swap="none"
+        hx-indicator="this"
+        aria-busy="false"
+        data-tippy-content="Make the other copy match this one"
+        hx-on:htmx:beforeRequest="
+          this.setAttribute('aria-busy','true');
+          this.querySelector('.arrow-count').style.visibility='hidden';
+        "
+        hx-on:htmx:afterRequest="
+          this.setAttribute('aria-busy','false');
+          this.querySelector('.arrow-count').style.visibility='visible';
+        "
+      >
+        <span>{{localPlace}}</span>
+        <span class="arrow-count">
+          <span aria-hidden="true">↑</span>
+          <span>{{localAhead}}</span>
+        </span>
+      </button>
+    {{/if}}
+
+    {{#if remoteAhead}}
+      <button
+        class="flex items-center gap-1"
+        hx-post="/admin/sites/{{siteId}}/pull"
+        hx-swap="none"
+        hx-indicator="this"
+        aria-busy="false"
+        data-tippy-content="Bring those changes into this copy"
+        hx-on:htmx:beforeRequest="
+          this.setAttribute('aria-busy','true');
+          this.querySelector('.arrow-count').style.visibility='hidden';
+        "
+        hx-on:htmx:afterRequest="
+          this.setAttribute('aria-busy','false');
+          this.querySelector('.arrow-count').style.visibility='visible';
+        "
+      >
+        <span>{{externalPlace}}</span>
+        <span class="arrow-count">
+          <span aria-hidden="true">↓</span>
+          <span>{{remoteAhead}}</span>
+        </span>
+      </button>
+    {{/if}}
+
+    {{#unless localAhead}}
+      {{#unless remoteAhead}}
+        <div>In sync</div>
+      {{/unless}}
+    {{/unless}}
+  </div>
+</div>

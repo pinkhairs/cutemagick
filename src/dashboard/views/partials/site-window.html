@@ -1,0 +1,90 @@
+<div id="{{id}}" class="mt-4 lg:mt-0 lg:h-130 w-full lg:w-2xl relative window-wrapper window"
+data-window-kind="folder"
+data-site-directory="{{directory}}"
+data-site-uuid="{{id}}"
+>
+<div class="window-handle h-full">
+  <div class="flex items-center justify-between">
+    <h2 class="text-sm">{{title}}</h2>
+    <div class="flex items-center gap-2 text-2xl">
+      <button type="button" class="minimize text-gray-400 py-1 -top-1 pl-6 pr-2 font-bold relative">&ndash;</button>
+      <button type="button" class="hide text-rose-500 dark:text-pink pb-1 pl-2 font-bold relative">&times;</button>
+    </div>
+  </div>
+</div>
+
+<div class="lg:absolute flex flex-col bottom-2 left-0 w-full hide-when-minimized py-2 lg:px-3">
+  <div class="flex flex-col lg:flex-row card p-0! overflow-hidden shadow-none! border-gray-400! dark:border-gray-700! border!">
+    <div class="w-full grid grid-cols-5 lg:grid-cols-1 lg:grid-rows-4 gap-px bg-gray-400 border-b lg:border-b-0 lg:border-r dark:bg-gray-700 lg:w-24 dark:border-gray-700 border-gray-400">
+      
+      
+      <button
+      class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center"
+      data-tab="home"
+      data-active="true"
+      hx-get="/admin/site-window/{{id}}/home"
+      hx-target="#site-{{id}}-content"
+      hx-swap="innerHTML">
+      <img class="size-6" width="24px" src="/admin/assets/img/preview-icon.png">
+      <h4 class="font-bold text-xs">Home</h4>
+    </button>
+    
+    <button
+    class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center"
+    data-tab="files"
+    hx-get="/admin/site-window/{{id}}/files"
+    hx-target="#site-{{id}}-content"
+    hx-swap="innerHTML">
+    <img class="size-6" width="24px" src="/admin/assets/img/file-manager-icon.png">
+    <h4 class="font-bold text-xs">File Explorer</h4>
+  </button>
+  
+  <button
+  data-tab="time-machine"
+  hx-get="/admin/site-window/{{id}}/time-machine"
+  hx-target="#site-{{id}}-content"
+  hx-swap="innerHTML"
+  class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center">
+  <img class="size-6" width="24px" src="/admin/assets/img/history-icon.png">
+  <h4 class="font-bold text-xs">Time Machine</h4>
+</button>
+
+<button
+data-tab="secrets"
+hx-get="/admin/site-window/{{id}}/secrets"
+hx-target="#site-{{id}}-content"
+hx-swap="innerHTML"
+class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center">
+<img class="size-6" width="24px" src="/admin/assets/img/secrets-icon.png">
+<h4 class="font-bold text-xs">Secrets</h4>
+</button>
+
+<button
+data-tab="settings"
+hx-get="/admin/site-window/{{id}}/settings"
+hx-target="#site-{{id}}-content"
+hx-swap="innerHTML"
+class="bg-white dark:bg-gray-900 cursor-pointer flex gap-2 h-22 flex-col items-center justify-center">
+<img class="size-6" width="24px" src="/admin/assets/img/settings-icon.png">
+<h4 class="font-bold text-xs">Settings</h4>
+</button>
+
+</div>
+<div class="flex-1 flex-col">
+  
+  <div class="flex flex-col overflow-auto h-111">
+    <div id="site-{{id}}-content" class="flex-1 overflow-auto transition-opacity">
+      {{{body}}}
+    </div>
+    <div
+      id="site-{{id}}-toolbar"
+      hx-get="/admin/site-window/{{id}}/toolbar"
+      hx-trigger="load, refresh-toolbar from:body"
+      hx-swap="outerHTML"
+    ></div>
+  </div>
+</div>
+</div>
+
+</div>
+</div>

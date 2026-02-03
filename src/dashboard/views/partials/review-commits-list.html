@@ -1,0 +1,108 @@
+<div id="review-commits-list" class="flex flex-col">
+  <!-- Remove the hx-* attributes from this wrapper -->
+  
+  <!-- Add a child div that listens for the event -->
+  <div
+    hx-get="/admin/time/{{siteId}}/commits"
+    hx-trigger="changedReviewPreview from:body"
+    hx-vals="js:{ selectedCommit: event.detail.selectedCommit }"
+    hx-swap="outerHTML"
+    hx-target="this">
+    
+    <h3 class="py-2 text-gray-600 dark:text-gray-500 uppercase tracking-wider text-sm">Latest</h3>
+    <div class="flex flex-col gap-2 pb-4">
+      <div id="commit-{{headCommit.hash}}" 
+           hx-get="/admin/time/{{siteId}}/select/{{headCommit.hash}}" 
+           hx-swap="innerHTML"
+           hx-trigger="click" 
+           hx-target="#review-preview-site" 
+           class="{{#if (eq headCommit.hash selectedCommit)}}active-commit-review{{/if}} cursor-pointer relative flex hover:bg-gray-50 dark:hover:bg-gray-700 items-center gap-4 p-2 rounded-md">
+        <!-- timeline -->
+        <div class="relative flex flex-col items-center w-6 shrink-0">
+          <span class="timeline-dot size-3 rounded-full border-gray-600 dark:border-gray-300 border-dashed border-[1.5px]"></span>
+          <span class="absolute top-3 bottom-0 w-px border-l border-dashed border-gray-400 dark:border-gray-600"></span>
+        </div>
+        <!-- content -->
+        <div class="flex items-center gap-4 flex-1 min-w-0">
+          <div class="flex-1 min-w-0">
+            <div class="truncate">
+              {{headCommit.subject}}
+            </div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <time datetime="{{headCommit.rawDate}}">
+                {{headCommit.date}}
+              </admin/time>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    {{#if commits}}
+    <div class="flex flex-col">
+      <h3 class="py-2 text-gray-600 dark:text-gray-500 uppercase tracking-wider text-sm">Other drafts</h3>
+      <div class="max-h-96 overflow-auto space-y-1">
+        {{#each commits}}
+        <button
+          type="button"
+          class="relative w-full text-left cursor-pointer
+                 flex items-center gap-4 py-2 px-2 rounded-md
+                 hover:bg-gray-50 dark:hover:bg-gray-700
+                 {{#if (eq hash ../selectedCommit)}}active-commit-review{{/if}}"
+          hx-get="/admin/time/{{../siteId}}/select/{{hash}}"
+          hx-target="#review-preview-site"
+          hx-swap="innerHTML"
+          aria-current="{{#if (eq hash ../selectedCommit)}}true{{/if}}">
+          <!-- timeline -->
+          <div class="relative flex flex-col items-center w-6 shrink-0">
+            <span class="timeline-dot size-3 rounded-full border-gray-600 dark:border-gray-300 border-dashed border-[1.5px]"></span>
+            <span class="absolute top-3 bottom-0 w-px border-l border-dashed border-gray-400 dark:border-gray-600"></span>
+          </div>
+          <!-- content -->
+          <div class="flex-1 min-w-0">
+            <div class="truncate">
+              {{subject}}
+            </div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <time datetime="{{rawDate}}">
+                {{date}}
+              </admin/time>
+            </div>
+          </div>
+        </button>
+        {{/each}}
+      </div>
+    </div>
+    {{/if}}
+    
+    <div class="flex flex-col pt-6">
+      <h3 class="pb-2 text-gray-600 dark:text-gray-500 uppercase tracking-wider text-sm">Live</h3>
+      <div id="commit-{{liveCommit.hash}}" 
+           hx-get="/admin/time/{{siteId}}/select/{{liveCommit.hash}}" 
+           hx-swap="innerHTML"
+           hx-trigger="click" 
+           hx-target="#review-preview-site" 
+           class="{{#if (eq liveCommit.hash selectedCommit)}}active-commit-review{{/if}} cursor-pointer relative flex hover:bg-gray-50 dark:hover:bg-gray-700 items-center gap-4 p-2 rounded-md">
+        <div class="relative flex flex-col items-center w-6 shrink-0">
+          <span class="is-live relative flex h-3 w-3">
+            <span class="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
+          </span>
+          <span class="absolute top-3 bottom-0 w-px border-l border-dashed border-gray-400 dark:border-gray-600"></span>
+        </div>
+        <div class="flex items-center gap-4 flex-1 min-w-0">
+          <div class="flex-1 min-w-0">
+            <div class="truncate font-medium">
+              {{liveCommit.subject}}
+            </div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <time datetime="{{liveCommit.rawDate}}">
+                {{liveCommit.date}}
+              </admin/time>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
