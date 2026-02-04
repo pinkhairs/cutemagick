@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A personal web runtime with Git-powered time travel",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "assets:sync": "mkdir -p public/admin/assets && cp -r src/dashboard/assets/* public/admin/assets/",
     "css:build": "tailwindcss -c tailwind.config.js -i src/dashboard/app.css -o public/admin/css/style.css",
