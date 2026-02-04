@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import log from '../logs/index.js';
 import { SITES_ROOT, RENDERS_ROOT } from '../../config/index.js';
+import { persistNewDatabaseFiles } from '../fs/dbPersistence.js';
 
 /* ----------------------------
    Policy / Configuration
@@ -67,6 +68,30 @@ function assertExecutablePathAllowed(target) {
   }
 
   throw new Error(`Path escapes execution roots: ${target}`);
+}
+
+/**
+ * Extract site name from a cwd path (either working dir or render dir)
+ * Returns null if not in a valid site directory
+ */
+function extractSiteFromPath(cwdPath) {
+  const realSitesRoot = fs.realpathSync(SITES_ROOT);
+  const realRendersRoot = fs.realpathSync(RENDERS_ROOT);
+  const realCwd = fs.realpathSync(cwdPath);
+
+  // Check if in SITES_ROOT
+  let rel = path.relative(realSitesRoot, realCwd);
+  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+    return rel.split(path.sep)[0];
+  }
+
+  // Check if in RENDERS_ROOT
+  rel = path.relative(realRendersRoot, realCwd);
+  if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+    return rel.split(path.sep)[0];
+  }
+
+  return null;
 }
 
 export async function executeRuntime({
@@ -187,6 +212,19 @@ export async function executeRuntime({
       if (killed) {
         log.debug('[runtime]', 'Process killed (timeout or output limit)');
         return reject(new Error('Process timeout'));
+      }
+
+      // Post-execution: persist any new database files created during execution
+      try {
+        const site = extractSiteFromPath(resolvedCwd);
+        if (site && resolvedCwd.includes(RENDERS_ROOT)) {
+          persistNewDatabaseFiles({ site, renderDir: resolvedCwd });
+        }
+      } catch (err) {
+        log.error('[runtime:persistNewDatabaseFiles]', {
+          cwd: resolvedCwd,
+          error: err.message
+        });
       }
 
       resolve({ code, stdout, stderr });

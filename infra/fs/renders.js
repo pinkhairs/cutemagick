@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { SITES_ROOT, RENDERS_ROOT } from './roots.js';
 import { addDetachedWorktree } from '../git/index.js';
+import { symlinkDatabaseFiles } from './dbPersistence.js';
 
 export function renderPath(site, commit) {
   return path.join(RENDERS_ROOT, site, commit);
@@ -18,8 +19,9 @@ export async function ensureRender({ site, commit }) {
 
   fs.mkdirSync(siteRenderRoot, { recursive: true });
 
-  // Already materialized → reuse
+  // Already materialized → reuse (but refresh symlinks)
   if (fs.existsSync(renderDir)) {
+    symlinkDatabaseFiles({ site, renderDir });
     return renderDir;
   }
 
@@ -33,6 +35,9 @@ export async function ensureRender({ site, commit }) {
     '[ensureRender] renderDir contents:',
       fs.readdirSync(renderDir)
     );
+
+    // Create symlinks for any database files in working directory
+    symlinkDatabaseFiles({ site, renderDir });
   } catch (err) {
     // clean partial materialization
     try {

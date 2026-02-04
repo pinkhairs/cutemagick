@@ -2,11 +2,24 @@ FROM node:20-bookworm
 
 RUN apt-get update && apt-get install -y \
   ca-certificates \
-  php-cgi \
+  bash \
+  coreutils \
+  sed \
+  gawk \
+  grep \
+  jq \
+  curl \
+  wget \
   php-cli \
+  php-cgi \
+  php-sqlite3 \
+  php-pdo \
+  sqlite3 \
   python3 \
   lua5.4 \
-  bash \
+  imagemagick \
+  msmtp \
+  sendmail \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
