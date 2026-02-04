@@ -173,6 +173,19 @@ function ensureLocalGitExclude(sitePath) {
     `.env
 .DS_Store
 node_modules
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
+*.duckdb
+*.duckdb.wal
+*.mdb
+*.accdb
 `.trim() + '\n'
   );
 }
