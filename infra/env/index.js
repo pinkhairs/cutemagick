@@ -3,7 +3,6 @@ import log from '../logs/index.js';
 const DEFAULTS = {
   LOG_LEVEL: 'info',
   PORT: 3000,
-  HOSTING_MODE: 'local',
   PREVIEW_TTL_MS: 1000 * 60 * 60 * 24, // 24h
 };
 
@@ -58,17 +57,10 @@ export function validateEnv() {
 
   const port = parseNumber('PORT', DEFAULTS.PORT);
 
-  const hostingMode = parseEnum(
-    'HOSTING_MODE',
-    ['local', 'hosted'],
-    DEFAULTS.HOSTING_MODE
-  );
-
   log.info('[env] Environment validated', {
-    hostingMode,
     logLevel,
     port,
-  });
+});
 }
 
 export function parseNumberFrom(obj, name, defaultValue) {
