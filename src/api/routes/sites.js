@@ -511,6 +511,18 @@ if (
     });
   }
 
+    await fetch(`${process.env.DOMAIN_REGISTRY_URL}/domains/rename`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Registry-Secret': process.env.REGISTRY_SECRET,
+      'MAGICK_INSTANCE_ID': process.env.MAGICK_INSTANCE_ID
+    },
+    body: JSON.stringify({
+      from: oldDomain,
+      to: cleanDomain
+    })
+  });
   console.log('[settings:domain] domain accepted by registry');
 } else {
   console.log('[settings:domain] registry check skipped');
