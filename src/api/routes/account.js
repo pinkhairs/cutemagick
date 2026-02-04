@@ -36,9 +36,9 @@ router.post('/login', async (req, res) => {
   res.redirect('/admin');
 });
 
-router.post('/logout', auth, (req, res) => {
-  res.clearCookie('token', { path: '/' });
-  res.redirect('/admin/login');
+router.get('/logout', auth, (req, res) => {
+  res.clearCookie('token');
+  res.redirect('/admin');
 });
 
 export default router;

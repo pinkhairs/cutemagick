@@ -63,10 +63,7 @@ hx-on:click="
         >
           🔌 Connect
         </div>
-        <button onclick="if (confirm('Ready to log out?')) {
-          htmx.ajax('POST', '/admin/account/logout');
-          setTimeout(() => {}, 0);
-        }">🚪 Log Out</button>
+        <a href="/admin/account/logout">🚪 Log Out</a>
       </nav>
     </div>
   </header>
