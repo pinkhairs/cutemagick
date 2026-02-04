@@ -516,7 +516,7 @@ if (
     headers: {
       'Content-Type': 'application/json',
       'X-Registry-Secret': process.env.REGISTRY_SECRET,
-      'MAGICK_INSTANCE_ID': process.env.MAGICK_INSTANCE_ID
+      'MAGICK-INSTANCE-ID': process.env.MAGICK_INSTANCE_ID
     },
     body: JSON.stringify({
       from: oldDomain,
