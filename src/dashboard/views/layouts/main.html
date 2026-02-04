@@ -64,7 +64,7 @@ hx-on:click="
           🔌 Connect
         </div>
         <button onclick="if (confirm('Ready to log out?')) {
-          htmx.ajax('POST', '/account/logout');
+          htmx.ajax('POST', '/admin/account/logout');
           setTimeout(() => {}, 0);
         }">🚪 Log Out</button>
       </nav>
@@ -142,31 +142,23 @@ hx-on:click="
 
     const action = btn.dataset.action;
 
-    try {
-      if (action === 'copy-key') {
-        if (!confirm('Copy your public SSH key to your clipboard?')) return;
-        const res = await csrfFetch('/admin/config/public-key', {
-          method: 'POST',
-        });
-
-        if (!res.ok) throw new Error('Failed to fetch key');
-
-        const key = await res.text();
-
-        // 🔑 THE IMPORTANT PART
-        const copied = forceCopy(key);
-
-        if (!copied) {
-          alert('Copy failed. Please copy manually:\n\n' + key);
-          return;
-        }
-
-        alert('Your public SSH key has been copied to your clipboard!');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Something went wrong. Please try again.');
-    }
+   try {
+  if (action === 'copy-key') {
+    if (!confirm('Copy your public SSH key to your clipboard?')) return;
+    const res = await csrfFetch('/admin/config/public-key', {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error('Failed to fetch key');
+    const key = await res.text();
+    
+    // Standard clipboard copy
+    await navigator.clipboard.writeText(key);
+    alert('Your public SSH key has been copied to your clipboard!');
+  }
+} catch (err) {
+  console.error(err);
+  alert('Something went wrong. Please try again.');
+}
   });
 </script>
 <script>

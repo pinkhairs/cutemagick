@@ -167,7 +167,7 @@ router.get('/:siteId/:tab', async (req, res) => {
           siteAddress,
           commits: annotatedCommits,
           siteDir: site.directory,
-          siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
+          siteAddressDisplay,
           uuid: site.uuid,
           layout: false
         });
@@ -175,7 +175,7 @@ router.get('/:siteId/:tab', async (req, res) => {
       case 'secrets':
         return res.render('partials/secrets', {
           siteAddress,
-          siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
+          siteAddressDisplay,
           siteId: site.uuid,
           layout: false
         });
@@ -183,7 +183,7 @@ router.get('/:siteId/:tab', async (req, res) => {
       case 'settings':
         return res.render('partials/settings', {
           siteAddress,
-          siteAddressDisplay: siteAddress.split('//')[1].replace(/\/$/, ''),
+          siteAddressDisplay,
           siteId: site.uuid,
           layout: false,
           wildcardDomain: process.env.WILDCARD_DOMAIN,
