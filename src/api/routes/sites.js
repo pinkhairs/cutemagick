@@ -433,6 +433,8 @@ function getEnvPath(siteId) {
                         '/:siteId/settings',
                         express.json(),
                         async (req, res) => {
+
+                          
                           const {
                             name,
                             customDomain,
@@ -447,7 +449,73 @@ function getEnvPath(siteId) {
                           const cleanDomain = customDomain
                           ? customDomain.replace(/^https?:\/\//, '')
                           : null;
-                          
+console.log('[settings:domain] loading current domain for site', req.params.siteId);
+
+const site = db.prepare(`
+  SELECT domain
+  FROM sites
+  WHERE uuid = ?
+`).get(req.params.siteId);
+
+if (!site) {
+  console.log('[settings:domain] site not found');
+  return res.sendStatus(404);
+}
+
+const oldDomain = site.domain;
+console.log('[settings:domain] oldDomain =', oldDomain);
+console.log('[settings:domain] newDomain =', cleanDomain);
+
+if (
+  hasDomainRegistryConfigured() &&
+  cleanDomain &&
+  cleanDomain !== oldDomain
+) {
+  console.log('[settings:domain] registry check required');
+
+  let registryResponse;
+  try {
+    registryResponse = await fetch(
+      `${process.env.DOMAIN_REGISTRY_URL}/domains/check/${encodeURIComponent(cleanDomain)}`,
+      {
+        headers: {
+          'X-Registry-Secret': process.env.REGISTRY_SECRET,
+          'MAGICK_INSTANCE_ID': process.env.MAGICK_INSTANCE_ID
+        }
+      }
+    );
+  } catch (err) {
+    console.log('[settings:domain] registry fetch FAILED', err.message);
+    return res.status(503).json({
+      error: 'domain_registry_unreachable'
+    });
+  }
+
+  console.log('[settings:domain] registry status', registryResponse.status);
+
+  let body = null;
+  try {
+    body = await registryResponse.json();
+  } catch (err) {
+    console.log('[settings:domain] registry JSON parse failed', err.message);
+  }
+
+  console.log('[settings:domain] registry body', body);
+
+  // IMPORTANT: only explicit ok:true passes
+  if (!registryResponse.ok || body?.ok !== true) {
+    console.log('[settings:domain] domain rejected by registry');
+
+    return res.status(409).json({
+      error: 'domain_taken_or_not_verified'
+    });
+  }
+
+  console.log('[settings:domain] domain accepted by registry');
+} else {
+  console.log('[settings:domain] registry check skipped');
+}
+
                           const result = db.prepare(`
       UPDATE sites
       SET
@@ -568,6 +636,34 @@ function getEnvPath(siteId) {
                             .sendStatus(204);
                           });
                           
-                          
+function hasDomainRegistryConfigured() {
+  // for magick.host customers only
+  // hope you don't mind
+  return Boolean(
+    process.env.REGISTRY_SECRET &&
+    process.env.DOMAIN_REGISTRY_URL &&
+    process.env.MAGICK_INSTANCE_ID
+  );
+}
+
+async function checkDomainAvailable(domain) {
+  const res = await fetch(
+    `${process.env.DOMAIN_REGISTRY_URL}/domains/check/${encodeURIComponent(domain)}`,
+    {
+      headers: {
+        'X-Registry-Secret': process.env.REGISTRY_SECRET,
+        'MAGICK_INSTANCE_ID': process.env.MAGICK_INSTANCE_ID
+      }
+    }
+  );
+
+  if (!res.ok) return false;
+
+  const data = await res.json();
+  return data.ok === true;
+}
+
+
+
                           export default router;
                           

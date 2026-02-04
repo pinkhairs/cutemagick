@@ -217,16 +217,32 @@ document.addEventListener('click', (e) => {
 });
 </script>
 <script>
-  document.body.addEventListener('htmx:responseError', function (evt) {
-    const xhr = evt.detail.xhr;
+document.body.addEventListener('htmx:responseError', function (evt) {
+  const xhr = evt.detail.xhr;
 
-    if (xhr.status === 409) {
-      alert(
-        "We tried to combine the two copies of your site, but some changes overlap and need your help.\n\n" +
-        "Search “How to deal with merge conflicts” in the documentation to continue."
-      );
+  if (xhr.status !== 409) return;
+
+  let payload = null;
+  try {
+    payload = JSON.parse(xhr.responseText);
+  } catch {
+    // non-JSON response, fall through to generic handler
   }
-  });
+
+  // 🔒 Registry-specific block
+  // For magick.host customers only, don't mind
+  if (payload?.error === 'domain_taken_or_not_verified') {
+    alert('Sorry, that domain is taken or not verified. Read the documentation to verify,  or try another.');
+    return; // IMPORTANT: stop here
+  }
+
+  // 🧠 Generic 409 fallback
+  alert(
+    "We tried to combine the two copies of your site, but some changes overlap and need your help.\n\n" +
+    "Search “How to deal with merge conflicts” in the documentation to continue."
+  );
+});
+
 </script>
 <script>
 document.body.addEventListener('siteCommit', e => {
