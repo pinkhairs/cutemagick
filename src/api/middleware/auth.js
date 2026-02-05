@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 export default function auth(req, res, next) {
   // Allow login page
-  if (req.path === '/login') {
+  if (req.path === '/admin/login') {
     return next();
   }
 
