@@ -1,91 +1,203 @@
 # Cute Magick
 
-## What is it?
+Cute Magick is a self-hosted, Git-backed website environment with **built-in infinite undo**.
 
-Cute Magick is an open source, self-hosted website platform with baked-in Git. Cute Magick gives you an  building and running websites in a variety of languages including HTML, PHP, Node.js, Python.
+![Cute Magick screenshot](https://raw.githubusercontent.com/pinkhairs/cutemagick/refs/heads/main/screenshot.png)
 
-🌐 **[cutemagick.com](https://cutemagick.com)**  
-📧 **[me@diana.nu](mailto:me@diana.nu)**
+It’s for people who want to build real websites—but don’t want to fight platforms, config, and SaaS billing just to experiment, learn, or keep infinite projects alive.
 
----
+You get a real server, real files, real URLs, and the ability to rewind your site’s entire history at any time.
 
-## Status
-
-Active development is happening on the `dev` branch. The `main` receives stable releases.
-
-This is a work in progress. If you're interested in following along, watch this repo or email me.
+📚 **Full documentation:**  
+https://pixelswithin.notion.site/Cute-Magick-Docs-2fdb91326d968024b11cc40c73a18e90
 
 ---
 
-## What it does
+## What is Cute Magick?
 
-Cute Magick runs your websites with **per-request execution**: one HTTP request spawns a fresh PHP or Node.js process, runs your script, returns the response, and exits. No daemons, no port management, no background processes. Files on disk are your database—read and write them directly.
+Cute Magick starts from a simple idea:
 
-Every file change is automatically snapshotted with Git. Rewind to any previous version, preview past states, or branch off to experiment. Nothing is ever lost.
+> Your computer is already a server, and the web is already accessible.
 
-**Supported languages:** PHP 8.3, Node.js 22.x, Python 3.12, Go 1.23, Rust 1.83, Ruby 3.3, Bash 5.2  
-**Built-in:** SQLite databases, HTTPS/SSL, custom domains, file browser/editor, one-click time travel
+Cute Magick makes that feel true again.
 
-**Constraints:**
-- ~100-200ms overhead per request (process spawning)
-- No background jobs, cron, WebSockets, or long-running servers
-- Not suitable for high traffic (>10 req/sec sustained)
+It gives you a place to:
+- create and run websites immediately  
+- use HTML, CSS, JavaScript, PHP, Python, Node, Lua, Bash  
+- experiment without fear of breaking things  
+- time-travel through every change you make  
 
-These aren't limitations—they're features. Constraints create clarity. Cause-and-effect becomes visible. Entire categories of failure disappear.
+Every site has:
+- files  
+- a URL  
+- a complete history  
+- a private draft state and a live state  
+- optional Git remotes for backup  
 
----
-
-## Why it exists
-
-Most people give up on web development when they hit deployment. Servers feel scary, irreversible, and hostile. Cute Magick makes server-side programming safe (time travel = rewindable history), understandable (per-request execution), and reversible (automatic snapshots).
-
-This isn't about making backend development "easy"—it's about making it **humane**. Technology can be joyful. Learning doesn't have to be punishing. Infrastructure can support creativity instead of gatekeeping it.
-
-**Computer literacy as mutual aid.**
+Your sites are just folders and files. Your history is just Git.
 
 ---
 
-## What you can build
+## Why Cute Magick?
 
-- Personal sites with dynamic features
-- Guestbooks, visitor counters, contact forms
-- Tarot readers, decision engines, generators
-- APIs for your own tools
-- Resource libraries, glossaries, reference collections
-- Simple CMSes, blogs, knowledge bases
-- Anything that runs on the web and doesn't need background jobs
+If you:
+- learned HTML/CSS once and drifted away  
+- know how to code but hate deployment rituals  
+- want server power without server culture  
+- miss personal websites and creative freedom  
 
-Perfect for experiments, tools for friends, learning how backends work, or small projects you want to own completely.
+Cute Magick is designed for you.
 
----
-
-## Ownership
-
-Your files live on disk as plain text. Your site is a real Git repository. Export everything with one click. The code is MIT licensed—run it, modify it, fork it. No lock-in, no proprietary formats. If Cute Magick vanished tomorrow, you'd still have your code and full Git history.
+It’s a **workspace** where websites are allowed to be unfinished, experimental, and reversible.
 
 ---
 
-## Self-hosting & managed hosting
+## Getting Started
 
-Self-hosting is fully supported (documentation coming with stable release). If you'd rather focus on building than maintaining infrastructure, **magick.host** offers managed hosting:
+You need:
+- Docker
+- a terminal
+- ~5 minutes
 
-- **Free tier:** 1 site, 1 file, perfect for trying it out
-- **$10/month:** Unlimited sites, custom domains, email support
+Cute Magick is open source. You can self-host it anywhere Docker runs. Cute Magick does not phone home and does not require an external service to function.
 
-Either way, your sites are portable. You own your work completely.
+Basic requirements:
+- 512 MB RAM (1 GB recommended)
+- ~1 GB disk space
+- any CPU from the last decade
+
+A Raspberry Pi 4 can run it.  
+The cheapest VPS is usually overkill.  
+Your laptop won’t notice it’s running.
+
+📖 **Installation and setup:**  
+See the full docs for self-hosting and hosted options.
 
 ---
 
-## Getting involved
+## Core Concepts (Short Version)
 
-Development happens on the `dev` branch. Contributions, feedback, and questions are welcome—though the codebase is still in flux.
+### Sites
+A site is just a folder.
 
-- Watch this repo for updates
-- Check [cutemagick.com](https://cutemagick.com) for context
-- Email [me@diana.nu](mailto:me@diana.nu) if you want to be notified when it's ready
+Inside:
+- HTML, CSS, JS, images
+- server-side code (PHP, Python, Node, Lua, Bash)
+- SQLite databases
+- secrets via environment variables
 
-Cute Magick will be ready for real projects in **February 2026**.
+Each site has infinite versions across a few clear states:
+- **working** (private working files)
+- **preview#123** (on-demand, disposable private version render)
+- **live** (what the world sees)
 
 ---
 
-✨ Built by [Diana Lopez](mailto:me@diana.nu) with care, constraints, and a belief that infrastructure can be kind.
+### Versions (Time Machine)
+
+Every file save, upload, delete, rename creates a snapshot automatically.
+
+You can:
+- preview any past version
+- restore old versions without deleting newer ones
+- recover deleted files
+- undo mistakes from months ago
+
+Under the hood, this is Git—but you don’t need to know Git to use it.
+
+---
+
+### Secrets
+
+Secrets are stored as environment variables in a hidden `.env` file:
+- API keys
+- passwords
+- tokens
+
+They are:
+- not committed to Git
+- not included in exports
+- injected at runtime only
+
+---
+
+### Databases
+
+Each site can use SQLite databases.
+
+SQLite is:
+- zero-config
+- portable
+- stored as files
+
+Databases persist across previews and versions.  
+Your site history rewinds; your data does not—by design.
+
+---
+
+### Remotes (Optional)
+
+You can connect a Git remote (GitHub, GitLab, your own server) to:
+- back up your site history
+- collaborate
+- work locally and sync back
+
+Secrets and database contents are never pushed.
+
+---
+
+## Under the Hood
+
+Cute Magick stores all persistent state in `/data`.
+
+Key directories:
+- `/data/sites` — your sites and their Git history
+- `/data/databases` — live SQLite data
+- `/data/renders` — ephemeral preview output
+- `/data/.ssh` — generated SSH keys
+
+Everything is transparent.
+
+If you understand `/data`, you understand Cute Magick.
+
+---
+
+## Runtime
+
+Cute Magick executes server-side code per request.
+
+File extensions determine runtime automatically:
+- `.php` → PHP
+- `.py` → Python
+- `.js` (with shebang) → Node
+- `.lua` → Lua
+- `.sh` → Bash
+- `.html`, `.css` → served as-is
+
+No configuration. No build step. Just save a file.
+
+---
+
+## Philosophy
+
+Cute Magick favors:
+- stacking reversible actions over destructive ones
+- explicit version control over auto-deploy
+- transparency over abstraction
+- ownership over lock-in
+
+You can’t permanently break your site. And if you ever want to leave, you can.
+
+---
+
+## Feedback
+
+If you’re using it and have thoughts—especially confusion or friction—that feedback is actively shaping the project, particularly around:
+
+- UX
+- docs clarity
+- edge cases
+- things that felt confusing or "too magical" (read: implicit)
+
+Contact:  
+**Diana Lopez** — me@diana.nu
