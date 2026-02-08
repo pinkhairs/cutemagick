@@ -71,33 +71,6 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Security headers
-app.use((req, res, next) => {
-  // Prevent MIME type sniffing
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-
-  // Prevent clickjacking
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-
-  // Enable XSS filter (legacy browsers)
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-
-  // Content Security Policy
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "font-src 'self' https://fonts.gstatic.com; " +
-    "img-src 'self' data: https:; " +
-    "connect-src 'self'; " +
-    "frame-src 'self'; " +
-    "base-uri 'self';"
-  );
-
-  next();
-});
-
 // HTMX: disable caching for fragment responses
 app.use((req, res, next) => {
   if (req.headers['hx-request']) {
@@ -173,6 +146,32 @@ Handlebars.registerHelper('escapeAttr', function(value) {
 
 // Serves sites based on Host header (skips /admin and /site routes)
 app.use(domainResolver);
+
+function adminSecurityHeaders(req, res, next) {
+  // Core hardening (safe for admin UI)
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // STRICT CSP — admin UI only
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: https:",
+      "connect-src 'self'",
+      "frame-src 'self'",
+      "base-uri 'self'",
+    ].join('; ')
+  );
+
+  next();
+}
+
+app.use('/admin', adminSecurityHeaders);
 
 /* ----------------------------
    Static assets
