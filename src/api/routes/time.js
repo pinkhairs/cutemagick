@@ -218,7 +218,8 @@ router.get('/:siteId/review', async (req, res) => {
       selectedCommit: headCommit,
       headCommit: commits[0],
       liveCommit: commits.find(c => c.hash === liveCommit),
-      formatPrettyDate
+      formatPrettyDate,
+      siteHasPassword: site.password ? true : false,
     });
   } catch (err) {
     log.error('[review]', err.message);

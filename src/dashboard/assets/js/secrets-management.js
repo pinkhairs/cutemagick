@@ -60,6 +60,7 @@ console.log('[Secrets] script loaded');
     addBtn.addEventListener('click', () => addRow());
 
     saveBtn.addEventListener('click', async () => {
+      saveBtn.setAttribute('aria-busy', 'true');
       const rows = [...form.querySelectorAll('.secret-row')]
         .map(row => ({
           key: row.querySelector('[name=key]')?.value.trim(),
@@ -72,15 +73,17 @@ console.log('[Secrets] script loaded');
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(rows)
-        });
+        })
 
         if (!res.ok) {
           throw new Error(`Save failed (${res.status})`);
         }
       } catch (err) {
+        saveBtn.setAttribute('aria-busy', 'false');
         console.error('[Secrets] save failed', err);
         alert('Failed to save secrets');
       }
+      saveBtn.setAttribute('aria-busy', 'false');
     });
 
     // Load secrets from disk and replace form contents
