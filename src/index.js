@@ -166,6 +166,14 @@ Handlebars.registerHelper('escapeAttr', function(value) {
     .replace(/'/g, '&#39;');
 });
 
+
+/* ----------------------------
+   Domain resolver
+----------------------------- */
+
+// Serves sites based on Host header (skips /admin and /site routes)
+app.use(domainResolver);
+
 /* ----------------------------
    Static assets
 ----------------------------- */
@@ -177,14 +185,6 @@ app.use(
 app.use('/admin/assets/js',  express.static(`${PUBLIC_ROOT}/admin/assets/js`));
 app.use('/admin/assets/css', express.static(`${PUBLIC_ROOT}/admin/assets/css`));
 app.use('/admin/assets/img', express.static(`${PUBLIC_ROOT}/admin/assets/img`));
-
-
-/* ----------------------------
-   Domain resolver
------------------------------ */
-
-// Serves sites based on Host header (skips /admin and /site routes)
-app.use(domainResolver);
 
 /* ----------------------------
    Public routes
