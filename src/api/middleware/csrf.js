@@ -59,8 +59,9 @@ function ensureToken(req, res) {
 
     res.cookie(CSRF_COOKIE, csrfId, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'Strict',
       secure: process.env.NODE_ENV === 'production',
+      path: '/admin',
     });
   }
 

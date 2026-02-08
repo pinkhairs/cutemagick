@@ -9,7 +9,15 @@ import log from '../../../infra/logs/index.js';
  * Skips /admin and /site routes to preserve existing functionality.
  */
 export default async function domainResolver(req, res, next) {
-  if (req.path.startsWith('/admin') || req.path.startsWith('/site')) {
+  if (req.path.startsWith('/site')) {
+    return next();
+  }
+
+  const requestHost = req.hostname;
+  const adminDomain = process.env.ADMIN_DOMAIN;
+
+  // If this is an /admin path on the admin domain, let admin routes handle it
+  if (req.path.startsWith('/admin') && adminDomain && requestHost === adminDomain) {
     return next();
   }
 

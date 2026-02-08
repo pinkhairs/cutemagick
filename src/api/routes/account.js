@@ -28,9 +28,9 @@ router.post('/login', async (req, res) => {
 
   res.cookie('token', token, {
     httpOnly: true,
-    sameSite: 'lax',  // Change from 'strict' - might help with redirects
-    secure: true,  // Always use secure in production
-    path: '/',
+    sameSite: 'Strict',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/admin',
   });
 
   res.redirect('/admin');
