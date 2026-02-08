@@ -90,7 +90,16 @@ function mountFileExplorers(root) {
       console.warn('[FileExplorer] Missing siteId', mount);
       return;
     }
-    
+
+    setTimeout(() => {
+      const uploadInput = mount.querySelector('input[type="file"]');
+      if (uploadInput) {
+        uploadInput.setAttribute('webkitdirectory', '');
+        uploadInput.setAttribute('directory', '');
+        uploadInput.setAttribute('multiple', '');
+      }
+    }, 100);
+      
     new FileExplorer(mount, {
       group: `site-${siteId}`, // 🔑 enable intra-site drag/drop
       initpath: [[ '', '', { canmodify: true } ]],
@@ -119,6 +128,10 @@ function mountFileExplorers(root) {
         delete: true,
         upload: true,
         download: true
+      },
+      
+      uploadextras: {
+        accept_folders: true  // Enable folder uploads
       },
       
       onrefresh(folder, required) {
@@ -278,6 +291,15 @@ function mountFileExplorers(root) {
       },
       
       oninitupload(startupload, fileinfo) {
+        console.log('Upload fileinfo:', {
+          type: fileinfo.type,
+          name: fileinfo.name,
+          file: fileinfo.file,
+          webkitRelativePath: fileinfo.file?.webkitRelativePath,
+          fullPath: fileinfo.file?.fullPath, // Firefox alternative
+          path: fileinfo.path, // Might be here
+          folder: fileinfo.folder?.GetPathIDs()
+        });
         
         // Allow directory drops
         if (fileinfo.type === 'dir') {
