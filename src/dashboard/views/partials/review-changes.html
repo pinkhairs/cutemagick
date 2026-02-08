@@ -50,10 +50,12 @@
                 <p class="opacity-80 italic">...and go live!</p>
               </div>
 
-              <div class="flex gap-3 rounded-md border border-gray-400 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
-                <div class="text-lg">🔒️</div>
-                <p>Site is password-protected.</p>
-              </div>
+              {{#if siteHasPassword}}
+                <div class="flex gap-3 rounded-md border border-gray-400 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 p-3 leading-relaxed">
+                  <div class="text-lg">🔒️</div>
+                  <p>Site is password-protected.</p>
+                </div>
+              {{/if}}
 
               <div
                 hx-get="/admin/time/{{siteId}}/commits"

@@ -17,12 +17,12 @@ html, body, #app {
   cursor: move;
 }
 
-:root {
+:root, .light-loader {
   --aria-busy-spinner-color: #1f2937; /* slate-800 */
 }
 
 /* Dark mode */
-.dark {
+.dark, .dark-loader {
     --aria-busy-spinner-color: #e5e7eb; /* slate-200 */
 }
 
