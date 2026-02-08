@@ -14,7 +14,7 @@ export default async function domainResolver(req, res, next) {
   }
 
   const requestHost = req.hostname;
-  const adminDomain = process.env.ADMIN_DOMAIN;
+  const adminDomain = process.env.ROOT_DOMAIN;
 
   // If this is an /admin path on the admin domain, let admin routes handle it
   if (req.path.startsWith('/admin') && adminDomain && requestHost === adminDomain) {
