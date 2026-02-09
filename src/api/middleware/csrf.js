@@ -14,10 +14,8 @@ export default function csrf(req, res, next) {
     return csrfId && csrfStore.get(csrfId);
   };
 
-  // 🔑 Intercept header write, not end()
   if (!res[CSRF_WRAPPED]) {
     res[CSRF_WRAPPED] = true;
-
     const originalWriteHead = res.writeHead;
     res.writeHead = function (...args) {
       const token = req.csrfToken?.();
@@ -39,12 +37,14 @@ export default function csrf(req, res, next) {
       return res.sendStatus(403);
     }
 
-    rotateToken(csrfId);
+    const isMultipart = req.headers['content-type']?.includes('multipart/form-data');
+    if (!isMultipart) {
+      rotateToken(csrfId);
+    }
   }
 
   next();
 }
-
 
 /* ----------------------------
    Helpers
