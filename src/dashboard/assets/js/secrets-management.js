@@ -1,16 +1,11 @@
-console.log('[Secrets] script loaded');
-
 (function () {
   function initSecretsEditor(root) {
     // Guard: initialize once per editor
     if (root.dataset.init === '1') return;
     root.dataset.init = '1';
 
-    console.log('[Secrets] init', root);
-
     const siteId = root.dataset.siteUuid;
     if (!siteId) {
-      console.warn('[Secrets] missing data-site-uuid', root);
       return;
     }
 
@@ -20,12 +15,6 @@ console.log('[Secrets] script loaded');
     const tpl = document.getElementById('secretRow');
 
     if (!form || !addBtn || !saveBtn || !tpl) {
-      console.warn('[Secrets] missing required elements', {
-        form,
-        addBtn,
-        saveBtn,
-        tpl
-      });
       return;
     }
 
@@ -80,7 +69,6 @@ console.log('[Secrets] script loaded');
         }
       } catch (err) {
         saveBtn.setAttribute('aria-busy', 'false');
-        console.error('[Secrets] save failed', err);
         alert('Failed to save secrets');
       }
       saveBtn.setAttribute('aria-busy', 'false');
@@ -98,7 +86,6 @@ console.log('[Secrets] script loaded');
         addRow(); // always leave one empty row
       })
       .catch(err => {
-        console.error('[Secrets] load failed', err);
         form.replaceChildren();
         addRow();
       });
