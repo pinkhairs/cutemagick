@@ -118,7 +118,53 @@ function mountFileExplorers(root) {
         new_file: true,
         delete: true,
         upload: true,
-        download: true
+        download: true,
+        move: true,
+      },
+
+      onmove(moved, srcpath, srcids, destfolder) {
+        // Extract source and destination paths
+        const sourcePath = srcpath.slice(1).join('/');
+        const destPath = destfolder.GetPathIDs().slice(1).join('/');
+        
+        // Check if source and dest are the same
+        if (sourcePath === destPath) {
+          alert('Cannot move items to the same folder');
+          return moved(false, []);
+        }
+        
+        // Build array of moves: { from, to }
+        const moves = srcids.map(id => {
+          const from = sourcePath ? `${sourcePath}/${id}` : id;
+          const to = destPath ? `${destPath}/${id}` : id;
+          return { from, to };
+        });
+        
+        // Execute all moves
+        Promise.all(
+          moves.map(({ from, to }) =>
+            csrfFetch(`/admin/fs/${siteId}/move`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ from, to })
+            })
+          )
+        )
+        .then(() => {
+          htmx.trigger(document.body, 'siteCommit', {
+            siteId,
+            source: 'move'
+          });
+          
+          // Return the successfully moved entries
+          const movedEntries = srcids.map(id => ({ id, name: id }));
+          moved(true, movedEntries);
+        })
+        .catch(err => {
+          console.error('[FileExplorer] Move failed:', err);
+          alert('Failed to move items');
+          moved(false, []);
+        });
       },
       
       onrefresh(folder, required) {
@@ -277,35 +323,33 @@ function mountFileExplorers(root) {
         );
       },
       
-      oninitupload(startupload, fileinfo) {
-        
-        // Allow directory drops
-        if (fileinfo.type === 'dir') {
-          // Let FileExplorer descend into it
-          return startupload(true);
-        }
-        
-        const basePath = fileinfo.folder.GetPathIDs().slice(1).join('/');
-        
-        // Preserve folder structure if present
-        const rel =
-        fileinfo.file?.webkitRelativePath
-        ? fileinfo.file.webkitRelativePath
-        : fileinfo.name;
-        
-        const fullPath = basePath
-        ? `${basePath}/${rel}`
-        : rel;
-        
-        fileinfo.url = `/admin/fs/${siteId}/upload`;
-        fileinfo.fileparam = 'file';
-        fileinfo.params = {
-          path: fullPath
-        };
-        
-        
-        startupload(true);
-      },
+oninitupload(startupload, fileinfo) {
+  if (fileinfo.type === 'dir') {
+    return startupload(true);
+  }
+  
+  const basePath = fileinfo.folder.GetPathIDs().slice(1).join('/');
+  
+  const webkitPath = fileinfo.file?.webkitRelativePath || '';
+  
+  let relativeDir = '';
+  if (webkitPath && webkitPath.includes('/')) {
+    relativeDir = webkitPath.substring(0, webkitPath.lastIndexOf('/'));
+  }
+  
+  // Combine current folder with file's relative directory
+  const targetDir = [basePath, relativeDir]
+    .filter(Boolean)
+    .join('/');
+  
+  fileinfo.url = `/admin/fs/${siteId}/upload`;
+  fileinfo.fileparam = 'file';
+  fileinfo.params = {
+    targetDir: targetDir
+  };
+  
+  return startupload(true);
+},
       
       
       onfinishedupload(finalize, fileinfo) {
@@ -327,3 +371,25 @@ HTMX hook
 document.body.addEventListener('htmx:afterSwap', (e) => {
   mountFileExplorers(e.target);
 });
+
+/* -------------------------------------------------
+Remove ghost "move" icons
+-------------------------------------------------- */
+
+if (!window.cmDragCleanupInstalled) {
+  window.cmDragCleanupInstalled = true;
+  
+  // Clean up floating drag icons on dragend
+  document.addEventListener('dragend', () => {
+    const floatingIcons = document.querySelectorAll('.fe_fileexplorer_floating_drag_icon_wrap');
+    floatingIcons.forEach(icon => icon.remove());
+  }, true);
+  
+  // Also on mouseup (backup)
+  document.addEventListener('mouseup', () => {
+    setTimeout(() => {
+      const floatingIcons = document.querySelectorAll('.fe_fileexplorer_floating_drag_icon_wrap');
+      floatingIcons.forEach(icon => icon.remove());
+    }, 100);
+  });
+}

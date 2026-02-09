@@ -334,11 +334,14 @@ router.post('/:siteId/upload', upload.any(), async (req, res) => {
   const siteRoot = getSiteRoot(siteId);
   if (!siteRoot) return res.sendStatus(404);
 
-  const { path: basePath = '', message } = req.body;
+  const { targetDir = '', message } = req.body;
   let commit;
+
   try {
     for (const file of req.files) {
-      const relPath = path.join(basePath, file.originalname);
+      const relPath = targetDir
+        ? path.join(targetDir, file.originalname)
+        : file.originalname;
       const targetPath = resolveSafePath(siteRoot, relPath);
 
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
@@ -355,7 +358,7 @@ router.post('/:siteId/upload', upload.any(), async (req, res) => {
       triggerSiteCommit(res, siteId, commit || null, 'file:upload');
     }
 
-    res
+    res.setHeader('X-CSRF-Token', req.csrfToken())
     .status(200)
     .json({ "success": true });
   } catch (err) {
@@ -402,6 +405,70 @@ router.get('/:siteId/download', async (req, res) => {
   } catch (err) {
     log.error('[fs:download]', err.message);
     return res.status(400).send(err.message);
+  }
+});
+
+/* -------------------------------------------------
+   POST /fs/:siteId/move
+-------------------------------------------------- */
+
+router.post('/:siteId/move', express.urlencoded({ extended: false }), async (req, res) => {
+  const siteId = req.params.siteId;
+  const siteRoot = getSiteRoot(siteId);
+  if (!siteRoot) return res.sendStatus(404);
+
+  const { from, to, message } = req.body;
+
+  try {
+    // Validate both paths exist and are safe
+    const fromPath = resolveSafePath(siteRoot, from);
+    const toPath = resolveSafePath(siteRoot, to);
+    
+    // Check if source exists
+    const stat = await fs.stat(fromPath).catch(() => null);
+    if (!stat) {
+      return res.status(400).send('Source path does not exist');
+    }
+    
+    // Check if destination already exists
+    const destExists = await fs.stat(toPath).catch(() => null);
+    if (destExists) {
+      return res.status(400).send('Destination already exists');
+    }
+    
+    // Ensure destination directory exists
+    await fs.mkdir(path.dirname(toPath), { recursive: true });
+    
+    let commit;
+    try {
+      commit = await commitFileRename({
+        siteId,
+        oldPath: from,
+        newPath: to,
+        message: message || `Move ${from} to ${to}`
+      });
+    } catch (gitError) {
+      // Git mv failed - file is probably untracked
+      // Fall back to filesystem move
+      log.info('[fs:move] Git mv failed, using fs.rename:', gitError.message);
+      
+      await fs.rename(fromPath, toPath);
+      
+      // Commit the result (add new file, remove old if tracked)
+      commit = await commitFileCreate({
+        siteId,
+        fullPath: toPath,
+        message: message || `Move ${from} to ${to}`
+      }).catch(() => null);
+    }
+    
+    const commitHash = commit || null;
+    triggerSiteCommit(res, siteId, commitHash, 'file:move');
+    
+    res.sendStatus(204);
+  } catch (err) {
+    log.error('[fs:move]', err.message);
+    res.status(400).send(err.message);
   }
 });
 
