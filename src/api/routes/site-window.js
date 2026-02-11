@@ -8,28 +8,22 @@ const router = express.Router();
 
 function getSite(siteId) {
   return db.prepare(`
-    SELECT uuid, name, directory, live_commit, domain
+    SELECT uuid, name, directory, live_commit, domain, username, password
     FROM sites
     WHERE uuid = ?
   `).get(siteId);
 }
 
+
 router.get('/:siteId', async (req, res) => {
   const site = getSite(req.params.siteId);
   if (!site) return res.sendStatus(404);
-  let siteAddress = resolveSiteAddress(site);
-  let siteAddressDisplay;
 
-  if (siteAddress) {
-    siteAddressDisplay = siteAddress.split('//')[1].replace(/\/$/, '');
-  } else {
-    siteAddress = String(process.env.SSL_ENABLED) === '1' ? 'https' : 'http'
-    + '://' + process.env.ROOT_DOMAIN + '/site/' + site.directory;
-    siteAddressDisplay = process.env.ROOT_DOMAIN + '/site/' + site.directory;
-  }
+  const siteAddress = resolveSiteAddress(site, 'admin-iframe');
+  const publicUrl = resolveSiteAddress(site, 'public');
 
-  // Use Handlebars to safely render the iframe
-  const iframeHtml = `<iframe src="/site/${site.directory.replace(/["'<>&]/g, c =>
+  // Iframe uses clean path (admin is authenticated, httpBasic will skip)
+  const iframeHtml = `<iframe src="/iframe/site/${site.directory.replace(/["'<>&]/g, c =>
     ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c])
   )}" class="w-full h-full border-none"></iframe>`;
 
@@ -38,7 +32,7 @@ router.get('/:siteId', async (req, res) => {
     id: site.uuid,
     title: site.name,
     siteAddress,
-    siteAddressDisplay: siteAddressDisplay,
+    publicUrl,
     directory: site.directory,
     body: iframeHtml
   });
@@ -66,22 +60,14 @@ router.get('/:siteId/toolbar', async (req, res) => {
   const site = getSite(req.params.siteId);
   if (!site) return res.sendStatus(404);
 
-  let siteAddress = resolveSiteAddress(site);
-  let siteAddressDisplay;
-
-  if (siteAddress) {
-    siteAddressDisplay = siteAddress.split('//')[1].replace(/\/$/, '');
-  } else {
-    siteAddress = String(process.env.SSL_ENABLED) === '1' ? 'https' : 'http'
-    + '://' + process.env.ROOT_DOMAIN + '/site/' + site.directory;
-    siteAddressDisplay = process.env.ROOT_DOMAIN + '/site/' + site.directory;
-  }
+  const siteAddress = resolveSiteAddress(site, 'admin-iframe');
+  const publicUrl = resolveSiteAddress(site, 'public');
 
   return res.render('partials/site-toolbar', {
     layout: false,
     siteId: site.uuid,
     siteAddress,
-    siteAddressDisplay,
+    publicUrl,
     directory: site.directory
   });
 });
@@ -92,24 +78,16 @@ router.get('/:siteId/actions', async (req, res) => {
 
   const headCommit = await getHeadCommit({siteId: site.uuid});
   const liveCommit = await getLiveCommit({siteId: site.uuid});
-  let siteAddress = resolveSiteAddress(site);
-  let siteAddressDisplay;
-
-  if (siteAddress) {
-    siteAddressDisplay = siteAddress.split('//')[1].replace(/\/$/, '');
-  } else {
-    siteAddress = String(process.env.SSL_ENABLED) === '1' ? 'https' : 'http'
-    + '://' + process.env.ROOT_DOMAIN + '/site/' + site.directory;
-    siteAddressDisplay = process.env.ROOT_DOMAIN + '/site/' + site.directory;
-  }
+  const siteAddress = resolveSiteAddress(site, 'admin-iframe');
+  const publicUrl = resolveSiteAddress(site, 'public');
 
   return res.render('partials/site-actions', {
     layout: false,
     siteId: site.uuid,
     siteAddress,
+    publicUrl,
     commitHash: headCommit,
     latest: liveCommit === headCommit,
-    siteAddressDisplay,
     directory: site.directory,
     name: site.name
   });
@@ -120,29 +98,20 @@ router.get('/:siteId/:tab', async (req, res) => {
 
   const site = getSite(siteId);
   if (!site) return res.sendStatus(404);
-  
-  let siteAddress = resolveSiteAddress(site);
-  let siteAddressDisplay;
 
-  if (siteAddress) {
-    siteAddressDisplay = siteAddress.split('//')[1].replace(/\/$/, '');
-  } else {
-    siteAddress = String(process.env.SSL_ENABLED) === '1' ? 'https' : 'http'
-    + '://' + process.env.ROOT_DOMAIN + '/site/' + site.directory;
-    siteAddressDisplay = process.env.ROOT_DOMAIN + '/site/' + site.directory;
-  }
-
+  const siteAddress = resolveSiteAddress(site, 'admin-iframe');
+  const publicUrl = resolveSiteAddress(site, 'public');
 
   try {
     switch (tab) {
       case 'home':
-        // Escape site.directory to prevent XSS
+        // Iframe uses clean path (admin is authenticated)
         const escapedDir = site.directory.replace(/["'<>&]/g, c =>
           ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c])
         );
         return res.send(`
           <iframe
-            src="/site/${escapedDir}"
+            src="/iframe/site/${escapedDir}"
             class="w-full h-full border-none"
           ></iframe>
         `);
@@ -150,7 +119,7 @@ router.get('/:siteId/:tab', async (req, res) => {
       case 'files':
         return res.render('partials/file-explorer', {
           siteAddress,
-          siteAddressDisplay: siteAddressDisplay,
+          publicUrl,
           siteId: site.uuid,
           layout: false
       });
@@ -162,12 +131,12 @@ router.get('/:siteId/:tab', async (req, res) => {
           ...c,
           isLive: c.hash === site.live_commit
         }));
-        
+
         return res.render('partials/time-machine', {
           siteAddress,
+          publicUrl,
           commits: annotatedCommits,
           siteDir: site.directory,
-          siteAddressDisplay,
           uuid: site.uuid,
           layout: false
         });
@@ -175,7 +144,7 @@ router.get('/:siteId/:tab', async (req, res) => {
       case 'secrets':
         return res.render('partials/secrets', {
           siteAddress,
-          siteAddressDisplay,
+          publicUrl,
           siteId: site.uuid,
           layout: false
         });
@@ -183,7 +152,7 @@ router.get('/:siteId/:tab', async (req, res) => {
       case 'settings':
         return res.render('partials/settings', {
           siteAddress,
-          siteAddressDisplay,
+          publicUrl,
           siteId: site.uuid,
           layout: false,
           wildcardDomain: process.env.WILDCARD_DOMAIN,

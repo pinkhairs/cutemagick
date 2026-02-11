@@ -26,13 +26,7 @@ export async function ensureFirstSite() {
   const directory = 'my-website';
   const sitePath = path.join(SITES_ROOT, directory);
 
-  // Get ROOT_DOMAIN from environment
-  const rootDomain = process.env.ROOT_DOMAIN;
-  if (!rootDomain) {
-    throw new Error('ROOT_DOMAIN environment variable is required');
-  }
-
-  log.info('[init:firstSite]', { uuid, name, directory, domain: rootDomain });
+  log.info('[init:firstSite]', { uuid, name, directory });
 
   try {
     // Insert site into database first (required for git operations)
@@ -47,10 +41,10 @@ export async function ensureFirstSite() {
       uuid,
       name,
       null, // icon
-      rootDomain,
+      null,
       directory,
       null, // repository
-      'main', // branch
+      null, // branch
       null, // live_commit - will be set after commit
       now,
       now

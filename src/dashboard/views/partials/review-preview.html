@@ -15,13 +15,13 @@
   </div>
   <div class="flex items-center justify-end gap-2">
     <a
-      href="/admin/preview/{{siteDir}}/{{selectedCommit}}"
+      href="{{previewUrl}}"
       target="_blank"
       class="p-1 size-8 text-xl
             border border-gray-500 dark:border-gray-700
             rounded-full
             flex items-center justify-center"
-      aria-label="Close review panel">
+      aria-label="Open preview in new tab">
       &nearr;
     </a>
     {{#if (eq selectedCommit liveCommit.hash)}}
@@ -54,4 +54,4 @@
     {{/if}}
   </div>
 </div>
-<iframe class="overflow-hidden rounded-2xl" src="/admin/preview/{{siteDir}}/{{selectedCommit}}"></iframe>
+<iframe class="overflow-hidden rounded-2xl" src="{{previewUrl}}"></iframe>
