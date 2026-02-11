@@ -6,6 +6,7 @@ import log from '../logs/index.js';
 import { SITES_ROOT, RENDERS_ROOT } from '../../config/index.js';
 import { persistNewDatabaseFiles } from '../fs/dbPersistence.js';
 import { loadEnvVars } from '../fs/envPersistence.js';
+import { persistNewUploadFiles } from '../fs/uploadPersistence.js';
 
 /* ----------------------------
    Policy / Configuration
@@ -220,14 +221,15 @@ export async function executeRuntime({
         return reject(new Error('Process timeout'));
       }
 
-      // Post-execution: persist any new database files created during execution
+      // Post-execution: persist any new database and upload files created during execution
       try {
         const site = extractSiteFromPath(resolvedCwd);
         if (site && resolvedCwd.includes(RENDERS_ROOT)) {
           persistNewDatabaseFiles({ site, renderDir: resolvedCwd });
+          persistNewUploadFiles({ site, sourceDir: resolvedCwd });
         }
       } catch (err) {
-        log.error('[runtime:persistNewDatabaseFiles]', {
+        log.error('[runtime:persistFiles]', {
           cwd: resolvedCwd,
           error: err.message
         });

@@ -11,14 +11,11 @@ const router = express.Router();
 -------------------------------------------------- */
 
 router.use(async (req, res, next) => {
-  console.log('[site.js] Request:', { baseUrl: req.baseUrl, path: req.path });
-
   const parts = req.path.replace(/^\/+/, '').split('/');
   const site = parts.shift();
   const relPath = parts.join('/');
 
   if (!site) {
-    console.log('[site.js] No site in path');
     return res.status(404).send('Site not found');
   }
 
@@ -27,11 +24,8 @@ router.use(async (req, res, next) => {
     .get(site, 'archived');
 
   if (!siteRow) {
-    console.log('[site.js] Site not found in DB:', site);
     return res.status(404).send('Site not found');
   }
-
-  console.log('[site.js] Site resolved:', { directory: siteRow.directory, hasAuth: !!(siteRow.username && siteRow.password) });
 
   // establish site identity for downstream middleware
   req.site = siteRow;

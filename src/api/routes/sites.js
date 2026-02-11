@@ -27,6 +27,7 @@ import { cloneRepo } from '../../../infra/git/sync.js';
 import { ensureRepo } from '../../../infra/git/plumbing.js';
 import { commitFileCreate } from '../../../infra/git/porcelain.js';
 import { SITES_ROOT } from '../../../config/index.js';
+import { ensureUploadsSymlink } from '../../../infra/fs/uploadPersistence.js';
 
 const router = express.Router();
 
@@ -126,7 +127,10 @@ function getEnvPath(siteId) {
           liveCommit = head;
           repository = input;
           branch = 'main';
-          
+
+          // Ensure uploads directory symlink exists
+          ensureUploadsSymlink(directory);
+
           db.prepare(`
           UPDATE sites
           SET repository = ?, branch = ?, live_commit = ?
@@ -134,6 +138,7 @@ function getEnvPath(siteId) {
         `).run(repository, branch, liveCommit, uuid);
         } else {
             await ensureRepo(sitePath, 'main');
+            ensureUploadsSymlink(directory);
             const indexPath = path.join(sitePath, 'index.html');
             await fs.writeFile(indexPath, `<!DOCTYPE html>
 <html lang="en">

@@ -173,6 +173,7 @@ function ensureLocalGitExclude(sitePath) {
     `.env
 .DS_Store
 node_modules
+uploads/
 *.db
 *.db-shm
 *.db-wal
