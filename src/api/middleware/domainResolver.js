@@ -9,15 +9,19 @@ import log from '../../../infra/logs/index.js';
  * Skips /admin and /site routes to preserve existing functionality.
  */
 export default async function domainResolver(req, res, next) {
-  if (req.path.startsWith('/site')) {
+  // Skip site routes and iframe routes
+  if (req.path.startsWith('/site') || req.path.startsWith('/iframe')) {
     return next();
   }
 
-  const requestHost = req.hostname;
-  const adminDomain = process.env.ROOT_DOMAIN;
+  const requestHost = req.get('host')?.split(':')[0];
+  const adminDomain = process.env.ROOT_DOMAIN?.split(':')[0];
 
-  // If this is an /admin path on the admin domain, let admin routes handle it
-  if (req.path.startsWith('/admin') && adminDomain && requestHost === adminDomain) {
+  if (
+    req.path.startsWith('/admin') &&
+    adminDomain &&
+    requestHost === adminDomain
+  ) {
     return next();
   }
 
@@ -34,7 +38,7 @@ export default async function domainResolver(req, res, next) {
   let siteRow = db.prepare(`
     SELECT uuid, directory, live_commit
     FROM sites
-    WHERE domain = ?
+    WHERE domain = ? AND (status IS NULL OR status != 'archived')
   `).get(domainToMatch);
 
   // If no exact match, try wildcard match
@@ -49,7 +53,7 @@ export default async function domainResolver(req, res, next) {
       siteRow = db.prepare(`
         SELECT uuid, directory, live_commit
         FROM sites
-        WHERE domain = ?
+        WHERE domain = ? AND (status IS NULL OR status != 'archived')
       `).get(wildcardDomain);
     }
   }

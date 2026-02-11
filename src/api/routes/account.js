@@ -30,7 +30,7 @@ router.post('/login', async (req, res) => {
     httpOnly: true,
     sameSite: 'Strict',
     secure: process.env.NODE_ENV === 'production',
-    path: '/admin',
+    path: '/',
   });
 
   res.redirect('/admin');

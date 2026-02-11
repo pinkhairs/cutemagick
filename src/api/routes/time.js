@@ -3,6 +3,7 @@ import path from 'path';
 
 import db from '../../../infra/db/index.js';
 import log from '../../../infra/logs/index.js';
+import { resolveSiteAddress } from '../../../infra/resolveSiteAddress.js';
 
 import {
   getCommitHistory,
@@ -169,7 +170,7 @@ router.get('/:siteId/commit/:commit', async (req, res) => {
 
 function getSite(siteId) {
   return db.prepare(`
-    SELECT uuid, directory, live_commit
+    SELECT uuid, directory, live_commit, username, password
     FROM sites
     WHERE uuid = ?
   `).get(siteId);
@@ -256,7 +257,6 @@ router.get('/:siteId/commits', async (req, res) => {
   });
 });
 
-
 router.get('/:siteId/select/:commit', async (req, res) => {
   const { siteId, commit } = req.params;
   if (!siteId || !commit) return res.sendStatus(400);
@@ -293,6 +293,10 @@ router.get('/:siteId/select/:commit', async (req, res) => {
       ...selected,
       date: formatPrettyDate(selected.date)
     };
+
+    // Clean preview URL (no credentials) - auth bypassed for authenticated admins
+    const previewUrl = `/admin/preview/${site.directory}/${selectedCommit}`;
+
     return res.set('HX-Trigger', JSON.stringify({
       changedReviewPreview: { selectedCommit }
     }))
@@ -304,6 +308,7 @@ router.get('/:siteId/select/:commit', async (req, res) => {
       liveCommit,
       commit: treatedCommit,
       isLive: selectedCommit === liveCommit,
+      previewUrl,
     });
   } catch (err) {
     log.error('[review:select]', err.message);

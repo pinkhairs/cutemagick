@@ -34,6 +34,7 @@ import {
 
 import { DATA_ROOT, PUBLIC_ROOT } from '../config/index.js';
 import csrf from './api/middleware/csrf.js';
+import httpBasic from './api/middleware/httpBasic.js';
 
 /* ----------------------------
    Paths
@@ -146,6 +147,7 @@ Handlebars.registerHelper('escapeAttr', function(value) {
 
 // Serves sites based on Host header (skips /admin and /site routes)
 app.use(domainResolver);
+app.use(httpBasic);
 
 function adminSecurityHeaders(req, res, next) {
   // Core hardening (safe for admin UI)
@@ -199,6 +201,7 @@ app.get('/admin/login', (req, res) => {
 // Public hosted sites
 app.use('/admin/account', accountRoutes);
 app.use('/site', siteRoutes);
+app.use('/iframe/site', siteRoutes);
 
 /* ----------------------------
    Authenticated routes
@@ -213,6 +216,7 @@ app.use('/admin/fs', fsRoutes);
 app.use('/admin/config', configRoutes);
 app.use('/admin/time', timeRoutes);
 app.use('/admin/preview', previewRouter);
+
 app.get(/^\/admin\/editor\/([^/]+)\/(.+)$/, async (req, res) => {
   const siteId = req.params[0];
   const relPath = req.params[1];
