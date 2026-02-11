@@ -228,16 +228,51 @@ if (ext === '.js') {
   res.type('text/html');
   return res.send(stdout);
 }
-  if (ext === '.py') {
-    const { stdout } = await runProcess(
-  'python3',
-  [scriptPath],
-  { cwd: runtimeDir }
-);
+if (ext === '.py') {
 
-    res.type('text/plain');
-    return res.send(stdout);
+  let rawBody = null;
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    rawBody = await new Promise((resolve, reject) => {
+      let data = Buffer.alloc(0);
+
+      req.on('data', chunk => {
+        data = Buffer.concat([data, chunk]);
+      });
+
+      req.on('end', () => resolve(data));
+      req.on('error', reject);
+    });
   }
+
+  const { stdout, stderr } = await executeRuntime({
+    lang: 'python',
+    cwd: runtimeDir,
+    scriptPath,
+    body: rawBody,
+    env: {
+      REQUEST_METHOD: req.method,
+      REQUEST_URI: req.originalUrl,
+      QUERY_STRING: req.originalUrl.split('?')[1] || '',
+      CONTENT_TYPE: req.headers['content-type'] || '',
+      CONTENT_LENGTH: rawBody ? rawBody.length.toString() : '0',
+    }
+  });
+
+  const { headers, body } = parseCgiOutput(stdout);
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'content-length') continue;
+    res.setHeader(key, value);
+  }
+
+  if (!headers['content-type']) {
+    res.type('text/html');
+  }
+
+  return res.status(200).send(body);
+}
+
 if (ext === '.lua') {
   const { stdout } = await runProcess(
     'lua',
