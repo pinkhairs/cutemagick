@@ -14,6 +14,7 @@ export const PUBLIC_ROOT = path.join(PROJECT_ROOT, 'public');
 export const SITES_ROOT = path.join(DATA_ROOT, 'sites');
 export const RENDERS_ROOT = path.join(DATA_ROOT, 'renders');
 export const LIVE_DATA_ROOT = path.join(DATA_ROOT, 'live');
+export const UPLOADS_ROOT = path.join(DATA_ROOT, 'uploads');
 
 export const BLOCKED_NAMES = new Set(['.env']);
 export const HIDDEN_NAMES = new Set(['.env', '.git']);
