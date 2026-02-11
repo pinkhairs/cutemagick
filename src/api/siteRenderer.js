@@ -162,36 +162,54 @@ async function executeScript({
   scriptPath,
   ext
 }) {
-  if (ext === '.php') {
-    const { stdout } = await executeRuntime({
-      lang: 'php',
-      cwd: runtimeDir,
-      scriptPath,
-      env: {
-        REQUEST_METHOD: req.method,
-        REQUEST_URI: req.originalUrl,
-        QUERY_STRING: req.originalUrl.split('?')[1] || '',
-        CONTENT_TYPE: req.headers['content-type'] || '',
-        CONTENT_LENGTH: req.headers['content-length'] || ''
-      }
+if (ext === '.php') {
+
+  // Capture raw body (important for POST)
+  let rawBody = null;
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    rawBody = await new Promise((resolve, reject) => {
+      let data = Buffer.alloc(0);
+
+      req.on('data', chunk => {
+        data = Buffer.concat([data, chunk]);
+      });
+
+      req.on('end', () => resolve(data));
+      req.on('error', reject);
     });
-
-
-    const { headers, body } = parseCgiOutput(stdout);
-
-    delete headers['content-disposition'];
-
-    for (const [key, value] of Object.entries(headers)) {
-      if (key === 'content-length') continue;
-      res.setHeader(key, value);
-    }
-
-    if (!headers['content-type']) {
-      res.type('text/html');
-    }
-
-    return res.send(body);
   }
+
+  const { stdout, stderr } = await executeRuntime({
+    lang: 'php',
+    cwd: runtimeDir,
+    scriptPath,
+    body: rawBody,
+    env: {
+      REQUEST_METHOD: req.method,
+      REQUEST_URI: req.originalUrl,
+      QUERY_STRING: req.originalUrl.split('?')[1] || '',
+      CONTENT_TYPE: req.headers['content-type'] || '',
+      CONTENT_LENGTH: rawBody ? rawBody.length.toString() : '0',
+    }
+  });
+
+  const { headers, body } = parseCgiOutput(stdout);
+
+  delete headers['content-disposition'];
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'content-length') continue;
+    res.setHeader(key, value);
+  }
+
+  if (!headers['content-type']) {
+    res.type('text/html');
+  }
+
+  return res.status(200).send(body);
+}
+
 
 if (ext === '.js') {
   const { stdout } = await executeRuntime({

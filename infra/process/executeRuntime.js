@@ -24,7 +24,7 @@ export const EXEC_ROOTS = [
 export const RUNTIMES = {
   php: {
     env: 'RUNTIME_PHP',
-    cmd: 'php',
+    cmd: 'php-cgi',
     args: ['-d', 'cgi.force_redirect=0'],
   },
   node: {
@@ -101,6 +101,7 @@ export async function executeRuntime({
   scriptPath,
   cwd,
   env = {},
+  body = null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 }) {
   const rt = RUNTIMES[lang];
@@ -168,18 +169,30 @@ export async function executeRuntime({
     ...siteEnvVars,
   };
 
-  // --- PHP CGI (UNCHANGED) ---
-  if (lang === 'php') {
-    childEnv = {
-      ...childEnv,
-      REDIRECT_STATUS: '200',
-      SCRIPT_FILENAME: resolvedScript,
-      SCRIPT_NAME: '/' + path.basename(resolvedScript),
-      REQUEST_METHOD: childEnv.REQUEST_METHOD || 'GET',
-      CONTENT_TYPE: childEnv.CONTENT_TYPE || 'text/html',
-      QUERY_STRING: childEnv.QUERY_STRING || '',
-    };
-  }
+// --- PHP CGI (HARDENED) ---
+if (lang === 'php') {
+  childEnv = {
+    ...childEnv,
+
+    GATEWAY_INTERFACE: 'CGI/1.1',
+    SERVER_PROTOCOL: 'HTTP/1.1',
+    SERVER_SOFTWARE: 'cutemagick-runtime',
+
+    REDIRECT_STATUS: '200',
+
+    SCRIPT_FILENAME: resolvedScript,
+    SCRIPT_NAME: '/' + path.basename(resolvedScript),
+    DOCUMENT_ROOT: resolvedCwd,
+
+    REQUEST_METHOD: childEnv.REQUEST_METHOD || 'GET',
+    REQUEST_URI: childEnv.REQUEST_URI || '/',
+    QUERY_STRING: childEnv.QUERY_STRING || '',
+
+    CONTENT_TYPE: childEnv.CONTENT_TYPE || '',
+    CONTENT_LENGTH: childEnv.CONTENT_LENGTH || '0',
+  };
+}
+
 
   log.debug('[runtime]', `Executing ${lang}`, {
     cwd: resolvedCwd,
@@ -191,8 +204,13 @@ export async function executeRuntime({
       cwd: resolvedCwd,
       env: childEnv,
       shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'], // <-- allow POST body
     });
+
+    if (body && body.length > 0) {
+      child.stdin.write(body);
+    }
+    child.stdin.end();
 
     let stdout = '';
     let stderr = '';

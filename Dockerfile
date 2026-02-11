@@ -13,7 +13,13 @@ RUN apt-get update && apt-get install -y \
   php-cli \
   php-cgi \
   php-sqlite3 \
-  php-pdo \
+  php-mysql \
+  php-curl \
+  php-mbstring \
+  php-zip \
+  php-xml \
+  php-gd \
+  php-imagick \
   sqlite3 \
   python3 \
   lua5.4 \
@@ -21,6 +27,7 @@ RUN apt-get update && apt-get install -y \
   msmtp \
   sendmail \
   && rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /app
 
