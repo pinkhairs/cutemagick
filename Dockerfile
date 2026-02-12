@@ -13,14 +13,25 @@ RUN apt-get update && apt-get install -y \
   php-cli \
   php-cgi \
   php-sqlite3 \
-  php-pdo \
+  php-mysql \
+  php-curl \
+  php-mbstring \
+  php-zip \
+  php-xml \
+  php-gd \
+  php-imagick \
   sqlite3 \
   python3 \
+  python3-requests \
+  python3-pil \
   lua5.4 \
+  lua-socket \
+  lua-sec \
   imagemagick \
   msmtp \
   sendmail \
   && rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /app
 
@@ -28,6 +39,9 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 
 RUN mkdir -p \
   public/admin/assets \

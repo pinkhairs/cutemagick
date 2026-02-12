@@ -7,6 +7,14 @@ const CSRF_HEADER = 'x-csrf-token';
 const CSRF_WRAPPED = Symbol('csrfWrapped');
 
 export default function csrf(req, res, next) {
+  // Skip CSRF protection for site rendering routes (user-generated content)
+  const exemptPaths = ['/site/', '/iframe/site/', '/admin/preview/'];
+  const isExempt = exemptPaths.some(path => req.path.startsWith(path));
+
+  if (isExempt) {
+    return next();
+  }
+
   ensureToken(req, res);
 
   req.csrfToken = function () {

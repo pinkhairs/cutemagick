@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import db from './db/index.js';
-import { cleanupOldRenders } from '../infra/fs/cleanup.js';
+import { cleanupOldRenders, cleanupOrphanedDependencies } from '../infra/fs/cleanup.js';
 import { pruneGitWorktrees } from './git/index.js';
 import { SITES_ROOT } from './fs/roots.js';
 
@@ -14,6 +14,12 @@ async function runMaintenance() {
     cleanupOldRenders();
   } catch (err) {
     console.warn('[maintenance] preview cleanup skipped:', err?.message);
+  }
+
+  try {
+    cleanupOrphanedDependencies();
+  } catch (err) {
+    console.warn('[maintenance] dependencies cleanup skipped:', err?.message);
   }
 
   const sites = db

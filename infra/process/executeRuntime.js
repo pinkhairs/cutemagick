@@ -3,8 +3,11 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import log from '../logs/index.js';
-import { SITES_ROOT, RENDERS_ROOT } from '../../config/index.js';
+import { SITES_ROOT, RENDERS_ROOT, DEPENDENCIES_ROOT, UPLOADS_ROOT } from '../../config/index.js';
 import { persistNewDatabaseFiles } from '../fs/dbPersistence.js';
+import { loadEnvVars } from '../fs/envPersistence.js';
+import { persistNewUploadFiles } from '../fs/uploadPersistence.js';
+import { ensureNodeModules } from '../fs/nodeModules.js';
 
 /* ----------------------------
    Policy / Configuration
@@ -22,27 +25,27 @@ export const EXEC_ROOTS = [
 export const RUNTIMES = {
   php: {
     env: 'RUNTIME_PHP',
-    cmd: 'php',
+    cmd: 'php-cgi',
     args: ['-d', 'cgi.force_redirect=0'],
   },
   node: {
     env: 'RUNTIME_NODE',
-    cmd: '/usr/local/bin/node',
+    cmd: 'node',
     args: [],
   },
   python: {
     env: 'RUNTIME_PYTHON',
-    cmd: '/usr/bin/python3',
+    cmd: 'python3',
     args: [],
   },
   bash: {
     env: 'RUNTIME_BASH',
-    cmd: '/bin/bash',
+    cmd: 'bash',
     args: [],
   },
   lua: {
     env: 'RUNTIME_LUA',
-    cmd: '/usr/bin/lua',
+    cmd: 'lua',
     args: [],
   }
 };
@@ -50,10 +53,6 @@ export const RUNTIMES = {
 /* ----------------------------
    Guards
 ----------------------------- */
-
-function isRuntimeEnabled(envKey) {
-  return process.env[envKey] === '1';
-}
 
 function assertExecutablePathAllowed(target) {
   const realTarget = fs.realpathSync(target);
@@ -94,21 +93,45 @@ function extractSiteFromPath(cwdPath) {
   return null;
 }
 
+/**
+ * Extract site and commit from a render path
+ * Returns { site, commit } or null if not a render path
+ */
+function extractRenderInfo(cwdPath) {
+  try {
+    const realRendersRoot = fs.realpathSync(RENDERS_ROOT);
+    const realCwd = fs.realpathSync(cwdPath);
+
+    const rel = path.relative(realRendersRoot, realCwd);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      return null;
+    }
+
+    const parts = rel.split(path.sep);
+    if (parts.length < 2) {
+      return null;
+    }
+
+    return {
+      site: parts[0],
+      commit: parts[1],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function executeRuntime({
   lang,
   scriptPath,
   cwd,
   env = {},
+  body = null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 }) {
   const rt = RUNTIMES[lang];
   if (!rt) {
     throw new Error(`Unknown runtime: ${lang}`);
-  }
-
-  if (!isRuntimeEnabled(rt.env)) {
-    log.debug('[runtime]', `Blocked disabled runtime: ${lang}`);
-    throw new Error(`Runtime disabled: ${lang}`);
   }
 
   if (!cwd) {
@@ -154,25 +177,73 @@ export async function executeRuntime({
   const command = rt.cmd ?? resolvedScript;
   const args = rt.cmd ? [...rt.args, resolvedScript] : [];
 
-  // Minimal safe env
+  // Load .env variables for this site
+  const site = extractSiteFromPath(resolvedCwd);
+  const siteEnvVars = site ? loadEnvVars(site) : {};
+
+  // Persistent uploads directory path for this site
+  const uploadsPath = site ? path.join(UPLOADS_ROOT, site) : null;
+
+  // Minimal safe env - .env vars override defaults
   let childEnv = {
     PATH: process.env.PATH,
     HOME: resolvedCwd,
+    UPLOADS_PATH: uploadsPath,
     ...env,
+    ...siteEnvVars,
   };
 
-  // --- PHP CGI (UNCHANGED) ---
-  if (lang === 'php') {
-    childEnv = {
-      ...childEnv,
-      REDIRECT_STATUS: '200',
-      SCRIPT_FILENAME: resolvedScript,
-      SCRIPT_NAME: '/' + path.basename(resolvedScript),
-      REQUEST_METHOD: childEnv.REQUEST_METHOD || 'GET',
-      CONTENT_TYPE: childEnv.CONTENT_TYPE || 'text/html',
-      QUERY_STRING: childEnv.QUERY_STRING || '',
-    };
+// --- NODE.JS (with npm modules support) ---
+if (lang === 'node') {
+  const renderInfo = extractRenderInfo(resolvedCwd);
+
+  if (renderInfo) {
+    try {
+      await ensureNodeModules({
+        site: renderInfo.site,
+        commit: renderInfo.commit,
+        renderDir: resolvedCwd,
+      });
+
+      // Set NODE_PATH to allow require() to find modules
+      const nodeModulesPath = path.join(DEPENDENCIES_ROOT, renderInfo.site, renderInfo.commit, 'node_modules');
+      childEnv.NODE_PATH = nodeModulesPath;
+    } catch (err) {
+      log.error('[runtime:node]', 'npm install failed', {
+        site: renderInfo.site,
+        commit: renderInfo.commit,
+        error: err.message,
+        stderr: err.stderr,
+      });
+      throw new Error(`Failed to install dependencies: ${err.message}`);
+    }
   }
+}
+
+// --- PHP CGI (HARDENED) ---
+if (lang === 'php') {
+  childEnv = {
+    ...childEnv,
+
+    GATEWAY_INTERFACE: 'CGI/1.1',
+    SERVER_PROTOCOL: 'HTTP/1.1',
+    SERVER_SOFTWARE: 'cutemagick-runtime',
+
+    REDIRECT_STATUS: '200',
+
+    SCRIPT_FILENAME: resolvedScript,
+    SCRIPT_NAME: '/' + path.basename(resolvedScript),
+    DOCUMENT_ROOT: resolvedCwd,
+
+    REQUEST_METHOD: childEnv.REQUEST_METHOD || 'GET',
+    REQUEST_URI: childEnv.REQUEST_URI || '/',
+    QUERY_STRING: childEnv.QUERY_STRING || '',
+
+    CONTENT_TYPE: childEnv.CONTENT_TYPE || '',
+    CONTENT_LENGTH: childEnv.CONTENT_LENGTH || '0',
+  };
+}
+
 
   log.debug('[runtime]', `Executing ${lang}`, {
     cwd: resolvedCwd,
@@ -184,8 +255,13 @@ export async function executeRuntime({
       cwd: resolvedCwd,
       env: childEnv,
       shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'], // <-- allow POST body
     });
+
+    if (body && body.length > 0) {
+      child.stdin.write(body);
+    }
+    child.stdin.end();
 
     let stdout = '';
     let stderr = '';
@@ -214,14 +290,15 @@ export async function executeRuntime({
         return reject(new Error('Process timeout'));
       }
 
-      // Post-execution: persist any new database files created during execution
+      // Post-execution: persist any new database and upload files created during execution
       try {
         const site = extractSiteFromPath(resolvedCwd);
         if (site && resolvedCwd.includes(RENDERS_ROOT)) {
           persistNewDatabaseFiles({ site, renderDir: resolvedCwd });
+          persistNewUploadFiles({ site, sourceDir: resolvedCwd });
         }
       } catch (err) {
-        log.error('[runtime:persistNewDatabaseFiles]', {
+        log.error('[runtime:persistFiles]', {
           cwd: resolvedCwd,
           error: err.message
         });

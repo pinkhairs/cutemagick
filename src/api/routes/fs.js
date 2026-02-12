@@ -2,6 +2,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import multer from 'multer';
 import crypto from 'crypto';
 import archiver from 'archiver';
@@ -10,6 +11,7 @@ import { triggerFileCommit, triggerSiteCommit } from '../htmx/triggers.js';
 import db from '../../../infra/db/index.js';
 import log from '../../../infra/logs/index.js';
 import { HIDDEN_NAMES } from '../../../config/index.js';
+import { ensureUploadsSymlink } from '../../../infra/fs/uploadPersistence.js';
 
 import {
   commitFileCreate,
@@ -94,11 +96,24 @@ router.get('/:siteId/list', async (req, res) => {
         })
         .map(e => {
           const relPath = relBase ? `${relBase}/${e.name}` : e.name;
+          const fullPath = path.join(dirPath, e.name);
+
+          // For symlinks, check what they point to
+          let isDir = e.isDirectory();
+          if (e.isSymbolicLink()) {
+            try {
+              const targetStats = fsSync.statSync(fullPath); // Follow symlink
+              isDir = targetStats.isDirectory();
+            } catch {
+              // Broken symlink, treat as file
+              isDir = false;
+            }
+          }
 
           return {
             id: e.name,
             name: e.name,
-            type: e.isDirectory() ? 'folder' : 'file',
+            type: isDir ? 'folder' : 'file',
             canmodify: true,
             hash: fileId(siteId, relPath)
           };
@@ -120,6 +135,13 @@ router.get('/:siteId/file', async (req, res) => {
 
   try {
     const filePath = resolveSafePath(siteRoot, req.query.path);
+
+    // Check if it's a directory before trying to read as file
+    const stats = await fs.stat(filePath);
+    if (stats.isDirectory()) {
+      return res.status(400).send('Cannot read directory as file');
+    }
+
     const content = await fs.readFile(filePath, 'utf8');
     res.send(content);
   } catch (err) {
@@ -186,7 +208,29 @@ router.post('/:siteId/folder', express.urlencoded({ extended: false }), async (r
 
   try {
     const folderPath = resolveSafePath(siteRoot, req.body.path);
-    await fs.mkdir(folderPath, { recursive: true });
+    const relativePath = path.relative(siteRoot, folderPath);
+
+    // If creating "uploads" folder, use symlink instead
+    if (relativePath === 'uploads' || relativePath.startsWith('uploads/')) {
+      const site = db.prepare(`
+        SELECT directory
+        FROM sites
+        WHERE uuid = ?
+      `).get(req.params.siteId);
+
+      if (site && relativePath === 'uploads') {
+        ensureUploadsSymlink(site.directory);
+      } else {
+        // Creating subfolder within uploads - ensure parent symlink exists first
+        if (site) {
+          ensureUploadsSymlink(site.directory);
+        }
+        await fs.mkdir(folderPath, { recursive: true });
+      }
+    } else {
+      await fs.mkdir(folderPath, { recursive: true });
+    }
+
     res.sendStatus(204);
   } catch (err) {
     log.error('[fs:folder]', err.message);
@@ -338,6 +382,20 @@ router.post('/:siteId/upload', upload.any(), async (req, res) => {
   let commit;
 
   try {
+    // If uploading to uploads directory, ensure symlink exists
+    const isUploadToUploadsDir = !targetDir || targetDir === 'uploads' || targetDir.startsWith('uploads/');
+    if (isUploadToUploadsDir) {
+      const site = db.prepare(`
+        SELECT directory
+        FROM sites
+        WHERE uuid = ?
+      `).get(siteId);
+
+      if (site) {
+        ensureUploadsSymlink(site.directory);
+      }
+    }
+
     for (const file of req.files) {
       const relPath = targetDir
         ? path.join(targetDir, file.originalname)

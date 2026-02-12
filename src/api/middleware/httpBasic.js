@@ -56,18 +56,8 @@ export default function httpBasic(req, res, next) {
   // Skip HTTP Basic auth for authenticated admins on admin routes
   // This allows iframes to work smoothly (browsers don't show auth prompts in iframes)
   // Admins can test the auth prompt by opening URLs in incognito/new session
-  const isAdmin = isAuthenticatedAdmin(req);
-  console.log('[httpBasic]', {
-    baseUrl: req.baseUrl,
-    path: req.path,
-    isAdmin,
-    hasCookie: !!req.cookies?.token,
-    siteHasAuth: !!site.username
-  });
-
-  if (isAdmin) {
+  if (isAuthenticatedAdmin(req)) {
     if (req.baseUrl === '/iframe/site' || req.baseUrl === '/admin/preview') {
-      console.log('[httpBasic] Bypassing auth for authenticated admin');
       return next();
     }
   }
