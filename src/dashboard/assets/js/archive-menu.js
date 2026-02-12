@@ -68,7 +68,7 @@ function renderArchiveMenu() {
 
         btn.onclick = async () => {
           const ok = confirm(
-            'Restore this site? (It won't affect any other site)'
+            'Restore this site? (It won\'t affect any other site)'
           );
           if (!ok) return;
 
