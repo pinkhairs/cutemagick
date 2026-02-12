@@ -523,22 +523,23 @@ if (
   !cleanDomain
 ) {
   console.log('[settings:domain] registry remove required');
-  const removeRes = await fetch(`${process.env.DOMAIN_REGISTRY_URL}/domains/remove`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Registry-Secret': process.env.REGISTRY_SECRET,
-      'magick-instance-id': process.env.MAGICK_INSTANCE_ID
-    },
-    body: JSON.stringify({
-      hostname: oldDomain
-    })
-  });
-  if (!removeRes.ok) {
-    console.log('[settings:domain] registry remove failed', removeRes.status);
-    return res.status(409).json({
-      error: 'domain_registry_unreachable'
+  try {
+    const removeRes = await fetch(`${process.env.DOMAIN_REGISTRY_URL}/domains/remove`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Registry-Secret': process.env.REGISTRY_SECRET,
+        'magick-instance-id': process.env.MAGICK_INSTANCE_ID
+      },
+      body: JSON.stringify({
+        hostname: oldDomain
+      })
     });
+    if (!removeRes.ok) {
+      console.log('[settings:domain] registry remove failed', removeRes.status);
+    }
+  } catch (err) {
+    console.log('[settings:domain] registry remove error', err.message);
   }
   console.log('[settings:domain] domain removed from registry');
 } else {
@@ -633,20 +634,28 @@ if (
   `).get(siteId);
 
                           if (existing?.domain) {
-                            const removeRes = await fetch(`${process.env.DOMAIN_REGISTRY_URL}/domains/remove`, {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'X-Registry-Secret': process.env.REGISTRY_SECRET,
-                                'magick-instance-id': process.env.MAGICK_INSTANCE_ID
-                              },
-                              body: JSON.stringify({
-                                hostname: existing.domain
-                              })
-                            });
-                            if (!removeRes.ok) {
-                              return res.status(409).json({
-                                error: 'domain_registry_unreachable'
+                            try {
+                              const removeRes = await fetch(`${process.env.DOMAIN_REGISTRY_URL}/domains/remove`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'X-Registry-Secret': process.env.REGISTRY_SECRET,
+                                  'magick-instance-id': process.env.MAGICK_INSTANCE_ID
+                                },
+                                body: JSON.stringify({
+                                  hostname: existing.domain
+                                })
+                              });
+                              if (!removeRes.ok) {
+                                log.warn('[site:archive] registry remove failed', {
+                                  status: removeRes.status,
+                                  domain: existing.domain
+                                });
+                              }
+                            } catch (err) {
+                              log.warn('[site:archive] registry remove error', {
+                                domain: existing.domain,
+                                err: err.message
                               });
                             }
                           }
