@@ -280,10 +280,32 @@ if (ext === '.py') {
 }
 
 if (ext === '.lua') {
+  let rawBody = null;
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    rawBody = await new Promise((resolve, reject) => {
+      let data = Buffer.alloc(0);
+      req.on('data', chunk => data = Buffer.concat([data, chunk]));
+      req.on('end', () => resolve(data));
+      req.on('error', reject);
+    });
+  }
+
   const { stdout } = await runProcess(
     'lua',
     [scriptPath],
-    { cwd: runtimeDir }
+    {
+      cwd: runtimeDir,
+      env: {
+        ...process.env,
+        REQUEST_METHOD: req.method,
+        REQUEST_URI: req.originalUrl,
+        QUERY_STRING: req.originalUrl.split('?')[1] || '',
+        CONTENT_TYPE: req.headers['content-type'] || '',
+        CONTENT_LENGTH: rawBody ? rawBody.length.toString() : '0'
+      },
+      input: rawBody || undefined
+    }
   );
 
   const { headers, body } = parseCgiOutput(stdout);
@@ -297,8 +319,9 @@ if (ext === '.lua') {
     res.type('text/html');
   }
 
-  return res.send(body);
+  return res.status(200).send(body);
 }
+
 
 if (ext === '.sh') {
   let rawBody = null;

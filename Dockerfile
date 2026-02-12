@@ -25,6 +25,8 @@ RUN apt-get update && apt-get install -y \
   python3-requests \
   python3-pil \
   lua5.4 \
+  lua-socket \
+  lua-sec \
   imagemagick \
   msmtp \
   sendmail \
