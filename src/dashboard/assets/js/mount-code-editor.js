@@ -1,5 +1,6 @@
 // Define your custom theme
-ace.define("ace/theme/custom-pastel", ["require", "exports", "module", "ace/lib/dom"], function(require, exports, module) {
+if (typeof ace !== 'undefined') {
+  ace.define("ace/theme/custom-pastel", ["require", "exports", "module", "ace/lib/dom"], function(require, exports, module) {
   exports.isDark = true;
   exports.cssClass = "ace-custom-pastel";
   exports.cssText = `
@@ -133,7 +134,8 @@ ace.define("ace/theme/custom-pastel", ["require", "exports", "module", "ace/lib/
   
   const dom = require("../lib/dom");
   dom.importCssString(exports.cssText, exports.cssClass, false);
-});
+  });
+}
 
 document.body.addEventListener('htmx:beforeSwap', (e) => {
   const el = e.target;
@@ -142,7 +144,7 @@ document.body.addEventListener('htmx:beforeSwap', (e) => {
   e.detail.shouldSwap = false;
 
   const content = e.detail.xhr.responseText;
-  
+
   initializeEditor(el, content);
 });
 
@@ -192,6 +194,7 @@ function initializeEditor(editorEl, content = '') {
 
   editor.setOptions({
     fontSize: "16px",
+    fontFamily: "DM Mono",
     showPrintMargin: false,
     wrap: true
   });
