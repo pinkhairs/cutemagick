@@ -4,12 +4,51 @@ Cute Magick is a self-hosted, Git-backed website environment with **built-in inf
 
 ![Cute Magick screenshot](https://raw.githubusercontent.com/pinkhairs/cutemagick/refs/heads/main/screenshot.png)
 
-It’s for people who want to build real websites—but don’t want to fight platforms, config, and SaaS billing just to experiment, learn, or keep infinite projects alive.
+It's for people who want to build real websites—but don't want to fight platforms, config, and SaaS billing just to experiment, learn, or keep infinite projects alive.
 
-You get a real server, real files, real URLs, and the ability to rewind your site’s entire history at any time.
+You get a real server, real files, real URLs, and the ability to rewind your site's entire history at any time.
 
-📚 **Full documentation:**  
+📚 **Full documentation:**
 https://pixelswithin.notion.site/Cute-Magick-Docs-2fdb91326d968024b11cc40c73a18e90
+
+---
+
+## Get Started
+
+### Hosted — up and running in a minute
+
+The fastest way to try Cute Magick is the hosted version. Sign up, get your admin link, and you're in.
+
+👉 **[cutemagick.com/#pricing](https://cutemagick.com/#pricing)**
+
+No Docker, no terminal, no setup.
+
+### Self-hosted
+
+Cute Magick is open source. You can run it anywhere Docker runs. It does not phone home and does not require any external service to function.
+
+You need:
+- Docker
+- a terminal
+- ~5 minutes
+
+```bash
+docker run -p 3000:3000 -v $(pwd)/cutemagick:/app/data ghcr.io/pinkhairs/cutemagick:main
+```
+
+Then open `localhost:3000/admin` to set up your account.
+
+Basic requirements:
+- 512 MB RAM (1 GB recommended)
+- ~1 GB disk space
+- any CPU from the last decade
+
+A Raspberry Pi 4 can run it.
+The cheapest VPS is usually overkill.
+Your laptop won't notice it's running.
+
+📖 **Full installation and setup:**
+See the docs for VPS deployment, reverse proxy setup, and configuration.
 
 ---
 
@@ -22,17 +61,17 @@ Cute Magick starts from a simple idea:
 Cute Magick makes that feel true again.
 
 It gives you a place to:
-- create and run websites immediately  
-- use HTML, CSS, JavaScript, PHP, Python, Node, Lua, Bash  
-- experiment without fear of breaking things  
-- time-travel through every change you make  
+- create and run websites immediately
+- use HTML, CSS, JavaScript, PHP, Python, Node, Lua, Bash
+- experiment without fear of breaking things
+- time-travel through every change you make
 
 Every site has:
-- files  
-- a URL  
-- a complete history  
-- a private draft state and a live state  
-- optional Git remotes for backup  
+- files
+- a URL
+- a complete history
+- a private draft state and a live state
+- optional Git remotes for backup
 
 Your sites are just folders and files. Your history is just Git.
 
@@ -41,37 +80,14 @@ Your sites are just folders and files. Your history is just Git.
 ## Why Cute Magick?
 
 If you:
-- learned HTML/CSS once and drifted away  
-- know how to code but hate deployment rituals  
-- want server power without server culture  
-- miss personal websites and creative freedom  
+- learned HTML/CSS once and drifted away
+- know how to code but hate deployment rituals
+- want server power without server culture
+- miss personal websites and creative freedom
 
 Cute Magick is designed for you.
 
-It’s a **workspace** where websites are allowed to be unfinished, experimental, and reversible.
-
----
-
-## Getting Started
-
-You need:
-- Docker
-- a terminal
-- ~5 minutes
-
-Cute Magick is open source. You can self-host it anywhere Docker runs. Cute Magick does not phone home and does not require an external service to function.
-
-Basic requirements:
-- 512 MB RAM (1 GB recommended)
-- ~1 GB disk space
-- any CPU from the last decade
-
-A Raspberry Pi 4 can run it.  
-The cheapest VPS is usually overkill.  
-Your laptop won’t notice it’s running.
-
-📖 **Installation and setup:**  
-See the full docs for self-hosting and hosted options.
+It's a **workspace** where websites are allowed to be unfinished, experimental, and reversible.
 
 ---
 
@@ -103,7 +119,7 @@ You can:
 - recover deleted files
 - undo mistakes from months ago
 
-Under the hood, this is Git—but you don’t need to know Git to use it.
+Under the hood, this is Git—but you don't need to know Git to use it.
 
 ---
 
@@ -130,7 +146,7 @@ SQLite is:
 - portable
 - stored as files
 
-Databases persist across previews and versions.  
+Databases persist across previews and versions.
 Your site history rewinds; your data does not—by design.
 
 ---
@@ -154,11 +170,10 @@ Key directories:
 - `/data/sites` — your sites and their Git history
 - `/data/databases` — live SQLite data
 - `/data/renders` — ephemeral preview output
-- `/data/.ssh` — generated SSH keys
+- `/data/secrets` — per-site environment variables
+- `/data/keys` — generated SSH keys
 
-Everything is transparent.
-
-If you understand `/data`, you understand Cute Magick.
+Everything is transparent. If you understand `/data`, you understand Cute Magick.
 
 ---
 
@@ -186,18 +201,18 @@ Cute Magick favors:
 - transparency over abstraction
 - ownership over lock-in
 
-You can’t permanently break your site. And if you ever want to leave, you can.
+You can't permanently break your site. And if you ever want to leave, you can.
 
 ---
 
 ## Feedback
 
-If you’re using it and have thoughts—especially confusion or friction—that feedback is actively shaping the project, particularly around:
+If you're using it and have thoughts—especially confusion or friction—that feedback is actively shaping the project, particularly around:
 
 - UX
 - docs clarity
 - edge cases
 - things that felt confusing or "too magical" (read: implicit)
 
-Contact:  
+Contact:
 **Diana Lopez** — me@diana.nu
