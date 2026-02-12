@@ -38,6 +38,9 @@ RUN npm install
 
 COPY . .
 
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
 RUN mkdir -p \
   public/admin/assets \
   public/admin/css
