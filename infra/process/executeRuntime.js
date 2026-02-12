@@ -3,7 +3,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import log from '../logs/index.js';
-import { SITES_ROOT, RENDERS_ROOT, DEPENDENCIES_ROOT } from '../../config/index.js';
+import { SITES_ROOT, RENDERS_ROOT, DEPENDENCIES_ROOT, UPLOADS_ROOT } from '../../config/index.js';
 import { persistNewDatabaseFiles } from '../fs/dbPersistence.js';
 import { loadEnvVars } from '../fs/envPersistence.js';
 import { persistNewUploadFiles } from '../fs/uploadPersistence.js';
@@ -190,10 +190,14 @@ export async function executeRuntime({
   const site = extractSiteFromPath(resolvedCwd);
   const siteEnvVars = site ? loadEnvVars(site) : {};
 
+  // Persistent uploads directory path for this site
+  const uploadsPath = site ? path.join(UPLOADS_ROOT, site) : null;
+
   // Minimal safe env - .env vars override defaults
   let childEnv = {
     PATH: process.env.PATH,
     HOME: resolvedCwd,
+    UPLOADS_PATH: uploadsPath,
     ...env,
     ...siteEnvVars,
   };

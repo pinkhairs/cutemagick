@@ -174,25 +174,32 @@ if (ext === '.php') {
       req.on('end', () => resolve(data));
       req.on('error', reject);
     });
-  }
 
-  const { stdout, stderr } = await executeRuntime({
-    lang: 'php',
-    cwd: runtimeDir,
-    scriptPath,
-    body: rawBody,
-    env: {
-      REQUEST_METHOD: req.method,
-      REQUEST_URI: req.originalUrl,
-      QUERY_STRING: req.originalUrl.split('?')[1] || '',
-      CONTENT_TYPE: req.headers['content-type'] || '',
-      CONTENT_LENGTH: rawBody ? rawBody.length.toString() : '0',
+
+    const { headers, body } = parseCgiOutput(stdout);
+
+    delete headers['content-disposition'];
+
+    for (const [key, value] of Object.entries(headers)) {
+      if (key === 'content-length') continue;
+      res.setHeader(key, value);
     }
-  });
 
-  const { headers, body } = parseCgiOutput(stdout);
+    if (!headers['content-type']) {
+      res.type('text/html');
+    }
 
   delete headers['content-disposition'];
+
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
+  }
 
   for (const [key, value] of Object.entries(headers)) {
     if (key === 'content-length') continue;
@@ -203,39 +210,12 @@ if (ext === '.php') {
     res.type('text/html');
   }
 
-  return res.status(200).send(body);
+  return res.status(statusCode).send(body);
 }
 
 
 if (ext === '.js') {
-  const { stdout } = await executeRuntime({
-    lang: 'node',
-    cwd: runtimeDir,
-    scriptPath,
-    env: {
-      REQUEST_METHOD: req.method,
-      REQUEST_URI: req.originalUrl,
-      QUERY_STRING: req.originalUrl.split('?')[1] || '',
-      CONTENT_TYPE: req.headers['content-type'] || '',
-      CONTENT_LENGTH: req.headers['content-length'] || '',
-    },
-  });
-
-  const { headers, body } = parseCgiOutput(stdout);
-
-  for (const [key, value] of Object.entries(headers)) {
-    if (key === 'content-length') continue;
-    res.setHeader(key, value);
-  }
-
-  if (!headers['content-type']) {
-    res.type('text/html');
-  }
-
-  return res.send(body);
-}
-if (ext === '.py') {
-
+  // Capture raw body (important for POST)
   let rawBody = null;
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -251,8 +231,8 @@ if (ext === '.py') {
     });
   }
 
-  const { stdout, stderr } = await executeRuntime({
-    lang: 'python',
+  const { stdout } = await executeRuntime({
+    lang: 'node',
     cwd: runtimeDir,
     scriptPath,
     body: rawBody,
@@ -262,10 +242,20 @@ if (ext === '.py') {
       QUERY_STRING: req.originalUrl.split('?')[1] || '',
       CONTENT_TYPE: req.headers['content-type'] || '',
       CONTENT_LENGTH: rawBody ? rawBody.length.toString() : '0',
-    }
+    },
   });
 
   const { headers, body } = parseCgiOutput(stdout);
+
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
+  }
 
   for (const [key, value] of Object.entries(headers)) {
     if (key === 'content-length') continue;
@@ -276,7 +266,36 @@ if (ext === '.py') {
     res.type('text/html');
   }
 
-  return res.status(200).send(body);
+  return res.status(statusCode).send(body);
+}
+if (ext === '.py') {
+
+  let rawBody = null;
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    rawBody = await new Promise((resolve, reject) => {
+      let data = Buffer.alloc(0);
+
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
+  }
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'content-length') continue;
+    res.setHeader(key, value);
+  }
+
+  if (!headers['content-type']) {
+    res.type('text/html');
+  }
+
+  return res.status(statusCode).send(body);
 }
 
 if (ext === '.lua') {
@@ -310,6 +329,16 @@ if (ext === '.lua') {
 
   const { headers, body } = parseCgiOutput(stdout);
 
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
+  }
+
   for (const [key, value] of Object.entries(headers)) {
     if (key === 'content-length') continue;
     res.setHeader(key, value);
@@ -319,7 +348,7 @@ if (ext === '.lua') {
     res.type('text/html');
   }
 
-  return res.status(200).send(body);
+  return res.status(statusCode).send(body);
 }
 
 
@@ -354,6 +383,16 @@ if (ext === '.sh') {
 
   const { headers, body } = parseCgiOutput(stdout);
 
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
+  }
+
   for (const [key, value] of Object.entries(headers)) {
     if (key === 'content-length') continue;
     res.setHeader(key, value);
@@ -363,7 +402,7 @@ if (ext === '.sh') {
     res.type('text/html');
   }
 
-  return res.status(200).send(body);
+  return res.status(statusCode).send(body);
 }
 
 

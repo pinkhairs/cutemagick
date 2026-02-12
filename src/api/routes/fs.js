@@ -2,6 +2,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import multer from 'multer';
 import crypto from 'crypto';
 import archiver from 'archiver';
@@ -95,11 +96,24 @@ router.get('/:siteId/list', async (req, res) => {
         })
         .map(e => {
           const relPath = relBase ? `${relBase}/${e.name}` : e.name;
+          const fullPath = path.join(dirPath, e.name);
+
+          // For symlinks, check what they point to
+          let isDir = e.isDirectory();
+          if (e.isSymbolicLink()) {
+            try {
+              const targetStats = fsSync.statSync(fullPath); // Follow symlink
+              isDir = targetStats.isDirectory();
+            } catch {
+              // Broken symlink, treat as file
+              isDir = false;
+            }
+          }
 
           return {
             id: e.name,
             name: e.name,
-            type: e.isDirectory() ? 'folder' : 'file',
+            type: isDir ? 'folder' : 'file',
             canmodify: true,
             hash: fileId(siteId, relPath)
           };
@@ -121,6 +135,13 @@ router.get('/:siteId/file', async (req, res) => {
 
   try {
     const filePath = resolveSafePath(siteRoot, req.query.path);
+
+    // Check if it's a directory before trying to read as file
+    const stats = await fs.stat(filePath);
+    if (stats.isDirectory()) {
+      return res.status(400).send('Cannot read directory as file');
+    }
+
     const content = await fs.readFile(filePath, 'utf8');
     res.send(content);
   } catch (err) {
