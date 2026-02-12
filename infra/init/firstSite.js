@@ -7,7 +7,6 @@ import log from '../logs/index.js';
 import { ensureRepo } from '../git/plumbing.js';
 import { commitFileCreate } from '../git/porcelain.js';
 import { SITES_ROOT } from '../../config/index.js';
-import { ensureUploadsSymlink } from '../fs/uploadPersistence.js';
 
 export async function ensureFirstSite() {
   if (process.env.AUTO_CREATE_FIRST_SITE !== '1') {
@@ -56,9 +55,6 @@ export async function ensureFirstSite() {
 
     // Initialize git repo
     await ensureRepo(sitePath, 'main');
-
-    // Ensure uploads directory symlink exists
-    ensureUploadsSymlink(directory);
 
     // Create index.html
     const indexHtml = `<!DOCTYPE html>

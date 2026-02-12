@@ -10,6 +10,7 @@ import { triggerFileCommit, triggerSiteCommit } from '../htmx/triggers.js';
 import db from '../../../infra/db/index.js';
 import log from '../../../infra/logs/index.js';
 import { HIDDEN_NAMES } from '../../../config/index.js';
+import { ensureUploadsSymlink } from '../../../infra/fs/uploadPersistence.js';
 
 import {
   commitFileCreate,
@@ -186,7 +187,29 @@ router.post('/:siteId/folder', express.urlencoded({ extended: false }), async (r
 
   try {
     const folderPath = resolveSafePath(siteRoot, req.body.path);
-    await fs.mkdir(folderPath, { recursive: true });
+    const relativePath = path.relative(siteRoot, folderPath);
+
+    // If creating "uploads" folder, use symlink instead
+    if (relativePath === 'uploads' || relativePath.startsWith('uploads/')) {
+      const site = db.prepare(`
+        SELECT directory
+        FROM sites
+        WHERE uuid = ?
+      `).get(req.params.siteId);
+
+      if (site && relativePath === 'uploads') {
+        ensureUploadsSymlink(site.directory);
+      } else {
+        // Creating subfolder within uploads - ensure parent symlink exists first
+        if (site) {
+          ensureUploadsSymlink(site.directory);
+        }
+        await fs.mkdir(folderPath, { recursive: true });
+      }
+    } else {
+      await fs.mkdir(folderPath, { recursive: true });
+    }
+
     res.sendStatus(204);
   } catch (err) {
     log.error('[fs:folder]', err.message);
@@ -338,6 +361,20 @@ router.post('/:siteId/upload', upload.any(), async (req, res) => {
   let commit;
 
   try {
+    // If uploading to uploads directory, ensure symlink exists
+    const isUploadToUploadsDir = !targetDir || targetDir === 'uploads' || targetDir.startsWith('uploads/');
+    if (isUploadToUploadsDir) {
+      const site = db.prepare(`
+        SELECT directory
+        FROM sites
+        WHERE uuid = ?
+      `).get(siteId);
+
+      if (site) {
+        ensureUploadsSymlink(site.directory);
+      }
+    }
+
     for (const file of req.files) {
       const relPath = targetDir
         ? path.join(targetDir, file.originalname)
