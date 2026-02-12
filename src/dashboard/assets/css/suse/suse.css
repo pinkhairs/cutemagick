@@ -1,0 +1,10 @@
+/* suse-thin */
+@font-face {
+	font-family: "SUSE";
+	font-style: normal;
+	font-weight: 100 900;
+	font-stretch: 100%;
+	src: local("SUSE Thin"), local("SUSE-Thin"), url(suse-thin.woff2) format("woff2");
+	font-display: swap;
+}
+
