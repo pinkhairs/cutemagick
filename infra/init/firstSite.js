@@ -25,6 +25,7 @@ export async function ensureFirstSite() {
   const name = 'My Website';
   const directory = 'my-website';
   const sitePath = path.join(SITES_ROOT, directory);
+  const rootDomain = process.env.ROOT_DOMAIN?.trim() || null;
 
   log.info('[init:firstSite]', { uuid, name, directory });
 
@@ -41,7 +42,7 @@ export async function ensureFirstSite() {
       uuid,
       name,
       null, // icon
-      null,
+      rootDomain,
       directory,
       null, // repository
       null, // branch
