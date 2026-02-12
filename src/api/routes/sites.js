@@ -26,7 +26,8 @@ import {
 import { cloneRepo } from '../../../infra/git/sync.js';
 import { ensureRepo } from '../../../infra/git/plumbing.js';
 import { commitFileCreate } from '../../../infra/git/porcelain.js';
-import { SITES_ROOT } from '../../../config/index.js';
+import { SITES_ROOT, SECRETS_ROOT } from '../../../config/index.js';
+import { ensureUploadsSymlink } from '../../../infra/fs/uploadPersistence.js';
 
 const router = express.Router();
 
@@ -37,14 +38,15 @@ function getEnvPath(siteId) {
     FROM sites
     WHERE uuid = ?
   `).get(siteId);
-    
+
     if (!site) {
       const err = new Error('Site not found');
       err.status = 404;
       throw err;
     }
-    
-    return path.join(SITES_ROOT, site.directory, '.env');
+
+    // Always use secrets directory as source of truth
+    return path.join(SECRETS_ROOT, site.directory, '.env');
   }
   
   function serializeEnv(rows) {
@@ -564,11 +566,14 @@ if (
                             
                             const envPath = getEnvPath(req.params.siteId);
                             const content = serializeEnv(clean);
-                            
-                            // Write atomically
+
+                            // Ensure secrets directory exists (only created when saving)
                             const dir = path.dirname(envPath);
+                            await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+
+                            // Write atomically
                             const tmpPath = path.join(dir, `.env.${process.pid}.tmp`);
-                            
+
                             await fs.writeFile(tmpPath, content, { mode: 0o600 });
                             await fs.rename(tmpPath, envPath);
                             

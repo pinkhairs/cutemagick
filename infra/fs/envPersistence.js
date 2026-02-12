@@ -63,10 +63,11 @@ export function loadEnvVars(site) {
 }
 
 /**
- * Ensure .env symlink exists in site working directory
+ * Ensure secrets directory exists for a site
+ * Migrates any existing .env file from site directory to secrets directory
  * @param {string} site - Site slug/directory name
  */
-export function ensureEnvSymlink(site) {
+export function ensureSecretsDirectory(site) {
   const siteDir = path.join(SITES_ROOT, site);
   const secretsDir = path.join(SECRETS_ROOT, site);
   const secretsEnvPath = path.join(secretsDir, '.env');
@@ -76,46 +77,43 @@ export function ensureEnvSymlink(site) {
     // Ensure secrets directory exists
     fs.mkdirSync(secretsDir, { recursive: true });
 
-    // Check if symlink already exists
+    // Migrate existing .env from site directory if it exists
     if (fs.existsSync(siteEnvPath)) {
       const stats = fs.lstatSync(siteEnvPath);
-      if (stats.isSymbolicLink()) {
-        const existing = fs.readlinkSync(siteEnvPath);
-        if (existing === secretsEnvPath) {
-          return; // Already correct
-        }
-        // Remove incorrect symlink
-        fs.unlinkSync(siteEnvPath);
-      } else {
-        // Real .env file exists - move it to secrets directory
+
+      // If it's a real file (not a symlink), migrate it
+      if (!stats.isSymbolicLink()) {
         if (!fs.existsSync(secretsEnvPath)) {
+          // Move to secrets directory
           fs.renameSync(siteEnvPath, secretsEnvPath);
-          log.info('[envPersistence:ensureEnvSymlink]', {
+          log.info('[envPersistence:ensureSecretsDirectory]', {
             site,
-            message: 'Moved existing .env to secrets directory'
+            message: 'Migrated existing .env to secrets directory'
           });
         } else {
-          // Both exist - keep secrets version, remove site version
+          // Secrets already has .env, remove duplicate from sites
           fs.unlinkSync(siteEnvPath);
-          log.warn('[envPersistence:ensureEnvSymlink]', {
+          log.warn('[envPersistence:ensureSecretsDirectory]', {
             site,
             message: 'Removed duplicate .env from site directory'
           });
         }
+      } else {
+        // It's a symlink, remove it (we don't use symlinks anymore)
+        fs.unlinkSync(siteEnvPath);
+        log.info('[envPersistence:ensureSecretsDirectory]', {
+          site,
+          message: 'Removed legacy .env symlink from site directory'
+        });
       }
     }
 
-    // Create symlink only if secrets .env exists
-    if (fs.existsSync(secretsEnvPath)) {
-      fs.symlinkSync(secretsEnvPath, siteEnvPath);
-      log.info('[envPersistence:ensureEnvSymlink]', {
-        site,
-        source: secretsEnvPath,
-        target: siteEnvPath
-      });
-    }
+    log.debug('[envPersistence:ensureSecretsDirectory]', {
+      site,
+      secretsDir
+    });
   } catch (err) {
-    log.error('[envPersistence:ensureEnvSymlink]', {
+    log.error('[envPersistence:ensureSecretsDirectory]', {
       site,
       error: err.message
     });
