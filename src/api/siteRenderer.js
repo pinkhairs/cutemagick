@@ -225,8 +225,18 @@ if (ext === '.js') {
     },
   });
 
-  res.type('text/html');
-  return res.send(stdout);
+  const { headers, body } = parseCgiOutput(stdout);
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'content-length') continue;
+    res.setHeader(key, value);
+  }
+
+  if (!headers['content-type']) {
+    res.type('text/html');
+  }
+
+  return res.send(body);
 }
 if (ext === '.py') {
 
