@@ -142,66 +142,55 @@ export function findUploadFiles(dir, baseDir = dir) {
 }
 
 /**
- * Create symlinks in render/working directory for all upload files in uploads directory
+ * Create uploads directory symlink in render/working directory
+ * This allows PHP and other runtimes to write to persistent storage
+ * and have files immediately accessible via ./uploads/ paths
  * @param {string} site - Site slug/directory name
  * @param {string} targetDir - Full path to render or working directory
  */
 export function symlinkUploadFiles({ site, targetDir }) {
   const uploadsDir = path.join(UPLOADS_ROOT, site);
+  const uploadsSymlink = path.join(targetDir, 'uploads');
 
-  // Ensure uploads directory exists
-  fs.mkdirSync(uploadsDir, { recursive: true });
+  try {
+    // Ensure persistent uploads directory exists
+    fs.mkdirSync(uploadsDir, { recursive: true });
 
-  const uploadFiles = findUploadFiles(uploadsDir);
-
-  for (const relativePath of uploadFiles) {
-    const sourcePath = path.join(uploadsDir, relativePath);
-    const targetPath = path.join(targetDir, 'uploads', relativePath);
-
-    // Ensure parent directory exists in target
-    const targetParent = path.dirname(targetPath);
-    if (!fs.existsSync(targetParent)) {
-      fs.mkdirSync(targetParent, { recursive: true });
-    }
-
-    // Skip if symlink already exists and points to correct location
-    try {
-      if (fs.existsSync(targetPath)) {
-        const stats = fs.lstatSync(targetPath);
-        if (stats.isSymbolicLink()) {
-          const existing = fs.readlinkSync(targetPath);
-          if (existing === sourcePath) {
-            continue; // Already correct
-          }
-          // Remove incorrect symlink
-          fs.unlinkSync(targetPath);
-        } else {
-          // Real file exists (e.g., from git worktree materialization)
-          // Remove it - uploads directory is source of truth
-          log.info('[uploadPersistence:symlinkUploadFiles]', {
-            site,
-            relativePath,
-            message: 'Removing target file (uploads directory is source of truth)'
-          });
-          fs.unlinkSync(targetPath);
+    // Check if symlink already exists
+    if (fs.existsSync(uploadsSymlink)) {
+      const stats = fs.lstatSync(uploadsSymlink);
+      if (stats.isSymbolicLink()) {
+        const existing = fs.readlinkSync(uploadsSymlink);
+        if (existing === uploadsDir) {
+          return; // Already correct
         }
+        // Remove incorrect symlink
+        fs.unlinkSync(uploadsSymlink);
+      } else if (stats.isDirectory()) {
+        // Real directory exists - don't replace it (might have user files)
+        log.warn('[uploadPersistence:symlinkUploadFiles]', {
+          site,
+          message: 'Real uploads directory exists in render, not replacing with symlink'
+        });
+        return;
+      } else {
+        // It's a file, remove it
+        fs.unlinkSync(uploadsSymlink);
       }
-
-      // Create symlink
-      fs.symlinkSync(sourcePath, targetPath);
-      log.debug('[uploadPersistence:symlinkUploadFiles]', {
-        site,
-        relativePath,
-        source: sourcePath,
-        target: targetPath
-      });
-    } catch (err) {
-      log.error('[uploadPersistence:symlinkUploadFiles]', {
-        site,
-        relativePath,
-        error: err.message
-      });
     }
+
+    // Create directory symlink
+    fs.symlinkSync(uploadsDir, uploadsSymlink);
+    log.debug('[uploadPersistence:symlinkUploadFiles]', {
+      site,
+      source: uploadsDir,
+      target: uploadsSymlink
+    });
+  } catch (err) {
+    log.error('[uploadPersistence:symlinkUploadFiles]', {
+      site,
+      error: err.message
+    });
   }
 }
 
@@ -217,6 +206,23 @@ export function persistNewUploadFiles({ site, sourceDir }) {
 
   if (!fs.existsSync(uploadsSourceDir)) {
     return;
+  }
+
+  // If uploads directory is already a symlink to persistent storage, skip
+  // (files are already being written to the persistent location)
+  try {
+    const stats = fs.lstatSync(uploadsSourceDir);
+    if (stats.isSymbolicLink()) {
+      const linkTarget = fs.readlinkSync(uploadsSourceDir);
+      if (linkTarget === uploadsDir) {
+        // Already symlinked to persistent storage, no need to move files
+        // But ensure working directory also has the symlink
+        ensureUploadsSymlink(site);
+        return;
+      }
+    }
+  } catch (err) {
+    // Ignore lstat errors, continue with persistence logic
   }
 
   // Ensure uploads directory exists

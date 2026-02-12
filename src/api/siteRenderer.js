@@ -190,20 +190,59 @@ async function executeScript({
       res.type('text/html');
     }
 
-    return res.send(body);
+  delete headers['content-disposition'];
+
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
   }
 
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'content-length') continue;
+    res.setHeader(key, value);
+  }
+
+  if (!headers['content-type']) {
+    res.type('text/html');
+  }
+
+  return res.status(statusCode).send(body);
+}
+
+
 if (ext === '.js') {
+  // Capture raw body (important for POST)
+  let rawBody = null;
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    rawBody = await new Promise((resolve, reject) => {
+      let data = Buffer.alloc(0);
+
+      req.on('data', chunk => {
+        data = Buffer.concat([data, chunk]);
+      });
+
+      req.on('end', () => resolve(data));
+      req.on('error', reject);
+    });
+  }
+
   const { stdout } = await executeRuntime({
     lang: 'node',
     cwd: runtimeDir,
     scriptPath,
+    body: rawBody,
     env: {
       REQUEST_METHOD: req.method,
       REQUEST_URI: req.originalUrl,
       QUERY_STRING: req.originalUrl.split('?')[1] || '',
       CONTENT_TYPE: req.headers['content-type'] || '',
-      CONTENT_LENGTH: req.headers['content-length'] || '',
+      CONTENT_LENGTH: rawBody ? rawBody.length.toString() : '0',
     },
   });
 
@@ -229,6 +268,16 @@ if (ext === '.lua') {
 
   const { headers, body } = parseCgiOutput(stdout);
 
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
+  }
+
   for (const [key, value] of Object.entries(headers)) {
     if (key === 'content-length') continue;
     res.setHeader(key, value);
@@ -238,7 +287,7 @@ if (ext === '.lua') {
     res.type('text/html');
   }
 
-  return res.send(body);
+  return res.status(statusCode).send(body);
 }
 
   if (ext === '.sh') {
@@ -253,10 +302,135 @@ if (ext === '.lua') {
       { cwd: runtimeDir }
     );
 
-
-    res.type('text/plain');
-    return res.send(stdout);
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
   }
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'content-length') continue;
+    res.setHeader(key, value);
+  }
+
+  if (!headers['content-type']) {
+    res.type('text/html');
+  }
+
+  return res.status(statusCode).send(body);
+}
+
+if (ext === '.lua') {
+  let rawBody = null;
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    rawBody = await new Promise((resolve, reject) => {
+      let data = Buffer.alloc(0);
+      req.on('data', chunk => data = Buffer.concat([data, chunk]));
+      req.on('end', () => resolve(data));
+      req.on('error', reject);
+    });
+  }
+
+  const { stdout } = await runProcess(
+    'lua',
+    [scriptPath],
+    {
+      cwd: runtimeDir,
+      env: {
+        ...process.env,
+        REQUEST_METHOD: req.method,
+        REQUEST_URI: req.originalUrl,
+        QUERY_STRING: req.originalUrl.split('?')[1] || '',
+        CONTENT_TYPE: req.headers['content-type'] || '',
+        CONTENT_LENGTH: rawBody ? rawBody.length.toString() : '0'
+      },
+      input: rawBody || undefined
+    }
+  );
+
+  const { headers, body } = parseCgiOutput(stdout);
+
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
+  }
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'content-length') continue;
+    res.setHeader(key, value);
+  }
+
+  if (!headers['content-type']) {
+    res.type('text/html');
+  }
+
+  return res.status(statusCode).send(body);
+}
+
+
+if (ext === '.sh') {
+  let rawBody = null;
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    rawBody = await new Promise((resolve, reject) => {
+      let data = Buffer.alloc(0);
+      req.on('data', chunk => data = Buffer.concat([data, chunk]));
+      req.on('end', () => resolve(data));
+      req.on('error', reject);
+    });
+  }
+
+  const { stdout } = await runProcess(
+    '/bin/bash',
+    [scriptPath],
+    {
+      cwd: runtimeDir,
+      env: {
+        ...process.env,
+        REQUEST_METHOD: req.method,
+        REQUEST_URI: req.originalUrl,
+        QUERY_STRING: req.originalUrl.split('?')[1] || '',
+        CONTENT_TYPE: req.headers['content-type'] || '',
+        CONTENT_LENGTH: rawBody ? rawBody.length.toString() : '0'
+      },
+      input: rawBody || undefined
+    }
+  );
+
+  const { headers, body } = parseCgiOutput(stdout);
+
+  // Extract status code from CGI Status header
+  let statusCode = 200;
+  if (headers['status']) {
+    const match = headers['status'].match(/^(\d+)/);
+    if (match) {
+      statusCode = parseInt(match[1], 10);
+    }
+    delete headers['status']; // Don't send Status as a header
+  }
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'content-length') continue;
+    res.setHeader(key, value);
+  }
+
+  if (!headers['content-type']) {
+    res.type('text/html');
+  }
+
+  return res.status(statusCode).send(body);
+}
+
 
   return res.status(415).send('Unsupported script type');
 }
