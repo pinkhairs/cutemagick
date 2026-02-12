@@ -498,7 +498,7 @@ if (
     });
   }
 
-    await fetch(`${process.env.DOMAIN_REGISTRY_URL}/domains/rename`, {
+    const renameRes = await fetch(`${process.env.DOMAIN_REGISTRY_URL}/domains/rename`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -510,7 +510,37 @@ if (
       to: cleanDomain
     })
   });
+    if (!renameRes.ok) {
+      console.log('[settings:domain] registry rename failed', renameRes.status);
+      return res.status(409).json({
+        error: 'domain_registry_unreachable'
+      });
+    }
   console.log('[settings:domain] domain accepted by registry');
+} else if (
+  hasDomainRegistryConfigured() &&
+  oldDomain &&
+  !cleanDomain
+) {
+  console.log('[settings:domain] registry remove required');
+  const removeRes = await fetch(`${process.env.DOMAIN_REGISTRY_URL}/domains/remove`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Registry-Secret': process.env.REGISTRY_SECRET,
+      'magick-instance-id': process.env.MAGICK_INSTANCE_ID
+    },
+    body: JSON.stringify({
+      hostname: oldDomain
+    })
+  });
+  if (!removeRes.ok) {
+    console.log('[settings:domain] registry remove failed', removeRes.status);
+    return res.status(409).json({
+      error: 'domain_registry_unreachable'
+    });
+  }
+  console.log('[settings:domain] domain removed from registry');
 } else {
   console.log('[settings:domain] registry check skipped');
 }
@@ -594,7 +624,34 @@ if (
                       );
                       router.post('/:siteId/archive', async (req, res) => {
                         const { siteId } = req.params;
-                        
+
+                        if (hasDomainRegistryConfigured()) {
+                          const existing = db.prepare(`
+    SELECT domain
+    FROM sites
+    WHERE uuid = ?
+  `).get(siteId);
+
+                          if (existing?.domain) {
+                            const removeRes = await fetch(`${process.env.DOMAIN_REGISTRY_URL}/domains/remove`, {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'X-Registry-Secret': process.env.REGISTRY_SECRET,
+                                'magick-instance-id': process.env.MAGICK_INSTANCE_ID
+                              },
+                              body: JSON.stringify({
+                                hostname: existing.domain
+                              })
+                            });
+                            if (!removeRes.ok) {
+                              return res.status(409).json({
+                                error: 'domain_registry_unreachable'
+                              });
+                            }
+                          }
+                        }
+
                         const result = db.prepare(`
     UPDATE sites
     SET

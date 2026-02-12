@@ -26,6 +26,14 @@ document.body.addEventListener('htmx:responseError', function (evt) {
     return;
   }
 
+  if (payload?.error === 'domain_registry_unreachable') {
+    alert(
+      'We could not contact the domain registry to update your domain.\n\n' +
+      'Please try again in a moment.'
+    );
+    return;
+  }
+
   // 🔒 Domain already in use by another Cute Magick
   if (payload?.error === 'domain_already_in_use') {
     const domains = payload.domains?.join('\n') ?? 'That domain';
@@ -33,7 +41,7 @@ document.body.addEventListener('htmx:responseError', function (evt) {
     alert(
       'That domain is already in use by another Cute Magick.\n\n' +
       domains +
-      '\n\nIf this is an old or abandoned site, you'll need to release it first.'
+      '\n\nIf this is an old or abandoned site, you\'ll need to release it first.'
     );
     return;
   }
