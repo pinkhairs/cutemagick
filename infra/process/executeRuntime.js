@@ -54,10 +54,6 @@ export const RUNTIMES = {
    Guards
 ----------------------------- */
 
-function isRuntimeEnabled(envKey) {
-  return process.env[envKey] === '1';
-}
-
 function assertExecutablePathAllowed(target) {
   const realTarget = fs.realpathSync(target);
 
@@ -136,11 +132,6 @@ export async function executeRuntime({
   const rt = RUNTIMES[lang];
   if (!rt) {
     throw new Error(`Unknown runtime: ${lang}`);
-  }
-
-  if (!isRuntimeEnabled(rt.env)) {
-    log.debug('[runtime]', `Blocked disabled runtime: ${lang}`);
-    throw new Error(`Runtime disabled: ${lang}`);
   }
 
   if (!cwd) {
