@@ -53,6 +53,16 @@ export async function renderSite({
 
   let effectivePath = relPath || '';
 
+  // Treat bare directory paths the same as trailing-slash paths
+  if (
+    effectivePath !== '' &&
+    !effectivePath.endsWith('/') &&
+    fs.existsSync(path.join(runtimeDir, effectivePath)) &&
+    fs.statSync(path.join(runtimeDir, effectivePath)).isDirectory()
+  ) {
+    effectivePath += '/';
+  }
+
   if (effectivePath === '' || effectivePath.endsWith('/')) {
     const indexCandidates = [
       'index.php',
