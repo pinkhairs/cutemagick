@@ -30,7 +30,6 @@ RUN apt-get update && apt-get install -y \
   imagemagick \
   msmtp \
   sendmail \
-  gosu \
   && rm -rf /var/lib/apt/lists/*
 
 
@@ -56,10 +55,6 @@ RUN npm prune --production
 
 RUN mkdir -p /app/data && chown node:node /app/data
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
 EXPOSE 3000
 
-ENTRYPOINT ["entrypoint.sh"]
 CMD ["node", "src/index.js"]
