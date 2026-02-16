@@ -45,7 +45,7 @@ Your laptop won't notice it's running.
 
 The hosted version gives you everything above — plus automatic backups, SSL, and zero maintenance. You're up in under a minute.
 
-👉 **[See hosted plans →](https://cutemagick.com#pricing)**
+👉 **[See hosted plans →](https://cutemagick.com)**
 
 ## What is Cute Magick?
 
