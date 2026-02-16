@@ -15,14 +15,6 @@ https://pixelswithin.notion.site/Cute-Magick-Docs-2fdb91326d968024b11cc40c73a18e
 
 ## Get Started
 
-### Hosted — up and running in a minute
-
-The fastest way to try Cute Magick is the hosted version. Sign up, get your admin link, and you're in.
-
-👉 **[cutemagick.com/#pricing](https://cutemagick.com/#pricing)**
-
-No Docker, no terminal, no setup.
-
 ### Self-hosted
 
 Cute Magick is open source. You can run it anywhere Docker runs. It does not phone home and does not require any external service to function.
@@ -36,7 +28,7 @@ You need:
 docker run -p 3000:3000 -v $(pwd)/cutemagick:/app/data ghcr.io/pinkhairs/cutemagick:main
 ```
 
-Then open `localhost:3000/admin` to set up your account.
+Then copy `.env.example` to `.env` and fill in those details, specifically `JWT_SECRET`, `LOGIN_EMAIL`, and `PASSWORD` (bcrypt hash). Open `localhost:3000/admin` and log in.
 
 Basic requirements:
 - 512 MB RAM (1 GB recommended)
@@ -50,6 +42,11 @@ Your laptop won't notice it's running.
 📖 **Full installation and setup:**
 See the docs for VPS deployment, reverse proxy setup, and configuration.
 
+### Don't want to manage infrastructure?
+
+The hosted version gives you everything above — plus automatic backups, SSL, and zero maintenance. You're up in under a minute.
+
+👉 **[See hosted plans →](https://cutemagick.com#pricing)**
 ---
 
 ## What is Cute Magick?
