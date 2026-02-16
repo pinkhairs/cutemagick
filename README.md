@@ -39,15 +39,13 @@ A Raspberry Pi 4 can run it.
 The cheapest VPS is usually overkill.
 Your laptop won't notice it's running.
 
-📖 **Full installation and setup:**
-See the docs for VPS deployment, reverse proxy setup, and configuration.
+📖  **[See the docs for VPS deployment, reverse proxy setup, and configuration.](https://cutemagick.com/docs)**
 
 ### Don't want to manage infrastructure?
 
 The hosted version gives you everything above — plus automatic backups, SSL, and zero maintenance. You're up in under a minute.
 
 👉 **[See hosted plans →](https://cutemagick.com#pricing)**
----
 
 ## What is Cute Magick?
 
