@@ -69,7 +69,6 @@ app.set('trust proxy', true);
 ----------------------------- */
 
 app.use(cookieParser());
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // HTMX: disable caching for fragment responses
